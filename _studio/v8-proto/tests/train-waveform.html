@@ -1,0 +1,7 @@
+<!doctype html><html lang="zh-CN" data-side="paper"><meta charset="utf-8"><title>母盘 · 波形交互隔离验收</title><link rel="stylesheet" href="../../../v3/assets/fonts/fonts.css"><link rel="stylesheet" href="../css/proto.css"><header class="top"><span class="brand">大众音乐史复习室</span><span>波形交互验收</span></header><main><section class="room room-train" id="fixture"></section></main><script type="module">
+import * as M from '../js/model.js';import {createTrain} from '../js/train.js';
+await M.ready;M.prefs.size=10;
+const train=createTrain(document.querySelector('#fixture'),{reduced:()=>true,exit:()=>{},finish:()=>{}});
+const params=new URLSearchParams(location.search),deck=Number(params.get('deck'));
+await train.start([M.lectures.some(l=>l.id===deck)?deck:1],params.get('type')==='choice'?'choice':'written');
+</script></html>

@@ -1,0 +1,17 @@
+{
+  "id": "./",
+  "name": "母盘 · 大众音乐史复习室",
+  "short_name": "音乐史复习室",
+  "description": "一张正在被刻出来的唱片：听辨、年代与四项记忆训练。",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0F0D0C",
+  "theme_color": "#0F0D0C",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN" data-side="lacquer">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F0D0C">
+<title>大众音乐史复习室 · 母盘</title>
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<!-- 课件视频目录：相对地址按站点根目录解析；视频放在别的站点时填完整网址。 -->
+<meta name="course-video-base" content="course-videos/">
+<meta name="apple-mobile-web-app-title" content="音乐史复习室">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="../../v3/assets/fonts/fonts.css">
+<link rel="stylesheet" href="css/proto.css">
+</head>
+<body>
+<a class="skip" href="#main">跳到主要内容</a>
+
+<header class="top" id="top">
+  <a class="brand" href="#disc">大众音乐史复习室</a>
+  <nav class="tabs" aria-label="页面">
+    <a href="#disc" data-tab="disc">唱片</a>
+    <a href="#catalog" data-tab="catalog">目录</a>
+    <a href="#result" data-tab="result">结果</a>
+    <a href="#history" data-tab="history">历史</a>
+  </nav>
+</header>
+
+<main id="main">
+  <!-- 唱片：漆面 -->
+  <section class="room room-disc" id="roomDisc" data-room="disc" hidden>
+    <div class="stage" id="stage">
+      <canvas id="gl" tabindex="0" role="application" aria-describedby="discHelp"
+        aria-label="母盘：外圈 1854 年，内圈 1968 年。方向键移动，回车进入，空格落针。"></canvas>
+      <div class="flat-host" id="flatHost" tabindex="0" role="application" aria-label="平面母盘" aria-describedby="discHelp" hidden></div>
+      <div class="hud" id="hud" aria-hidden="true"></div>
+      <p class="stage-hint" id="discHelp"></p>
+      <div class="legend" aria-hidden="true">
+        <span><i class="lg-cut"></i>刻过：记住了</span>
+        <span><i class="lg-blank"></i>漆面：还没记住</span>
+        <span class="lg-src" id="legendSrc"></span>
+      </div>
+    </div>
+    <aside class="panel" id="panel" aria-label="曲目表"></aside>
+    <div class="sr-only" aria-live="polite" id="live"></div>
+    <button class="intro-skip" id="introSkip" hidden>跳过</button>
+  </section>
+
+  <!-- 目录：高效的那一层 -->
+  <section class="room room-catalog" id="roomCatalog" data-room="catalog" hidden>
+    <div class="cat-head">
+      <h1>目录</h1>
+      <label class="cat-search"><span class="sr-only">搜索</span><input id="catSearch" type="search" placeholder="搜索歌名、音乐家、年份、风格" autocomplete="off"></label>
+      <div class="cat-filters" id="catFilters" role="group" aria-label="筛选"></div>
+    </div>
+    <div class="cat-body" id="catBody"></div>
+  </section>
+
+  <!-- 听辨：标签纸面 -->
+  <section class="room room-train" id="roomTrain" data-room="train" hidden></section>
+
+  <!-- 结果：标签纸面 -->
+  <section class="room room-result" id="roomResult" data-room="result" hidden></section>
+<section class="room room-result" id="roomHistory" data-room="history" hidden></section>
+</main>
+<div class="app-notice" id="appNotice" role="status" hidden></div>
+<div class="veil" id="veil" aria-hidden="true"></div>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

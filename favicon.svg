@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs><radialGradient id="sheen" cx="50%" cy="50%" r="50%"><stop offset="35%" stop-color="#fff" stop-opacity="0"/><stop offset="80%" stop-color="#fff" stop-opacity=".10"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>
+<circle cx="32.0" cy="32.0" r="30.72" fill="#1A1714"/>
+<circle cx="32.0" cy="32.0" r="30.57" fill="none" stroke="#EEE8DA" stroke-opacity=".22" stroke-width="1.00"/>
+<circle cx="32.0" cy="32.0" r="25.96" fill="none" stroke="#B9AC98" stroke-opacity=".55" stroke-width="1.92"/>
+<path d="M32.00 11.26A20.74 20.74 0 1 1 11.58 35.60" fill="none" stroke="#B9AC98" stroke-opacity=".55" stroke-width="1.92" stroke-linecap="round"/>
+<path d="M32.00 16.49A15.51 15.51 0 1 1 22.03 20.12" fill="none" stroke="#B9AC98" stroke-opacity=".55" stroke-width="1.92" stroke-linecap="round"/>
+<path d="M32.00 11.26A20.74 20.74 0 1 1 14.81 43.60" fill="none" stroke="#E7A33C" stroke-width="3.20" stroke-linecap="round"/>
+<path d="M32.0 1.43V4.35" stroke="#EEE8DA" stroke-opacity=".7" stroke-width="1.20" stroke-linecap="round"/>
+<circle cx="32.0" cy="32.0" r="10.44" fill="#EEE8DA"/>
+<circle cx="32.0" cy="32.0" r="1.15" fill="#0F0D0C"/>
+</svg>

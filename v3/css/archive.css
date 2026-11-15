@@ -1,0 +1,301 @@
+/* Archive: every decade name contains a 0, and that 0 is a record. The wall holds the whole course:
+   colour means you have collected it, grey means you have not heard it yet. */
+.band{background:#141414;color:#F1F0EA;padding:0 var(--m) 14px;position:sticky;top:-58px;z-index:5}
+.band-top{display:flex;align-items:center;gap:16px;height:58px;font-size:14px;color:#B9B8B0}
+.band-top h1{font-size:22px;font-weight:600;color:#F1F0EA}
+.band-action{margin-left:auto;color:#F1F0EA;font-weight:500;white-space:nowrap}
+.band-action:hover{text-decoration:underline;text-underline-offset:3px}
+.band-action:disabled{visibility:hidden}
+.decades{display:flex;justify-content:space-between;gap:12px;overflow-x:auto;scrollbar-width:none}
+.decades::-webkit-scrollbar{display:none}
+.dec{display:grid;gap:4px;flex:0 0 auto;color:#8C8B85;text-align:left;transition:color var(--t-quick) linear}
+.dec .lab{display:flex;align-items:center;font:800 clamp(44px,5.4vw,76px)/.86 var(--f-lat);font-variation-settings:"wdth" 74;letter-spacing:-.02em}
+.dec .o{display:inline-block;width:.62em;height:.62em;margin:0 .02em;position:relative;top:.02em;transition:transform .5s var(--ease)}
+.dec .o canvas{width:100%;height:100%;display:block}
+.dec small{font:500 13px var(--f-lat);font-variant-numeric:lining-nums tabular-nums}
+.dec[aria-current]{color:var(--red)}
+.dec[aria-current] small{color:#F1F0EA}
+.dec:hover{color:#F1F0EA}.dec:hover .o{transform:rotate(150deg)}
+.dec:disabled{opacity:.32;cursor:default;color:#8C8B85}.dec:disabled .o{transform:none}
+.band.stuck .dec .lab{font-size:clamp(30px,2.9vw,40px)}
+:is(body[data-room=archive],[data-from=archive]) main{padding-bottom:0}
+#archiveSlot{padding:0 var(--m) 40px}
+.archive-panel>summary{list-style:none}
+.archive-panel>summary::-webkit-details-marker{display:none}
+:is(body[data-room=archive],[data-from=archive]) .archive-panel>summary{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+
+/* Filters answer to the band: one and a half quiet lines. Nothing here is filled until you actually narrow the wall. */
+.a-filters{position:relative;display:flex;gap:12px 24px;flex-wrap:wrap;align-items:center;padding:14px 0;border-bottom:1px solid var(--rule);font-size:14px}
+.a-tabs{display:flex;gap:4px}
+.a-tabs button{padding:6px 10px;border-radius:2px;color:var(--ink-2);transition:background-color var(--t-press) linear,color var(--t-press) linear}
+.a-tabs button[aria-pressed="true"]{background:var(--cobalt);color:#fff}
+.archive-controls{display:flex;gap:8px 12px;flex-wrap:wrap;align-items:center;flex:1}
+.a-check{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:2px;color:var(--ink-2);cursor:pointer;transition:background-color var(--t-press) linear,color var(--t-press) linear}
+.a-check input{position:absolute;opacity:0}
+.a-check:has(input:checked){background:var(--cobalt);color:#fff}
+.a-check:has(input:focus-visible){outline:2px solid var(--cobalt);outline-offset:2px}
+.archive-controls select{height:36px;max-width:150px;background:transparent;border:1px solid var(--rule);border-radius:2px;padding:0 6px;font-size:14px;color:var(--ink-2)}
+.archive-controls input[type=search]{margin-left:auto;width:260px;height:40px;border:1px solid var(--field);border-radius:2px;background:var(--surface);padding:0 12px;font-size:15px}
+.archive-controls input[type=search]:focus{outline:none;border-color:var(--cobalt);box-shadow:0 0 0 1px var(--cobalt)}
+.chips{display:flex;flex-wrap:wrap;gap:2px;align-items:center}
+.chips:empty,.style-chips:empty,.status-chips:empty{display:none}
+.chip{padding:5px 8px;border-radius:2px;font-size:14px;line-height:1.4;color:var(--ink-2);display:inline-flex;gap:5px;align-items:center;white-space:nowrap;transition:color var(--t-press) linear,background-color var(--t-press) linear}
+.chip .n{font:500 12.5px var(--f-lat);font-variant-numeric:lining-nums tabular-nums;color:var(--ink-3)}
+.chip:hover{color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--cobalt);color:#fff}.chip[aria-pressed="true"] .n{color:var(--on-cobalt-2)}
+.chip[data-rest][aria-pressed="true"]{background:none;color:var(--ink);font-weight:600}.chip[data-rest][aria-pressed="true"] .n{color:var(--ink-2)}
+.chip:disabled{color:var(--ink-3);opacity:.55;cursor:default}
+.chip .lat{font-weight:500;font-size:13.5px}
+.f-label{font-size:14px;color:var(--ink-3);margin-right:6px}
+.chip-clear{margin-left:10px;font-size:14px;color:var(--cobalt);padding:5px 0}
+.chip-clear:hover{text-decoration:underline;text-underline-offset:3px}
+.a-facets{flex:1 0 100%;display:flex;flex-wrap:wrap;align-items:flex-start;gap:0 24px}
+.a-facets:not(:has(button)){display:none}
+.facet-toggle{display:none}
+.style-sub{display:flex;flex-wrap:wrap;gap:2px;flex:1 0 100%;padding-top:2px}
+.style-sub .chip{font-family:var(--f-lat);font-size:13.5px}
+.style-chips{display:flex;flex-wrap:wrap;align-items:center;gap:2px}
+
+:is(body[data-room=archive],[data-from=archive]) .a-tabs,
+:is(body[data-room=archive],[data-from=archive]) .a-check,
+:is(body[data-room=archive],[data-from=archive]) .archive-controls select{display:none}
+:is(body[data-room=archive],[data-from=archive]) .a-filters{gap:0 20px;padding:14px 0 0;border:0}
+:is(body[data-room=archive],[data-from=archive]) .archive-controls{flex:0 0 auto}
+:is(body[data-room=archive],[data-from=archive]) .archive-controls input[type=search]{margin:0;width:336px;height:36px;border-color:var(--rule);font-size:14px}
+:is(body[data-room=archive],[data-from=archive]) .status-chips{flex:1 1 auto}
+:is(body[data-room=archive],[data-from=archive]) #lectureChips{margin-top:8px}
+:is(body[data-room=archive],[data-from=archive]) #styleChips{margin-top:8px;flex:1 1 0;min-width:min(100%,420px)}
+:is(body[data-room=archive],[data-from=archive]) #lectureChips .chip,
+:is(body[data-room=archive],[data-from=archive]) #styleChips .chip{padding:3px 6px;color:var(--ink-3)}
+:is(body[data-room=archive],[data-from=archive]) #lectureChips .chip:hover,
+:is(body[data-room=archive],[data-from=archive]) #styleChips .chip:hover{color:var(--ink)}
+:is(body[data-room=archive],[data-from=archive]) #lectureChips .chip[aria-pressed="true"],
+:is(body[data-room=archive],[data-from=archive]) #styleChips .chip[aria-pressed="true"]{color:#fff}
+
+.a-legend{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);padding:12px 0 0}
+.a-legend span{display:inline-flex;gap:6px;align-items:center}
+/* on the wide wall the legend rides on the first decade's rule instead of costing a line of its own */
+@media (min-width:1101px){
+  :is(body[data-room=archive],[data-from=archive]) .a-legend{position:relative;height:0;padding:0;top:49px;justify-content:flex-end;align-items:flex-start;pointer-events:none;font-size:14px;color:var(--ink-3);z-index:1}
+}
+.a-legend:has(+ #archiveContent > .archive-empty),.a-legend:has(+ #archiveContent > .archive-lock),.a-legend:has(+ #archiveContent > .wall-note){display:none}
+.wall-note{display:flex;gap:6px 16px;flex-wrap:wrap;align-items:baseline;padding-top:16px;font-size:15px;color:var(--ink-2)}
+
+.decade{padding-top:28px;scroll-margin-top:96px}
+.d-head{display:flex;align-items:baseline;gap:16px;border-top:2px solid var(--ink);padding-top:12px;margin-bottom:16px}
+.d-head h2,.d-head h3{font:800 40px/.9 var(--f-lat);font-variation-settings:"wdth" 78;margin:0}
+.d-head .cnt{font-size:14px;color:var(--ink-2)}
+.cards{--cover:88px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--g)}
+/* an open note grows its own card only; the neighbours keep their place */
+.cards:has(details[open]){align-items:start}
+
+/* one anatomy for every song */
+.archive-song{position:relative;background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:12px 14px 6px;display:flex;flex-direction:column;min-height:236px;min-width:0;transition:border-color var(--t-press) linear}
+.archive-song:hover{border-color:var(--ink)}
+.archive-song.new-record{border-color:var(--cobalt)}
+.archive-song .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.archive-song .meta{display:flex;align-items:center;gap:6px;font:500 12px/1.4 var(--f-lat);color:var(--ink-3)}
+.archive-song h4,.archive-song h3{font:600 19px/1.15 var(--f-lat);margin-top:10px;overflow-wrap:anywhere}
+.archive-song h4:lang(ko),.archive-song h3:lang(ko){font-family:var(--f-ko)}
+.archive-song .ar{font-size:14px;line-height:1.4;color:var(--ink-2);margin-top:3px}
+.archive-song .ver{font-size:14px;line-height:1.35;color:var(--ink-3);margin-top:2px}
+.archive-song .foot{display:flex;justify-content:space-between;align-items:flex-end;gap:8px;margin-top:auto;padding-top:10px}
+.archive-song .yr{font:700 28px/1 var(--f-lat);font-variant-numeric:lining-nums tabular-nums}
+.archive-song .st{display:block;font-size:12px;line-height:1.3;color:var(--ink-3);margin-top:4px;font-family:var(--f-lat)}
+.archive-song canvas.cover{width:var(--cover);height:var(--cover);display:block;flex:0 0 auto}
+.archive-song .flag{display:block;font-size:14px;line-height:1.4;color:var(--ink-3);margin-top:6px}
+
+/* the cover is the play button; the mark sits still in the hole while the record turns under it */
+.cover-play{position:relative;display:block;flex:0 0 auto;width:var(--cover);height:var(--cover);border-radius:50%;--glyph:0}
+.cover-play::before{content:"";position:absolute;left:50%;top:50%;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:var(--ink);opacity:var(--glyph);transform:scale(calc(.7 + var(--glyph)*.3));transition:opacity var(--t-press) linear,transform var(--t-press) var(--ease)}
+.cover-play::after{content:"";position:absolute;left:50%;top:50%;margin:-6px 0 0 -3px;width:0;height:0;border-style:solid;border-width:6px 0 6px 9px;border-color:transparent transparent transparent #fff;opacity:var(--glyph);transition:opacity var(--t-press) linear}
+.cover-play.playing::after{margin:-6px 0 0 -5px;width:10px;height:12px;border:0;border-left:3px solid #fff;border-right:3px solid #fff}
+.archive-song:hover .cover-play,.cover-play:focus-visible,.cover-play.playing{--glyph:1}
+.archive-song:hover .cover-play:not(:hover)::before{background:var(--ink-3)}
+.cover-play:hover::before,.cover-play.playing::before{background:var(--cobalt)}
+.archive-song[data-playing]{border-color:var(--cobalt);box-shadow:inset 0 0 0 1px var(--cobalt)}
+
+/* not heard yet: paper instead of a card, grey instead of a lecture colour */
+.archive-song[data-state=none]{background:transparent;border-style:dashed;border-color:var(--field)}
+.archive-song[data-state=none]:hover{border-color:var(--ink)}
+.archive-song[data-state=none][data-playing]{border-style:solid;border-color:var(--cobalt)}
+.archive-song[data-state=none] h3{color:var(--ink-2);font-weight:500}
+.archive-song[data-state=none] .ar,.archive-song[data-state=none] .yr{color:var(--ink-3)}
+
+/* the foot: note on the left of one line, anchor on the right; the note opens below both */
+.c-foot{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;margin-top:10px;border-top:1px solid var(--rule)}
+.c-foot>.memory-detail{grid-column:1/-1;grid-row:1}
+.c-foot>[data-anchor]{grid-column:2;grid-row:1;line-height:34px}
+.memory-detail{font-size:14px;color:var(--ink-2);min-width:0}
+.memory-detail summary{cursor:pointer;color:var(--ink-3);line-height:34px;width:max-content}
+.memory-detail summary:hover{color:var(--ink)}
+.md-body{display:grid;gap:6px;padding:2px 0 10px;line-height:1.55}
+.md-ko{color:var(--ink);line-height:1.45}
+.md-note{color:var(--ink)}
+.md-basis,.md-source{color:var(--ink-3)}
+.md-flag{border-left:2px dashed var(--field);padding-left:8px}
+.md-body .source-links{padding-left:0;gap:2px 12px}
+.memory-dimensions{display:grid;gap:4px;padding-top:6px;margin-top:2px;border-top:1px solid var(--rule)}
+.memory-dimensions small{display:block;font-size:12.5px;color:var(--ink-3)}
+.memory-dimensions b{font-weight:600;color:var(--ink)}
+.archive-song [data-anchor]{font-size:14px;color:var(--ink-3);white-space:nowrap}
+.archive-song [data-anchor]:hover{color:var(--ink)}
+.archive-song [data-anchor][aria-pressed="true"]{color:var(--cobalt);font-weight:500}
+
+.archive-empty,.archive-lock{padding:48px 0;display:grid;gap:6px;justify-items:start}
+.archive-empty span{display:none}
+.archive-empty h3,.archive-empty h2,.archive-lock strong{font-size:24px;font-weight:600}
+.archive-empty p,.archive-lock p{color:var(--ink-2)}
+.archive-empty.no-match{gap:16px}
+.peek{position:relative;width:160px;height:150px;margin-bottom:8px}.peek .fish{position:absolute;left:32px;top:40px}.peek svg{position:absolute;left:20px;bottom:0;width:120px}
+
+.a-foot{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 var(--g);align-items:start;margin-top:40px;border-top:1px solid var(--rule)}
+.a-manage{padding-top:12px;font-size:14px}
+.a-manage summary{cursor:pointer;color:var(--ink-2)}
+.a-manage-body{display:flex;gap:10px 20px;flex-wrap:wrap;align-items:center;padding-top:10px}
+.a-about .a-manage-body{display:grid;gap:6px;color:var(--ink-2);line-height:1.6;max-width:44em}
+#memorySave{width:100%;color:var(--ink-2)}
+#memoryRetry{display:none}
+.memory-import{cursor:pointer;position:relative}.memory-import input{position:absolute;inset:0;opacity:0;cursor:pointer}
+
+/* the panel also sits collapsed in training and in the report as this round's record */
+#trainingArchiveSlot,#summaryArchiveSlot{padding:0 var(--m);margin-top:24px}
+#summaryArchiveSlot{padding:0}
+#trainingArchiveSlot .archive-panel>summary,#summaryArchiveSlot .archive-panel>summary{cursor:pointer;font-size:15px;font-weight:600;border-top:2px solid var(--ink);padding:12px 0;display:block}
+#trainingArchiveSlot #archiveCount,#summaryArchiveSlot #archiveCount{font-weight:400;color:var(--ink-2);font-size:14px;margin-left:8px}
+#trainingArchiveSlot .a-about,#summaryArchiveSlot .a-about{display:none}
+#trainingArchiveSlot .a-foot,#summaryArchiveSlot .a-foot{display:block;margin-top:32px}
+
+/* the song you are browsing follows you between rooms; pages make room for it */
+.mini-player{position:fixed;left:0;right:0;bottom:0;height:60px;background:var(--cobalt);color:#fff;display:flex;align-items:center;gap:12px;padding:0 var(--m);z-index:9;animation:mini var(--t-base) var(--ease)}
+@keyframes mini{from{transform:translateY(100%)}}
+.mini-player .play{width:40px;height:40px}
+.mini-player .play::before{border-width:7px 0 7px 12px}
+.mini-player .play[data-playing="true"]::before{width:12px;height:14px;border:0;border-left:4px solid currentColor;border-right:4px solid currentColor}
+.mp-info{display:grid;min-width:0;line-height:1.25;flex:0 1 auto}
+.mp-info b{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mp-info span{font-size:14px;color:var(--on-cobalt-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mp-line{flex:1;height:2px;background:var(--cobalt-line);position:relative;min-width:40px}
+.mp-line i{position:absolute;left:0;top:-1px;height:4px;width:100%;background:#fff;transform:scaleX(0);transform-origin:0 50%}
+.mp-close{width:44px;height:44px;margin-right:-12px;flex:0 0 auto;font:400 22px/1 var(--f-lat);color:var(--on-cobalt-2)}
+.mp-close:hover{color:#fff}
+.mini-player :focus-visible{outline-color:#fff}
+body[data-mini]{padding-bottom:60px}
+
+@media (max-width:1100px){.cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:860px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){
+  .band{padding:0 var(--m) 10px;top:-48px}
+  .band-top{height:48px}
+  .band-top #bandSub{display:none}
+  .decades{justify-content:flex-start;gap:16px;margin:0 calc(var(--m)*-1);padding:0 var(--m)}
+  .dec .lab{font-size:42px}.band.stuck .dec .lab{font-size:26px}
+  .decade{padding-top:20px;scroll-margin-top:70px}
+  .a-legend{font-size:12px;gap:4px 10px}
+  .archive-controls select{display:none}
+  .archive-controls input[type=search]{width:100%;margin:0}
+
+  /* search, then states you can swipe through, then lectures and styles behind one line */
+  :is(body[data-room=archive],[data-from=archive]) .a-filters{display:block;padding-top:12px}
+  :is(body[data-room=archive],[data-from=archive]) .archive-controls input[type=search]{width:100%;height:44px;font-size:16px}
+  :is(body[data-room=archive],[data-from=archive]) .status-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:6px calc(var(--m)*-1) 0;padding:0 var(--m)}
+  .status-chips::-webkit-scrollbar{display:none}
+  .status-chips .chip{min-height:40px;flex:0 0 auto}
+  :is(body[data-room=archive],[data-from=archive]) .facet-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;margin-top:6px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);font-size:14px;color:var(--ink-2)}
+  .facet-toggle::after{content:"＋";font:400 16px var(--f-lat);color:var(--ink-3)}
+  .facet-toggle[aria-expanded="true"]::after{content:"－"}
+  .facet-toggle .n{font:500 13px var(--f-lat);color:var(--cobalt);margin-left:8px;margin-right:auto}
+  :is(body[data-room=archive],[data-from=archive]) .a-facets{display:block;padding:8px 0 4px;border-bottom:1px solid var(--rule)}
+  :is(body[data-room=archive],[data-from=archive]) .a-facets:not([data-open]){display:none}
+  :is(body[data-room=archive],[data-from=archive]) #lectureChips,:is(body[data-room=archive],[data-from=archive]) #styleChips{margin:0 0 6px}
+  :is(body[data-room=archive],[data-from=archive]) #lectureChips .chip,:is(body[data-room=archive],[data-from=archive]) #styleChips .chip{padding:8px;min-height:40px;color:var(--ink-2)}
+  :is(body[data-room=archive],[data-from=archive]) .a-legend{padding-top:10px}
+  :is(body[data-room=archive],[data-from=archive]) .a-filters:has(.a-facets:not([data-open])) + .a-legend{display:none}
+
+  /* one line per song; the 44px cover is the play button */
+  .cards{grid-template-columns:1fr;gap:0;--cover:44px}
+  .archive-song{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:0 12px;align-items:center;min-height:64px;padding:10px 0 2px;border:0;border-bottom:1px solid var(--rule);background:none}
+  .archive-song[data-state=none]{border-bottom-style:dashed}
+  .archive-song[data-playing]{box-shadow:inset 0 -2px 0 var(--cobalt);border-color:var(--cobalt)}
+  .archive-song canvas.cover,.archive-song .cover-play{grid-column:1;grid-row:1/3}
+  .archive-song .top{grid-column:3;grid-row:1}.archive-song .meta{display:none}
+  .archive-song h4,.archive-song h3{grid-column:2;grid-row:1;margin:0;font-size:16px}
+  .archive-song .ar{grid-column:2;grid-row:2;margin:0;font-size:14px}
+  .archive-song .ver{grid-column:2;grid-row:3;margin:0}
+  .archive-song .foot{display:contents}
+  .archive-song .foot>div{grid-column:3;grid-row:2;text-align:right}
+  .archive-song .yr{font-size:14px;font-weight:600}.archive-song .st{display:none}
+  .archive-song .flag{grid-column:2/4;margin-top:2px}
+  .c-foot{grid-column:2/4;margin-top:0;border-top:0}
+  .memory-detail summary,.c-foot>[data-anchor]{line-height:32px}
+  .cover-play::before{width:22px;height:22px;margin:-11px 0 0 -11px}
+  .cover-play::after{margin:-5px 0 0 -3px;border-width:5px 0 5px 8px}
+  .cover-play.playing::after{margin:-5px 0 0 -4px;width:8px;height:10px;border-width:0 2.5px}
+  .a-foot{grid-template-columns:1fr;margin-top:24px}
+  .mini-player{bottom:calc(56px + env(safe-area-inset-bottom,0px));padding:0 var(--m)}
+  body[data-mini]{padding-bottom:calc(116px + env(safe-area-inset-bottom,0px))}
+  body[data-mini] .toast{bottom:calc(128px + env(safe-area-inset-bottom,0px))}
+  .mp-line{display:none}
+  .mp-info{flex:1}
+}
+/* touch has no hover, so the mark stays on as a small label in the hole */
+@media (hover:none){
+  .cover-play{--glyph:1}
+  .cover-play:not(.playing)::before{background:var(--paper);box-shadow:0 0 0 1px var(--rule)}
+  .cover-play:not(.playing)::after{border-color:transparent transparent transparent var(--ink)}
+}
+
+/* Album sleeves: one size, one square crop, one placeholder.
+   A verified sleeve hides a record behind it that slides out on hover and turns while the song plays.
+   Songs without a verified album keep their own sound rings on a paper sleeve, marked 封面待补.
+   Unheard songs show the sleeve in grey, the same rule as everywhere else: colour means collected. */
+.archive-song .cover-play{border-radius:2px}
+.sleeve{position:relative;display:block;width:var(--cover);height:var(--cover)}
+.sleeve.art img{position:relative;z-index:1;display:block;width:100%;height:100%;object-fit:cover;background:var(--paper-2);box-shadow:0 1px 2px rgba(20,20,20,.3);transition:filter var(--t-quick) linear}
+.sleeve.art .disc{position:absolute;z-index:0;top:5%;left:5%;width:90%;height:90%;border-radius:50%;background:repeating-radial-gradient(circle,#191919 0 1.3px,#2c2c2a 1.3px 2.4px);transition:transform var(--t-base) var(--ease)}
+.sleeve.art .disc::after{content:"";position:absolute;inset:35%;border-radius:50%;background:conic-gradient(var(--red) 0 318deg,var(--paper) 318deg 360deg)}
+.archive-song:hover .sleeve.art .disc,.cover-play:focus-visible .sleeve.art .disc{transform:translateX(16%)}
+.archive-song[data-playing] .sleeve.art .disc{transform:translateX(40%)}
+.archive-song[data-playing] .sleeve.art .disc::after{animation:sleeve-spin 1.8s linear infinite}
+@keyframes sleeve-spin{to{transform:rotate(360deg)}}
+.archive-song[data-state=none] .sleeve.art img{filter:grayscale(1) contrast(.92) brightness(1.04)}
+.archive-song[data-state=none]:hover .sleeve.art img,.archive-song[data-state=none][data-playing] .sleeve.art img{filter:none}
+.sleeve.todo{display:grid;place-items:center;background:url(../assets/tex/paper-2.png) 0 0/256px,var(--surface);box-shadow:inset 0 0 0 1px var(--rule)}
+.sleeve.todo canvas.cover{width:78%;height:78%}
+.sleeve .tag{position:absolute;z-index:2;left:0;bottom:0;font:500 10.5px/1.5 var(--f-ui);font-style:normal;background:var(--ink);color:var(--paper);padding:0 5px;white-space:nowrap}
+.sleeve.todo .tag{left:50%;transform:translateX(-50%);bottom:1px;background:transparent;color:var(--ink-3);font-size:10px}
+@media (prefers-reduced-motion:reduce){.archive-song[data-playing] .sleeve.art .disc::after{animation:none}}
+
+/* Lecture 7 course notes (ported from the live library): sits at the end of the 1960s */
+.c7-notes{grid-column:1/-1;margin-top:28px;border-top:2px solid var(--ink);padding-top:12px}
+.c7-notes>summary{cursor:pointer;font-size:16px;font-weight:600;list-style:none;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.c7-notes>summary::-webkit-details-marker{display:none}
+.c7-notes>summary small{font-size:13px;font-weight:400;color:var(--ink-2)}
+.c7-notes>summary::after{content:"展开 ▾";margin-left:auto;font-size:13px;color:var(--cobalt);font-weight:500}
+.c7-notes[open]>summary::after{content:"收起 ▴"}
+.c7-albums{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--g);margin-top:18px}
+.c7-album{display:grid;gap:6px;align-content:start;font-size:13px;color:var(--ink-2);line-height:1.55}
+.c7-album .sq{aspect-ratio:1;background:var(--paper-2) center/cover no-repeat;box-shadow:0 1px 2px rgba(20,20,20,.25)}
+.c7-album b{font:600 15px/1.25 var(--f-lat);color:var(--ink)}
+.c7-album small{font-size:11.5px;color:var(--ink-3)}
+.c7-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--g);margin-top:24px}
+.c7-cols h4{font-size:14px;font-weight:600;border-top:1px solid var(--ink);padding-top:8px;margin-bottom:6px}
+.c7-cols details{border-bottom:1px solid var(--rule);padding:8px 0;font-size:13.5px;color:var(--ink-2);line-height:1.6}
+.c7-cols summary{cursor:pointer;color:var(--ink);font-weight:500}
+.c7-cols p{margin-top:6px}
+.c7-quiz summary{font-weight:400}
+.c7-quiz p{color:var(--cobalt)}
+@media (max-width:1100px){.c7-albums{grid-template-columns:repeat(3,minmax(0,1fr))}.c7-cols{grid-template-columns:1fr}}
+@media (max-width:760px){.c7-albums{grid-template-columns:1fr 1fr}.archive-song .sleeve{width:44px;height:44px}.sleeve .tag{display:none}}
+
+/* Image shapes from covers.js. A round label is the record itself: it sits whole on black vinyl and turns while the song plays.
+   Sheet music, photos, devices and adverts are mounted whole on paper with a strip of tape, never cropped to a square,
+   so catalogue numbers and captions stay readable. Square sleeves and albums keep the record that slides out behind them. */
+.sleeve.art[data-shape=round] img{border-radius:50%;object-fit:contain;background:#151515;box-shadow:0 0 0 2px #151515,0 1px 3px rgba(20,20,20,.35)}
+.archive-song[data-playing] .sleeve.art[data-shape=round] img{animation:sleeve-spin 1.8s linear infinite}
+.sleeve.art[data-shape=portrait] img,.sleeve.art[data-shape=landscape] img{object-fit:contain;padding:7% 9%;background:url(../assets/tex/paper-2.png) 0 0/256px,var(--surface);box-shadow:inset 0 0 0 1px var(--rule)}
+.sleeve.art[data-shape=portrait]::before,.sleeve.art[data-shape=landscape]::before{content:"";position:absolute;z-index:2;top:-3px;left:50%;width:36%;height:9px;transform:translateX(-50%) rotate(-3deg);background:rgba(226,219,193,.86);box-shadow:0 1px 1px rgba(20,20,20,.12);pointer-events:none}
+.md-cover p{margin:0 0 2px}
+.md-cover .md-src{color:var(--ink-3);font-size:12px}
+.md-cover .md-src a{color:var(--cobalt)}
+@media (prefers-reduced-motion:reduce){.archive-song[data-playing] .sleeve.art[data-shape=round] img{animation:none}}

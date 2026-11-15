@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#173c50">
+  <meta name="description" content="大众音乐史复习室2.0：48首课程曲目，独立听辨训练、年代档案、年份归位与四维学习报告。">
+  <title>大众音乐史复习室 2.0</title>
+  <link rel="icon" href="favicon.svg?v=20" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=20">
+  <link rel="manifest" href="manifest.webmanifest?v=20">
+  <meta name="apple-mobile-web-app-title" content="音乐史复习室">
+  <link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="museum.css">
+</head>
+<body data-room="home">
+<script>if(matchMedia("(max-width:1050px)").matches)document.addEventListener("DOMContentLoaded",()=>document.getElementById("scopeDetails").open=false);document.body.dataset.textscale=new URLSearchParams(location.search).get("textscale")||"100";document.body.dataset.direction=new URLSearchParams(location.search).get("direction")||"A";</script>
+  <a class="skip-link" href="#main">跳到主要内容</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="#home" id="brandHome" aria-label="大众音乐史复习室首页">
+        <img class="brand-mark" src="favicon.svg" width="42" height="42" alt="">
+        <span><strong>大众音乐史复习室 <b class="version">2.0</b></strong><small>MUSIC HISTORY ARCHIVE · 2.0</small></span>
+      </a>
+      <nav class="tabs" aria-label="页面切换">
+        <button id="practiceTab" class="tab active" type="button" aria-pressed="true">档案馆</button>
+        <button id="libraryTab" class="tab" type="button" aria-pressed="false">课程资料</button>
+      <button id="archiveNav" class="tab" type="button">年代图鉴</button><button id="historyNav" class="tab" type="button">训练记录</button></nav><span id="roomLabel" class="room-label">01 / 音乐档案馆</span><button id="roomHome" class="secondary compact" type="button">暂存并返回</button>
+      <span id="totalAudioCount" class="header-count">48首课程曲目</span>
+    </div>
+  </header>
+  <div class="page">
+    <div class="page-heading">
+      <div><p class="eyebrow">THE POPULAR MUSIC ARCHIVE / VOL. 02</p><h1>听见旋律，<br>记住它的<span>年代。</span></h1><p>你的私人音乐档案馆 · 从一段声音，连接四条音乐史线索。</p></div><div class="cover-index" aria-hidden="true"><span>1854</span><i>—</i><span>1968</span><small>THE COURSE COLLECTION</small></div>
+      <div class="heading-pet"><span class="pet-sprite pet-small pet-idle" role="img" aria-label="蓝发鲸鱼女仆大肥鱼"></span><small>大肥鱼陪你听</small></div>
+    </div>
+    <div class="workspace">
+      <aside class="sidebar" aria-label="练习设置">
+        <details id="scopeDetails" class="scope-card" open><summary>训练准备 · 范围与方式</summary>
+          <div class="section-heading"><h2>今天听哪些？</h2><button id="allDecks" class="text-button" type="button">全选 / 取消</button></div>
+          <p class="muted small">可同时选择多份课件</p>
+          <div id="deckOptions" class="deck-options"></div>
+          <div class="scope-summary"><span>当前题库</span><strong><span id="poolCount">75</span><small> 段音频</small></strong></div>
+          <label class="toggle-row"><input id="verifiedOnly" type="checkbox"><span><span id="uncertainFilterLabel">跳过6段标签存疑的音频</span><small>这些素材仍保留在歌曲资料页中</small></span></label>
+          <label class="toggle-row"><input id="wrongOnly" type="checkbox"><span>只练错题<small id="wrongCount">还没有错题，先开始一轮吧</small></span></label>
+        <div class="training-settings"><label for="questionType">答题题型</label><select id="questionType"><option value="choice">选择题 · 四选一＋不知道</option><option value="written">填写题 · 自己写四项</option></select><p id="questionTypeHint">每项四个候选答案，另有“不知道”。</p><label for="trainingMode">训练模式</label><select id="trainingMode"><option value="random">随机训练 · 整轮洗牌</option><option value="targeted">针对训练 · 易错歌曲多出现</option></select><p id="modeHint">随机听辨，连接四条音乐线索。</p><label for="sessionLength">本次训练题数</label><select id="sessionLength"><option value="10">10题</option><option value="20">20题</option><option value="all">按当前题库数量练习</option><option value="coverage">当前题库全部听完为止</option><option value="endless">无尽轮回 · 出完一轮再洗牌</option></select><p>“全部听完”练完当前范围即结束；“无尽轮回”每轮出完重新洗牌，直到你手动结束。</p><button id="showSummaryButton" class="text-button" type="button" hidden>查看上次训练总结 →</button></div>
+        </details>
+        <section class="stats-card">
+          <div class="section-heading"><h2>复习足迹</h2><span class="tiny">当前浏览器</span></div>
+          <div class="stat-pair"><div><strong id="answeredStat">0</strong><span>四项听辨题数</span></div><div><strong id="accuracyStat">—</strong><span>四项正确率</span></div></div>
+          <div id="fieldStats" class="field-stats"></div>
+        </section>
+        <section class="coach-note"><span class="pet-sprite pet-coach" role="img" aria-label="大肥鱼"></span><div><strong>大肥鱼小提示</strong><p>先认声音的轮廓，再想音乐家。年份不确定也先选，提交后再把四条信息串起来。</p></div></section>
+      </aside>
+      <main id="main">
+        <section id="homeRoom"><section id="practiceView"><button id="resumeSession" class="primary" type="button" hidden>继续未完成训练</button><button id="pauseFinish" class="secondary" type="button" hidden>结束本轮并查看总结</button>
+          <section id="welcome" class="welcome">
+            <div class="welcome-copy"><span class="pill">你的私人听辨练习室</span><h2>先听一首，<br>再认出它的故事。</h2><p id="welcomeDescription">一段原课件音频，四项独立选择。你可以反复重听，答案在提交后揭晓。</p><button id="startButton" class="primary start-button" type="button"><span class="play-triangle" aria-hidden="true"></span>开始听辨训练<span aria-hidden="true">↗</span></button><p id="startHint" class="small muted">全部混合 · 48段音频 · 本轮不重复抽取</p></div>
+            <div class="record-scene" aria-hidden="true"><span class="pet-sprite welcome-pet"></span><div class="record-shadow"></div><div class="vinyl"><div class="record-label"><span>FAT FISH<br>MUSIC ROOM</span><b>♫</b><small>SIDE A</small></div></div><span class="record-caption">PRESS PLAY, FIND THE NAME.</span></div>
+            <div class="welcome-footer"><span>01 听旋律</span><i>→</i><span>02 答四项</span><i>→</i><span>03 看解析</span></div>
+          </section>
+          <div id="emptyState" class="empty-state" hidden><span aria-hidden="true">♫</span><h2 id="emptyTitle">先选择练习范围</h2><p id="emptyText">勾选至少一份课件，就可以开始听辨。</p></div>
+        </section>
+<section class="year-training"><div><p class="eyebrow">RECALL THE YEAR / 主动回忆</p><h2>把旋律放回时间里。</h2><p>从已接触的歌曲中练习年份，建立自己的年代锚点。</p></div><button id="yearStart" class="secondary" type="button">开始年份归位 →</button></section><div class="home-links"><button id="homeArchiveButton" type="button"><span>01 / COLLECTION</span><strong>累计年代图鉴</strong><small id="homeArchiveCount">从第一首歌开始收藏 →</small></button><button id="homeHistoryButton" type="button"><span>02 / YOUR SESSIONS</span><strong>回看训练档案</strong><small>成绩、错题与每一轮的年代记录 →</small></button></div></section>
+<section id="trainRoom" hidden>          <section id="questionSection" class="question-section" hidden>
+            <div class="session-toolbar"><span id="trainingIdentity" class="training-identity"></span><span id="roundProgress" class="round-progress" aria-live="polite" hidden></span><span id="sessionProgress" aria-live="polite">已完成 0 题</span><button id="finishButton" class="secondary compact" type="button">结束训练 · 看总结</button></div><div class="session-meter" aria-hidden="true"><i id="sessionMeter"></i></div>
+            <div id="questionAnchor" class="question-top"><div><p id="roundText" class="eyebrow">ROUND 01</p><h2 id="trainingQuestionTitle">这一首，你认识吗？</h2></div><button id="skipButton" class="secondary compact" type="button">换一首 <span aria-hidden="true">↻</span></button></div>
+            <details id="uncertainNotice" class="notice" hidden><summary>△ 音频标签待核实 · 按课件知识作答</summary><p>内嵌音频标签与课件不一致。本题按课件知识评分，声音与曲目的对应关系尚待确认。具体差异在提交后显示。</p></details>
+            <div id="audioPlayer" class="player-card">
+              <button id="playButton" class="round-play" type="button" aria-label="播放当前歌曲"><span id="playIcon" aria-hidden="true">▶</span></button>
+              <div class="player-body"><div class="player-title"><strong id="playerLabel">神秘曲目</strong><span id="playStatus" aria-live="polite">准备播放</span></div><div id="waveform" class="waveform" aria-hidden="true"></div><div class="seek-row"><span id="currentTime">0:00</span><input id="seekBar" type="range" min="0" max="1000" value="0" aria-label="音频播放进度"><span id="duration">0:00</span></div></div>
+              <button id="replayButton" class="replay-button" type="button" aria-label="从头重听当前歌曲"><span aria-hidden="true">↺</span><small>重听</small></button>
+            </div>
+            <div class="answer-intro"><p id="answerIntroText">听完后，给它补全四张名片。</p><span id="answerTypeLabel">选择题 · 可选不知道</span></div>
+            <p class="answer-rule">年份以题目注明的口径为准，风格按课件最具体的归类作答。</p>
+            <details id="writtenRule" class="answer-rule written-rule" hidden><summary>填写说明与自动匹配规则</summary><p>中韩英文名称及已收录别名均可，大小写、空格、标点不影响匹配。年份请写课件的具体年份，年代范围不代替年份。四项全部填写或明确选择“不知道”后才能提交，空白不会自动计分。自动匹配未识别的正确写法，可提交后自行核对更正。</p></details>
+            <form id="answerForm">
+              <div id="answerFields" class="answer-fields"></div>
+              <div id="submitBar" class="submit-bar"><span id="selectionCount" aria-live="polite">已选 0 / 4 项</span><button id="submitButton" class="primary" type="submit" disabled>提交答案 <span aria-hidden="true">→</span></button></div>
+            </form>
+            <section id="feedback" class="feedback" aria-live="polite" hidden></section>
+          </section>
+<div id="trainingArchiveSlot"></div></section>
+<section id="reportRoom" hidden>          <section id="summarySection" class="summary-section" hidden aria-labelledby="summaryTitle"><div class="summary-heading"><span class="pet-sprite summary-pet" role="img" aria-label="大肥鱼陪你回顾训练"></span><div><p class="eyebrow">LISTENING SESSION COMPLETE</p><h2 id="summaryTitle" tabindex="-1">训练完成</h2><p id="summarySubtitle"></p></div></div><div id="summaryStats" class="summary-stats"></div><div id="summaryFields" class="field-stats"></div><div class="summary-list-heading"><h3>还需要继续巩固的歌曲</h3><p id="summaryListDescription">按本次四项正确率排序，保留本轮出现过的错误。</p></div><section id="memoryInsights" class="memory-insights" aria-label="四维记忆分析"></section><div id="summaryCorrect" class="summary-correct"></div><div id="summarySongs" class="summary-songs"></div><p id="summaryUnknown" class="summary-rule"></p><p class="summary-rule">只统计已提交的答案，换歌和未提交的题目不计入成绩。</p><div class="summary-actions"><button id="doneButton" class="primary" type="button">完成并返回档案馆 →</button><button id="summaryArchiveButton" class="secondary" type="button">查看累计图鉴</button><button id="targetedReviewButton" class="primary" type="button">针对这些歌曲再练一轮 →</button><button id="restartButton" class="secondary" type="button">按当前设置再练一轮</button></div></section>
+<div id="summaryArchiveSlot"></div></section>
+<section id="archiveRoom" hidden><div class="room-heading"><p class="eyebrow">THE CHRONOLOGICAL COLLECTION</p><h1>累计年代图鉴</h1><p>一首歌，一张卡。让每段旋律在时间里拥有自己的位置。</p><button id="archiveRecallButton" class="secondary" type="button">从图鉴开始年份归位 →</button></div><div id="archiveSlot">        <details id="archivePanel" class="archive-panel"><summary>年代档案墙 <span id="archiveCount"></span></summary><p>提交后收录课程标准答案；新一题开始时保护档案。</p><div id="archiveFilters"><div id="archiveTabs"><button data-archive-tab="round" type="button">本轮记录</button><button data-archive-tab="all" type="button">累计图鉴</button></div><div class="archive-controls"><input id="archiveSearch" type="search" aria-label="搜索累计档案" placeholder="歌曲、音乐家、风格"><select id="archiveYear" aria-label="筛选年份"></select><select id="archiveArtist" aria-label="筛选音乐家"></select><select id="archiveStyle" aria-label="筛选风格"></select><label><input id="archiveWeak" type="checkbox">易错歌曲</label><label><input id="archiveYearWeak" type="checkbox">年份薄弱</label></div></div><div id="archiveContent" class="archive-wall" tabindex="0" aria-label="按年份排列的歌曲，可横向滚动"></div><p id="memorySave" role="status"></p><button id="memoryRetry" type="button">重试保存</button><button id="memoryExport" type="button">导出学习备份</button><label class="memory-import">合并学习备份<input id="memoryImport" type="file" accept="application/json,.json"></label></details></div></section>
+<section id="historyRoom" hidden><div class="room-heading"><p class="eyebrow">YOUR LISTENING JOURNAL</p><h1>训练档案</h1><p>每一次听辨，都留下一份可以回看的学习报告。</p></div><div id="sessionList" class="session-list"></div></section>
+<section id="libraryRoom" hidden>        <section id="libraryView" class="library-view" hidden>
+          <div class="library-heading"><div><p class="eyebrow">YOUR LISTENING NOTES</p><h2>歌曲资料</h2><p>原课件音频与视频音轨全部保留。先看一遍，再回去闭卷听辨。</p></div><span id="libraryCount" class="pill">75段</span></div>
+          <label class="search-box"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="搜索歌曲、专辑、人物、年份或韩文…" aria-label="搜索歌曲资料"></label>
+          <label class="course7-kind">资料类型 <select id="libraryKind"><option value="all">全部资料</option><option value="audio">可用音频</option><option value="album">专辑</option><option value="background">背景、知识自测与原文</option></select></label><p class="catalog-rule">年份与音乐家角色按课件标注；补充资料与标签差异在每首的说明中注明。</p>
+          <p id="courseAuditSummary" class="course-audit-summary"></p>
+          <div id="libraryList" class="library-list"></div><div id="course7Notes"></div>
+        </section>
+</section>      </main>
+    </div>
+    <footer class="site-footer"><span>大肥鱼陪你，把旋律和知识连起来。</span><span id="catalogSummary">7份课件 · 75个曲目版本 · 含8段视频音轨</span></footer>
+  </div>
+  <audio id="audio" preload="none"></audio>
+  <dialog id="trainingConfirmDialog" class="training-confirm" aria-labelledby="trainingConfirmTitle" aria-describedby="trainingConfirmDescription">
+    <p class="eyebrow">训练操作确认</p>
+    <h2 id="trainingConfirmTitle">结束本轮训练？</h2>
+    <p id="trainingConfirmDescription"></p>
+    <div class="confirmation-actions">
+      <button id="trainingConfirmCancel" class="secondary" type="button" autofocus>取消</button>
+      <button id="trainingConfirmProceed" class="primary" type="button">确认结束</button>
+    </div>
+  </dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

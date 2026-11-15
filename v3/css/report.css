@@ -1,0 +1,116 @@
+/* Report: the round as a cobalt poster (one bar per song), then weakness, progress and the next step. */
+body[data-room=report] main{padding:24px var(--m) 40px}
+.poster{position:relative;background:var(--cobalt);color:#fff;height:430px;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:var(--g);padding:30px 32px;overflow:hidden}
+.p-text{grid-column:1/6;display:flex;flex-direction:column;justify-content:space-between;position:relative;z-index:1;min-width:0}
+.p-k{font-size:14px;color:var(--on-cobalt-2);line-height:1.5}
+.p-score{margin-top:10px}
+.p-big{display:block;font:700 132px/.8 var(--f-lat);font-variation-settings:"wdth" 80;letter-spacing:-.03em;font-variant-numeric:lining-nums tabular-nums;white-space:nowrap}
+.p-score small{display:block;font:600 18px var(--f-ui);margin-top:14px}
+.p-title{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.summary-stats{display:grid;gap:4px;font-size:14px;color:var(--on-cobalt-2)}
+.summary-stat.count{display:none}
+.summary-stat strong{font:600 20px var(--f-lat);color:#fff;margin-right:6px;font-variant-numeric:lining-nums tabular-nums}
+.p-bars{position:absolute;right:0;top:0;width:62%;height:100%}
+.p-bars svg{width:100%;height:100%;display:block}
+.p-legend{position:absolute;right:32px;bottom:22px;font-size:12px;color:var(--on-cobalt-2);text-align:right;z-index:1;background:var(--cobalt);padding-left:8px}
+.r-body{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:var(--g);margin-top:40px}
+.r-sec{border-top:2px solid var(--ink);padding-top:14px}
+.r-sec h2{font-size:20px;font-weight:600;margin-bottom:12px;line-height:1.3}
+.r-fields{grid-column:1/6}
+.r-fields .field-stat{grid-template-columns:72px minmax(0,1fr) 44px 88px;min-height:46px;border-bottom:1px solid var(--rule);font-size:15px;color:var(--ink)}
+.r-fields .field-stat i{height:8px}
+.r-fields .field-stat i s{position:absolute;top:-4px;width:2px;height:16px;background:var(--ink-3)}
+.r-fields .field-stat span:nth-of-type(2){font:600 15px var(--f-lat)}
+.r-fields .field-stat .d{font:500 13px var(--f-lat);color:var(--ink-3)}
+.r-fields .field-stat.weak{color:var(--pen)}.r-fields .field-stat.weak b{background:var(--pen)}
+.r-next{grid-column:7/13;grid-row:1/3}
+.r-next h2{font-size:26px;margin:2px 0 8px}
+.r-next .why{font-size:15px;color:var(--ink-2)}
+.r-next .diag{font-size:15px;margin:4px 0 20px}
+.summary-actions{display:flex;gap:12px 20px;align-items:center;flex-wrap:wrap}
+.r-trend{grid-column:1/6}
+.r-trend svg{width:100%;height:auto;display:block;margin-top:6px}
+.r-lists{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:var(--g);margin-top:40px}
+.r-wrong{grid-column:1/8}
+.r-insights{grid-column:8/13}
+.summary-list-heading{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.summary-song{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--rule)}
+.summary-song h4{font:600 17px/1.25 var(--f-lat)}
+.summary-song p{font-size:14px;color:var(--ink-2);line-height:1.5}
+.summary-song .reinforce{color:var(--ink)}
+.summary-song small{font-size:13px;color:var(--ink-3)}
+.summary-song>strong{font:600 22px var(--f-lat);text-align:right;font-variant-numeric:lining-nums tabular-nums}
+.summary-song>strong small{display:block;font:400 12px var(--f-ui);color:var(--ink-3)}
+.summary-success{padding:14px 0;font-size:15px}
+.summary-correct details{padding:12px 0;font-size:14px;color:var(--ink-2);border-bottom:1px solid var(--rule)}
+.summary-correct summary{cursor:pointer;color:var(--cobalt);font-weight:500}
+.summary-rule{font-size:13px;color:var(--ink-3);margin-top:8px}
+.memory-insights h3{font-size:20px;font-weight:600;margin-bottom:8px}
+.insight-row{padding:10px 0;border-bottom:1px solid var(--rule);font-size:14px;color:var(--ink-2);display:grid;grid-template-columns:28px minmax(0,1fr);gap:0 10px}
+.insight-row .eyebrow{font:600 13px var(--f-lat);color:var(--ink-3);grid-row:1/4}
+.insight-row strong{color:var(--ink);font-weight:600;font-size:15px}
+.memory-insights h4{font-size:15px;font-weight:600;margin:16px 0 4px}
+.memory-insights>p{font-size:14px;color:var(--ink-2)}
+.analysis-note{font-size:13px;color:var(--ink-3);margin-top:8px}
+.r-note{display:flex;align-items:flex-end;gap:8px;margin-top:14px}
+@media (max-width:760px){
+  body[data-room=report] main{padding:0 0 24px}
+  .poster{height:auto;grid-template-columns:1fr;padding:22px var(--m) 230px}
+  .p-text{grid-column:1;gap:16px}.p-big{font-size:84px}
+  .p-bars{width:100%;height:220px;top:auto;bottom:0}
+  .p-legend{display:none}
+  .r-body,.r-lists{grid-template-columns:1fr;padding:0 var(--m);gap:28px;margin-top:24px}
+  .r-fields,.r-trend,.r-next,.r-wrong,.r-insights{grid-column:1;grid-row:auto}
+  .r-next{order:-1}.r-next h2{font-size:21px}
+  .r-fields .field-stat{grid-template-columns:62px minmax(0,1fr) 40px 76px;font-size:14px}
+}
+
+/* the celebration poster (end of a round): bars move right to make a middle band for 大肥鱼 and the shouted word;
+   the round's own records are pasted along the bottom edge; confetti falls once over everything and never blocks a click */
+.poster .p-bars{width:41%}
+.p-shout{position:absolute;left:35%;top:26px;z-index:2;margin:0;font:900 clamp(38px,4.1vw,64px)/1 var(--f-poster);letter-spacing:.02em;color:#fff;white-space:nowrap;pointer-events:none}
+.p-shout span{display:inline-block}
+.p-fish{position:absolute;left:39%;bottom:58px;z-index:2;pointer-events:none}
+.p-collage{position:absolute;left:38%;right:-20px;bottom:-14px;z-index:1;height:92px;display:flex;align-items:flex-end;pointer-events:none}
+.pc{position:relative;flex:0 0 auto;width:74px;height:74px;margin-right:-16px;transform:rotate(var(--r,0deg));box-shadow:0 1px 3px rgba(0,0,0,.35);background:var(--surface)}
+.pc img{display:block;width:100%;height:100%;object-fit:cover}
+.pc[data-shape=round]{border-radius:50%;background:#151515;box-shadow:0 0 0 4px #151515,0 1px 3px rgba(0,0,0,.35)}
+.pc[data-shape=round] img{border-radius:50%;object-fit:contain}
+.pc[data-shape=portrait] img,.pc[data-shape=landscape] img{object-fit:contain;padding:4px}
+.pc-tag{display:grid;align-content:start;gap:2px;padding:7px 7px 0;font:600 10.5px/1.25 var(--f-ui);color:var(--ink);background:var(--sheet,#FBFAF4) url(../assets/tex/paper-2.png) 0 0/256px;overflow:hidden}
+.pc-tag b{font:900 20px/1 var(--f-lat);font-stretch:62%;color:var(--ink-3)}
+.pc[data-miss]::after{content:"";position:absolute;right:-5px;top:-5px;width:14px;height:14px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px var(--cobalt)}
+.p-confetti{position:absolute;inset:0;z-index:4;overflow:hidden;pointer-events:none}
+.p-confetti i{position:absolute;top:0;display:block}
+@media (max-width:760px){
+  .poster .p-bars{width:100%;opacity:.35}
+  .p-shout{left:auto;right:14px;top:auto;bottom:206px;font-size:30px}
+  .p-fish{left:auto;right:12px;bottom:70px}
+  .p-collage{left:0;bottom:-10px;height:70px}
+  .pc{width:56px;height:56px;margin-right:-12px}
+}
+
+/* wrong songs carry their own record image (covers.js), in the same shape rules as everywhere else */
+.summary-song{grid-template-columns:56px minmax(0,1fr) auto}
+.ss-img{width:56px;height:56px;display:grid;place-items:center;background:var(--surface);box-shadow:0 1px 2px rgba(20,20,20,.25)}
+.ss-img img{width:100%;height:100%;object-fit:cover;display:block}
+.ss-img[data-shape=round]{border-radius:50%;background:#151515;box-shadow:0 0 0 3px #151515}
+.ss-img[data-shape=round] img{border-radius:50%;object-fit:contain}
+.ss-img[data-shape=portrait] img,.ss-img[data-shape=landscape] img{object-fit:contain;padding:3px}
+.ss-img.none{font:900 22px/1 var(--f-lat);font-stretch:62%;color:var(--ink-3);box-shadow:inset 0 0 0 1px var(--rule)}
+
+/* every round, newest first: small ticket stubs; the one on the poster above is outlined in cobalt */
+.r-rounds{margin-top:44px;border-top:2px solid var(--ink);padding-top:14px}
+.r-rounds-head{display:flex;align-items:baseline;gap:14px;margin-bottom:12px}
+.r-rounds-head h2{font-size:20px;font-weight:600}
+.r-rounds .session-list{padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.r-rounds .session-record{grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto auto;gap:2px 12px;align-items:baseline;min-height:0;padding:12px 14px 10px;border:0;
+  background:var(--surface) url(../assets/tex/paper-2.png) 0 0/256px;box-shadow:inset 0 0 0 1px var(--rule);color:var(--ink-2);transition:box-shadow var(--t-press) linear}
+.r-rounds .session-record:last-child{border:0}
+.r-rounds .session-record:hover{box-shadow:inset 0 0 0 1px var(--ink)}
+.r-rounds .session-record.current{box-shadow:inset 0 0 0 2px var(--cobalt)}
+.r-rounds .sr-date{grid-row:1/3;font:600 28px/1 var(--f-lat);font-stretch:68%;color:var(--ink)}
+.r-rounds .session-record strong{font-size:13.5px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.r-rounds .sr-score{font:600 15px var(--f-lat);color:var(--ink)}
+.r-rounds .sr-meta{grid-column:1/-1;font-size:12px;color:var(--ink-3);border-top:1px dashed var(--rule);padding-top:6px;margin-top:4px}
+@media (max-width:760px){.r-rounds .session-list{grid-template-columns:1fr 1fr}}

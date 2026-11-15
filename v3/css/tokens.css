@@ -1,0 +1,73 @@
+/* 大众音乐史复习室 v3 · design tokens
+   Paper + ink carry structure and data. One cobalt surface per screen marks its protagonist;
+   cobalt text/lines mean "current" or "clickable". Red means "look here": corrections on working
+   screens, giant headlines on covers. Lecture colours only say which lecture a song belongs to. */
+:root{
+  --paper:#F1F0EA; --paper-2:#E7E6DF; --surface:#FAFAF7;
+  --ink:#141414; --ink-2:#4A4C52; --ink-3:#66686F;
+  --rule:#D3D2CA; --field:#7A7D84;
+  --cobalt:#1E3CA8; --on-cobalt:#FFFFFF; --on-cobalt-2:#C4CDEB; --cobalt-line:rgba(255,255,255,.3); --cur:#E6E9F4;
+  --red:#D7301F; --pen:#C8341B;
+  --l1:#B3AC86; --l2:#F0A35E; --l3:#B7A7DA; --l4:#82B38D; --l5:#9DB2E8; --l6:#232323; --l7:#DDAF3A;
+  --f-ui:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif;
+  --f-lat:"Archivo",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+  --f-ko:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+  --f-hand:"Long Cang","Kaiti SC","STKaiti",KaiTi,cursive;
+  --ease:cubic-bezier(.2,.7,.2,1);
+  --t-press:100ms; --t-quick:160ms; --t-base:240ms; --t-scene:280ms;
+  --m:40px; --g:24px; --bar:60px; --sticky-top:0px; --dock-h:0px;
+}
+@media (max-width:760px){:root{--m:16px;--g:12px;--bar:52px}}
+/* 2x transitions (settings): the same motion at half the time */
+:root[data-speed="2"]{--t-press:50ms;--t-quick:80ms;--t-base:120ms;--t-scene:140ms}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%;scroll-padding-bottom:var(--dock-h)}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.7 var(--f-ui);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body[data-textscale="150"]{zoom:1.5}
+body[data-textscale="200"]{zoom:2}
+h1,h2,h3,h4,p,ol,ul,figure,fieldset,legend{margin:0;padding:0}
+ol,ul{list-style:none}
+fieldset{border:0;min-width:0}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:disabled{cursor:not-allowed}
+input,select,textarea{font:inherit;color:inherit}
+:lang(ko){font-family:var(--f-ko)}
+:lang(en){font-family:var(--f-lat)}
+.lat{font-family:var(--f-lat);font-variant-numeric:lining-nums tabular-nums}
+.small{font-size:14px}
+.muted{color:var(--ink-2)}
+.sr-only{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.skip-link{position:absolute;left:8px;top:-60px;background:var(--ink);color:#fff;padding:8px 12px;z-index:50}
+.skip-link:focus{top:8px}
+:focus-visible{outline:2px solid var(--cobalt);outline-offset:2px}
+h2:focus,h1:focus{outline:none}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:0 22px;border-radius:2px;border:1px solid var(--cobalt);background:var(--cobalt);color:#fff;font:600 16px/1 var(--f-ui);white-space:nowrap;transition:background-color var(--t-press) linear,transform var(--t-press) var(--ease)}
+.btn:hover{background:#17308C}
+.btn:active{transform:translateY(1px)}
+.btn.sec{background:transparent;color:var(--ink);border-color:var(--ink)}
+.btn.sec:hover{background:var(--paper-2)}
+.btn:disabled{background:var(--paper-2);border-color:var(--paper-2);color:var(--ink-3);transform:none}
+.link{color:var(--cobalt);font-weight:500}
+.link:hover{text-decoration:underline;text-underline-offset:3px}
+.link:disabled{color:var(--ink-3);text-decoration:none}
+
+.pen{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:1}
+.pen path{fill:none;stroke:var(--pen);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.hand{font-family:var(--f-hand);color:var(--pen);font-size:23px;line-height:1.15;letter-spacing:0;font-weight:400}
+
+.fish{--w:96px;--frame:0;--n:6;width:var(--w);height:calc(var(--w)*208/192);background-repeat:no-repeat;background-size:calc(var(--w)*var(--n)) 100%;background-position:calc(var(--w)*var(--frame)*-1) 0;flex:0 0 auto}
+
+/* one mastery code everywhere: solid = stable, thin = working, red = weak, dashed = untested */
+.m4{display:inline-flex;gap:3px;vertical-align:middle}
+.m4 i{width:10px;height:10px;display:block;border:1px solid var(--ink)}
+.m4 i.s{background:var(--ink)}
+.m4 i.w{background:linear-gradient(var(--ink),var(--ink)) center/100% 3px no-repeat}
+.m4 i.r{border-color:var(--pen);background:var(--pen)}
+.m4 i.n{border-color:var(--field);border-style:dashed}
+.lec{display:inline-block;width:10px;height:10px;flex:0 0 auto}
+.lec[data-lecture="1"]{background:var(--l1)}.lec[data-lecture="2"]{background:var(--l2)}.lec[data-lecture="3"]{background:var(--l3)}.lec[data-lecture="4"]{background:var(--l4)}.lec[data-lecture="5"]{background:var(--l5)}.lec[data-lecture="6"]{background:var(--l6)}.lec[data-lecture="7"]{background:var(--l7)}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}

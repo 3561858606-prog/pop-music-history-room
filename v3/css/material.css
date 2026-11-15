@@ -1,0 +1,13 @@
+/* Printed matter: record sleeves, labels and posters are paper and ink, so the archive is too.
+   Static textures only (seeded PNGs from _studio/tools/textures.py); no live filters, nothing repaints on scroll.
+   The answering bench keeps only the paper grain. */
+body{background:url(../assets/tex/paper-2.png) 0 0/256px,var(--paper)}
+.ink-tex{background-image:url(../assets/tex/ink-2.png);background-size:256px}
+.worn{-webkit-mask:url(../assets/tex/wear-1.png) 0 0/var(--wear-size,220px);mask:url(../assets/tex/wear-1.png) 0 0/var(--wear-size,220px)}
+/* torn edges: an image or colour field masked along one or two sides */
+.torn-t{-webkit-mask:url(../assets/tex/torn-t-2.png) 0 0/1024px 40px repeat-x,linear-gradient(#000 0 0) 0 38px/100% calc(100% - 38px) no-repeat;mask:url(../assets/tex/torn-t-2.png) 0 0/1024px 40px repeat-x,linear-gradient(#000 0 0) 0 38px/100% calc(100% - 38px) no-repeat}
+.torn-b{-webkit-mask:url(../assets/tex/torn-b-2.png) 0 100%/1024px 40px repeat-x,linear-gradient(#000 0 0) 0 0/100% calc(100% - 38px) no-repeat;mask:url(../assets/tex/torn-b-2.png) 0 100%/1024px 40px repeat-x,linear-gradient(#000 0 0) 0 0/100% calc(100% - 38px) no-repeat}
+.torn-lr{-webkit-mask:url(../assets/tex/torn-l-2.png) 0 0/40px 1024px repeat-y,url(../assets/tex/torn-r-2.png) 100% 0/40px 1024px repeat-y,linear-gradient(#000 0 0) 38px 0/calc(100% - 76px) 100% no-repeat;mask:url(../assets/tex/torn-l-2.png) 0 0/40px 1024px repeat-y,url(../assets/tex/torn-r-2.png) 100% 0/40px 1024px repeat-y,linear-gradient(#000 0 0) 38px 0/calc(100% - 76px) 100% no-repeat}
+.torn-tb{-webkit-mask:url(../assets/tex/torn-t-2.png) 0 0/1024px 40px repeat-x,url(../assets/tex/torn-b-2.png) 0 100%/1024px 40px repeat-x,linear-gradient(#000 0 0) 0 38px/100% calc(100% - 76px) no-repeat;mask:url(../assets/tex/torn-t-2.png) 0 0/1024px 40px repeat-x,url(../assets/tex/torn-b-2.png) 0 100%/1024px 40px repeat-x,linear-gradient(#000 0 0) 0 38px/100% calc(100% - 76px) no-repeat}
+/* print grain over a photograph */
+.print::after{content:"";position:absolute;inset:0;background:url(../assets/tex/ink-2.png) 0 0/256px;opacity:.6;pointer-events:none}

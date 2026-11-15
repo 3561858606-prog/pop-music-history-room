@@ -1,0 +1,74 @@
+/* 纸面苏醒 · motion scenes (ui/fx.js, design-v6-motion.md). Everything here moves with transform, opacity or the
+   individual translate / rotate / scale properties; nothing animates layout. Pointer depth only on a desktop mouse. */
+
+/* ---- Scene 1 · depth and echoes on the spread */
+.mag{--px:0;--py:0;--ex:0;--ey:0;--echo:0}
+.pg-l{transform-origin:100% 50%}
+.pg-r{transform-origin:0 50%}
+.echo{pointer-events:none;user-select:none}
+.mg-A.echo{color:transparent;-webkit-text-stroke:1.2px var(--red);opacity:calc(var(--echo) * (.66 - var(--i) * .11));translate:calc(var(--ex) * var(--i) * -10px) calc(var(--ey) * var(--i) * -10px);z-index:1}
+.mg-pop.echo{color:transparent;-webkit-text-stroke:1.2px var(--ink);opacity:calc(var(--echo) * (.56 - var(--i) * .09));translate:calc(var(--ex) * var(--i) * -9px) calc(var(--ey) * var(--i) * -9px);z-index:3}
+@media (min-width:1100px) and (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
+  :root:not([data-follow=off]) .orn{translate:calc(var(--px) * 9px) calc(var(--py) * 7px)}
+  :root:not([data-follow=off]) .mg-fish{translate:calc(var(--px) * 4px) calc(var(--py) * 3px)}
+}
+:root[data-follow=off] .echo{display:none}
+
+/* ---- Scene 2 · a cover leaves the page */
+.liftable{cursor:pointer;transition:box-shadow var(--t-quick) linear,opacity 200ms linear}
+.liftable:hover{box-shadow:0 12px 26px rgba(20,20,20,.3)}
+.liftable:focus-visible{outline:3px solid var(--cobalt);outline-offset:3px}
+.liftable.lifted{opacity:.08}
+body.lp-open{overflow:hidden}
+.lp{position:fixed;inset:0;z-index:60;color:#fff}
+.lp-scrim{position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 40%,#1a1a1d 0,#060607 70%)}
+.lp-stage{position:absolute;inset:0;display:grid;place-items:center;perspective:1500px;touch-action:none}
+.lp-rig{position:relative;width:var(--s);height:var(--s);transform-style:preserve-3d;transform:translate(0,0) scale(1) rotateY(calc(var(--ry,0deg) - 14deg)) rotateX(5deg);transition:transform 560ms cubic-bezier(.2,.8,.2,1);margin-right:calc(var(--s) * .62);cursor:grab}
+.lp-rig.dragging{transition:none;cursor:grabbing}
+.lp-sleeve{position:absolute;inset:0;transform-style:preserve-3d}
+.lp-front,.lp-back{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 24px 60px rgba(0,0,0,.55)}
+.lp-front img{display:block;width:100%;height:100%;object-fit:cover}
+.lp-front::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,rgba(255,255,255,.18),rgba(255,255,255,0) 38%,rgba(255,255,255,0) 70%,rgba(255,255,255,.08));pointer-events:none}
+.lp-back{transform:rotateY(180deg);display:grid;align-content:end;gap:6px;padding:9%;color:var(--ink);background:var(--sheet,#F4F2EB) url(../assets/tex/paper-2.png) 0 0/256px}
+.lp-year{position:absolute;left:7%;top:5%;font:900 min(calc(var(--s) * .34),200px)/.8 var(--f-lat);font-stretch:62%;letter-spacing:-.03em;color:transparent;-webkit-text-stroke:1.4px var(--red);text-shadow:4px 4px 0 rgba(215,48,31,.12),8px 8px 0 rgba(215,48,31,.08),12px 12px 0 rgba(215,48,31,.05)}
+.lp-back h2{font:900 clamp(22px,2.6vw,36px)/1.1 var(--f-lat);letter-spacing:-.01em}
+.lp-k{font:600 12.5px var(--f-ui);color:var(--red)}
+.lp-a{font:600 15px var(--f-lat)}
+.lp-l{font:500 12.5px var(--f-lat);color:var(--ink-3);letter-spacing:.04em}
+.lp-w{font:400 14px/1.65 var(--f-serif,serif);border-top:1px solid var(--rule);padding-top:10px;margin-top:6px}
+.lp-edge{position:absolute;top:0;right:0;width:6px;height:100%;background:linear-gradient(#ddd,#bbb);transform-origin:100% 50%;transform:rotateY(90deg)}
+.lp-disc{position:absolute;left:2%;top:2%;width:96%;height:96%;border-radius:50%;transform:translateZ(-4px) translateX(68%);transition:opacity 160ms linear}
+.lp-rig.flipped .lp-disc{opacity:0}
+.lp-disc canvas{position:absolute;inset:0;width:100%!important;height:100%!important;border-radius:50%;box-shadow:0 20px 50px rgba(0,0,0,.6)}
+.lp-label{position:absolute;left:33%;top:33%;width:34%;height:34%;border-radius:50%;display:grid;place-content:center;gap:2px;padding:0 9%;text-align:center;color:var(--ink);background:var(--ring,#E9E4D6);box-shadow:inset 0 0 0 3px rgba(0,0,0,.08)}
+.lp-label b{font:700 clamp(9px,1vw,13px)/1.15 var(--f-lat)}
+.lp-label i{font:500 clamp(8px,.85vw,11px)/1.2 var(--f-lat);font-style:normal}
+.lp-label small{font:600 clamp(8px,.8vw,10.5px) var(--f-lat);color:var(--red)}
+.lp-label::after{content:"";position:absolute;left:50%;top:50%;width:7%;height:7%;margin:-3.5% 0 0 -3.5%;border-radius:50%;background:#111}
+.lp-bar{position:absolute;left:50%;bottom:max(5vh,24px);transform:translateX(-50%);display:flex;gap:12px}
+.lp-btn{min-height:44px;padding:0 20px;font:500 14px var(--f-ui);color:#fff;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.06)}
+.lp-btn:hover{background:rgba(255,255,255,.14)}
+.lp-btn:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.lp-hint{position:absolute;left:50%;top:max(4vh,18px);transform:translateX(-50%);font:400 12.5px var(--f-ui);color:rgba(255,255,255,.55);white-space:nowrap}
+@media (max-width:760px){.lp-rig{margin-right:calc(var(--s) * .3)}.lp-hint{white-space:normal;text-align:center;width:80vw}}
+
+/* ---- Scene 3 · a decade crosses the screen */
+.sweep{position:fixed;left:0;right:0;top:52%;height:0;z-index:55;pointer-events:none}
+.sweep span{position:absolute;left:50%;top:0;width:max-content;translate:-50% -50%;font:900 min(36vh,26vw)/.84 var(--f-lat);font-stretch:62%;letter-spacing:-.02em;white-space:nowrap}
+.sw-main{color:transparent;-webkit-background-clip:text;background-clip:text;background-color:var(--ink);background-repeat:no-repeat;background-size:auto 100%}
+.sw-echo{color:transparent;-webkit-text-stroke:2px var(--red);opacity:calc(.72 - var(--i) * .15)}
+
+/* ---- Scene 4 · the score lands as echoes */
+.p-score{position:relative}
+.p-echo{position:absolute;left:0;top:0;color:transparent;-webkit-text-stroke:1.5px rgba(255,255,255,.9);pointer-events:none}
+
+/* ---- Scene 5 · the O of POP is a record */
+.mg-pop .pop-o{pointer-events:auto;cursor:pointer}
+@media (hover:hover){.mg-pop .pop-o:hover{animation:pop-wobble .6s ease-in-out}}
+@keyframes pop-wobble{25%{rotate:-7deg}60%{rotate:5deg}}
+.pop-disc{position:fixed;z-index:50;pointer-events:none;border-radius:50%}
+.pop-disc canvas{display:block;width:100%!important;height:100%!important;border-radius:50%}
+.pop-disc i{position:absolute;left:35%;top:35%;width:30%;height:30%;border-radius:50%;background:var(--red);box-shadow:inset 0 0 0 4px rgba(0,0,0,.12)}
+.pop-disc i::after{content:"";position:absolute;left:44%;top:44%;width:12%;height:12%;border-radius:50%;background:#111}
+
+@media (prefers-reduced-motion:reduce){.echo{display:none}.mg-pop .pop-o:hover{animation:none}.lp-rig{transition:none}}

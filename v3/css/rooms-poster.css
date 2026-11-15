@@ -1,0 +1,62 @@
+/* The poster system carried into the learning rooms (2026-11-09). Same wall, paper, torn edges, echo numerals and
+   one cobalt surface as the home spread — but the reading surfaces stay plain and high-contrast: no rotation on text
+   you answer or study, no motion added here. Layout of the controls is unchanged; this file only re-materials them. */
+
+/* ---------------------------------------------------------------- 选择题 · the quiz page */
+body[data-room=train] main{background:#DDD9CE url(../assets/tex/paper-2.png) 0 0/256px;min-height:calc(100svh - var(--bar))}
+body[data-room=train] .session-toolbar{background:#F4F2EB url(../assets/tex/paper-2.png) 0 0/256px;border-bottom:0;box-shadow:0 1px 0 rgba(20,20,20,.12)}
+/* the stage: one strip of cobalt torn along its lower edge */
+body[data-room=train] .stage{-webkit-mask:url(../assets/tex/torn-b-2.png) 0 100%/1024px 26px repeat-x,linear-gradient(#000 0 0) 0 0/100% calc(100% - 24px) no-repeat;mask:url(../assets/tex/torn-b-2.png) 0 100%/1024px 26px repeat-x,linear-gradient(#000 0 0) 0 0/100% calc(100% - 24px) no-repeat;
+  background:var(--cobalt) url(../assets/tex/ink-2.png) 0 0/256px;padding-bottom:12px}
+body[data-room=train] .st-title{font-family:var(--f-poster);font-weight:900;letter-spacing:.01em}
+body[data-room=train] .status-row h2{font-family:var(--f-poster);font-weight:900;font-size:24px}
+/* the four answers sit on one sheet of paper; each column opens with a big outlined numeral */
+body[data-room=train] .fields-wrap{margin:0 var(--m);padding:4px 18px 14px;background:#F4F2EB url(../assets/tex/paper-2.png) 0 0/256px;box-shadow:0 1px 2px rgba(20,20,20,.2)}
+body[data-room=train] .field-card{border-top-color:rgba(20,20,20,.75)}
+body[data-room=train] .field-card .number{font:900 40px/.8 var(--f-lat);font-stretch:62%;color:transparent;-webkit-text-stroke:1.2px var(--ink-3);letter-spacing:-.02em;align-self:flex-end}
+body[data-room=train] .field-card.is-current .number{-webkit-text-stroke-color:var(--cobalt);text-shadow:3px 3px 0 rgba(30,60,168,.12)}
+body[data-room=train] .field-card legend strong{font-family:var(--f-poster);font-weight:900;font-size:18px}
+body[data-room=train] .field-card[data-key=year] .choice-text strong{font-family:var(--f-mono,ui-monospace,monospace);font-weight:600;letter-spacing:.02em}
+/* the course note and the feedback after an answer: a second sheet, torn along its top edge */
+body[data-room=train] .course-note{margin:18px var(--m) 0;padding:30px 20px 18px;border-top:0;background:#F4F2EB url(../assets/tex/paper-2.png) 0 0/256px;box-shadow:0 1px 2px rgba(20,20,20,.18);
+  -webkit-mask:url(../assets/tex/torn-t-2.png) 0 0/1024px 26px repeat-x,linear-gradient(#000 0 0) 0 24px/100% calc(100% - 24px) no-repeat;mask:url(../assets/tex/torn-t-2.png) 0 0/1024px 26px repeat-x,linear-gradient(#000 0 0) 0 24px/100% calc(100% - 24px) no-repeat}
+body[data-room=train] .feedback{margin:14px var(--m) 0}
+body[data-room=train] .submit-bar,body[data-room=train] .next-row{background:#F4F2EB url(../assets/tex/paper-2.png) 0 0/256px;border-top:0;box-shadow:0 -1px 0 rgba(20,20,20,.14),0 -6px 18px rgba(20,20,20,.08)}
+@media (max-width:760px){
+  body[data-room=train] .fields-wrap{margin:0;padding:4px 12px 12px}
+  body[data-room=train] .field-card .number{font-size:30px}
+  body[data-room=train] .course-note{margin:14px 0 0;padding:28px 14px 16px}
+}
+
+/* ---------------------------------------------------------------- 专辑图鉴 · the archive */
+body[data-room=archive] main{background:#DDD9CE url(../assets/tex/paper-2.png) 0 0/256px}
+#archiveRoom #archiveSlot{padding-bottom:40px}
+/* filters on a strip of paper held by tape */
+#archiveRoom .a-filters{position:relative;margin-top:18px;padding:14px 18px;border-bottom:0;background:#F4F2EB url(../assets/tex/paper-2.png) 0 0/256px;box-shadow:0 1px 2px rgba(20,20,20,.18)}
+#archiveRoom .a-filters::before{content:"";position:absolute;top:-9px;left:28px;width:90px;height:18px;transform:rotate(-2deg);background:rgba(226,219,193,.92);box-shadow:0 1px 1px rgba(20,20,20,.14)}
+/* each decade is its own sheet, opened by an echoing numeral */
+#archiveRoom .decade{margin-top:30px;padding:30px 22px 24px;background:#F4F2EB url(../assets/tex/paper-2.png) 0 0/256px;box-shadow:0 1px 2px rgba(20,20,20,.2);
+  -webkit-mask:url(../assets/tex/torn-t-2.png) 0 0/1024px 26px repeat-x,linear-gradient(#000 0 0) 0 24px/100% calc(100% - 24px) no-repeat;mask:url(../assets/tex/torn-t-2.png) 0 0/1024px 26px repeat-x,linear-gradient(#000 0 0) 0 24px/100% calc(100% - 24px) no-repeat}
+#archiveRoom .d-head{border-top:0;padding-top:0;margin-bottom:18px;align-items:flex-end}
+#archiveRoom .d-head h2{font:900 clamp(56px,6.4vw,104px)/.8 var(--f-lat);font-stretch:62%;letter-spacing:-.02em;color:var(--ink);
+  text-shadow:4px 4px 0 rgba(215,48,31,.42),8px 8px 0 rgba(215,48,31,.22),12px 12px 0 rgba(215,48,31,.1)}
+#archiveRoom .d-head .cnt{font:600 13px var(--f-ui);color:var(--red);padding-bottom:6px}
+#archiveRoom .archive-song{background:#FBFAF6;border-color:rgba(20,20,20,.12);box-shadow:0 1px 1.5px rgba(20,20,20,.08)}
+#archiveRoom .archive-song[data-state=none]{background:transparent}
+#archiveRoom .a-legend{padding:14px 4px 0}
+@media (max-width:760px){
+  #archiveRoom .decade{margin-top:20px;padding:28px 12px 16px}
+  #archiveRoom .d-head h2{font-size:56px}
+  #archiveRoom .a-filters{margin-top:12px;padding:12px}
+}
+
+/* after the answer: the record's story, in the circled place under the answers */
+.note-story{grid-column:1/10;color:var(--ink)}
+.course-note .wait{grid-column:1/10}
+.note-story h3{font:900 18px/1.2 var(--f-poster);margin-bottom:8px}
+.note-story dl{display:grid;grid-template-columns:44px minmax(0,1fr);gap:6px 12px;margin:0}
+.note-story dt{font:600 12.5px/1.7 var(--f-ui);color:var(--red)}
+.note-story dd{margin:0;font:400 15px/1.75 var(--f-serif,serif);max-width:52em}
+.story-src{margin-top:8px;font-size:12px;color:var(--ink-3)}
+.story-src a{color:var(--cobalt)}
+@media (max-width:760px){.note-story{grid-column:1/-1}}

@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#F1F0EA">
+  <meta name="description" content="大众音乐史复习室：听一段课程音频，补全曲名、年份、音乐家和风格，提交后立刻看到纠正。">
+  <title>大众音乐史复习室</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-title" content="音乐史复习室">
+  <link rel="modulepreload" href="app.js">
+  <link rel="modulepreload" href="rooms.js">
+  <link rel="modulepreload" href="archive-ui.js">
+  <link rel="modulepreload" href="written.js">
+  <link rel="modulepreload" href="catalog.js">
+  <link rel="modulepreload" href="viewport.js">
+  <link rel="modulepreload" href="track-model.js">
+  <link rel="modulepreload" href="core.js">
+  <link rel="modulepreload" href="memory.js">
+  <link rel="stylesheet" href="assets/fonts/fonts.css">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/home.css">
+  <link rel="stylesheet" href="css/train.css">
+  <link rel="stylesheet" href="css/report.css">
+  <link rel="stylesheet" href="css/archive.css">
+  <link rel="stylesheet" href="css/history.css">
+  <link rel="stylesheet" href="css/motion.css">
+  <link rel="stylesheet" href="css/material.css">
+  <link rel="stylesheet" href="css/bigfish.css">
+  <link rel="stylesheet" href="css/fx.css">
+  <link rel="stylesheet" href="css/rooms-poster.css">
+</head>
+<body data-room="home">
+<script>document.body.dataset.textscale=new URLSearchParams(location.search).get("textscale")||"100";</script>
+<a class="skip-link" href="#main">跳到主要内容</a>
+
+<header class="site-header">
+  <a class="brand" href="#home" id="brandHome" aria-label="大众音乐史复习室首页"><span class="brand-disc" aria-hidden="true"></span><strong>大众音乐史复习室</strong></a>
+  <nav class="tabs" aria-label="页面切换">
+    <button id="practiceTab" class="tab" type="button" aria-pressed="true">听辨</button>
+    <button id="archiveNav" class="tab" type="button">图鉴</button>
+    <button id="historyNav" class="tab" type="button">结果</button>
+    <span class="tab-ink" id="tabInk" aria-hidden="true"></span>
+  </nav>
+  <span id="roomLabel" class="room-label">听辨</span>
+</header>
+
+<div class="page-heading" hidden></div>
+
+<main id="main">
+  <!-- 首页：封面 + 目录的杂志跨页 -->
+  <section id="homeRoom">
+    <!-- 首页「海报墙」：七讲是七张贴在同一面墙上的海报。早的在左下、层层被后来的覆盖，越往右上越新；
+         今天这一轮是最后贴上去的一张钴蓝海报。海报的大小随这一讲的曲目数变化，海报下沿的刻度是这一讲的每一首歌。
+         布局写在 css/home.css 的网格里，数据由 ui/home.js 填。 -->
+    <div id="practiceView" class="hv">
+      <button id="resumeSession" type="button" hidden>继续未完成训练</button>
+      <!-- 首页「特刊跨页」(2026-11-09)：参考拼贴杂志跨页。左页是刊头、这一轮的说明和复习；右页是封面人物、开始按钮、
+           本期七讲目录和上一轮结果。五处人物专辑封面（Beatles、Elvis、Michael Jackson、Queen、Aretha Franklin）是版面的主角，
+           其余非人物封面（78 转唱片标签）做成贴纸一样的饰品。位置写在 css/home.css 的两张页面网格里，数据由 ui/home.js 填。 -->
+      <section id="welcome" class="mag" aria-labelledby="magTitle">
+        <div class="pg pg-l">
+          <p class="mg-A" aria-hidden="true">听</p>
+          <p class="mg-mast"><b>大众音乐史复习室</b><span class="num">1854—1968</span><span>七讲 · 75 首</span><span id="wallCount"></span></p>
+          <figure class="mg-r1 ph"><img src="assets/home/with-the-beatles-1963.jpg" alt="The Beatles《With the Beatles》（1963）专辑封面" width="720" height="720" decoding="async"></figure>
+          <p class="mg-no"><span class="num" id="issueNo">/01</span><small id="issueLine"></small></p>
+          <p class="mg-lede">听一段课程音频，补全曲名、年份、音乐家和风格。答完立刻纠正。</p>
+          <svg class="mg-s" viewBox="0 0 300 320" preserveAspectRatio="none" aria-hidden="true"><path d="M150 6 C150 40 140 56 110 72 C60 98 40 118 92 140 C150 165 214 170 212 206 C210 240 120 250 70 262 C34 271 22 290 30 316"/></svg>
+          <h1 id="magTitle" class="mg-title"><span>听见</span><span>年代</span><span class="sr-only">大众音乐史复习室</span></h1>
+          <p id="welcomeDescription" class="sr-only"></p>
+          <div class="mg-round">
+            <p class="mg-type"><span class="k">这一轮——</span><span id="startHint"></span><span id="roundRule" class="u"></span></p>
+            <p class="mg-tools"><button class="mg-tool" id="pauseFinish" type="button" hidden>结束本轮</button><button class="mg-tool" id="openSettings" type="button" data-open-settings>设置</button></p>
+          </div>
+          <section class="mg-r2" aria-label="复习待巩固">
+            <button id="reviewWrong" class="mg-review" type="button"><b id="reviewCount" class="num">0</b><span>首待巩固<small id="reviewHint"></small></span><i aria-hidden="true">复习 →</i></button>
+          </section>
+          <figure class="mg-r2img ph"><img src="assets/home/elvis-1956.jpg" alt="Elvis Presley《Elvis Presley》（1956）专辑封面" width="640" height="640" decoding="async"></figure>
+          <p class="mg-credit" aria-hidden="true">Images: The Beatles, <i>With the Beatles</i>, 1963 · Elvis Presley, <i>Elvis Presley</i>, 1956</p>
+        </div>
+        <div class="pg pg-r">
+          <span class="mg-paper" aria-hidden="true"></span>
+          <figure class="mg-r3 ph"><img src="assets/home/thriller-1982.jpg" alt="Michael Jackson《Thriller》（1982）专辑封面" width="760" height="760" decoding="async"></figure>
+          <span class="mg-slit" aria-hidden="true"></span>
+          <button id="startButton" class="mg-cta" type="button"><span class="k">准备好了</span><b>开始这一轮</b><span class="go">开始 →</span></button>
+          <div class="mg-fish" id="curatorSlot"></div>
+          <button id="homeHistoryButton" class="mg-r4" type="button"><img src="assets/home/queen-1974.jpg" alt="Queen《Queen II》（1974）专辑封面" width="760" height="760" decoding="async"><span class="mg-q" id="historyHint">还没有完成的一轮。</span><span class="mg-qc">结果 · <b id="historyCount" class="num">0</b> 轮 →</span></button>
+          <section class="mg-toc" aria-labelledby="tocTitle"><h2 id="tocTitle"><span>本期 · 七讲</span><span class="lat">IN THIS ISSUE</span><span class="toc-hint">勾选方块 = 这一轮的范围</span></h2><ol id="lectureList" aria-label="七讲：方块勾选范围，点讲名随机练这一讲"></ol>
+            <div class="toc-foot">
+              <button id="allDecks" class="toc-all" type="button">全选 / 取消</button>
+              <label class="toc-wrong"><input id="wrongOnly" type="checkbox"><span>只练待巩固<small id="wrongCount"></small></span></label>
+              <span class="toc-pool">可出题 <b id="poolCount" class="num">0</b> 首</span>
+              <details class="toc-songs" id="scopeSongs"><summary>包括哪些歌 <span aria-hidden="true">▾</span></summary><div class="toc-songs-body"><ol id="scopeSongList"></ol><p class="td-held" id="heldNote"></p></div></details>
+            </div>
+            <div id="deckOptions" hidden></div>
+          </section>
+          <ul class="mg-fields" id="fieldList" aria-label="四项正确率"></ul>
+          <section class="mg-r5" aria-label="课程之后">
+            <figure class="ph"><img src="assets/home/aretha-1967.jpg" alt="Aretha Franklin《I Never Loved a Man the Way I Love You》（1967）专辑封面" width="720" height="720" decoding="async"></figure>
+            <p class="mg-r5-t">课程讲到 1968 年。Queen（1974）与 Michael Jackson（1982）在课程之后，先贴在这里。</p>
+          </section>
+          <p class="mg-pop" aria-hidden="true"><span>P</span><span>O</span><span>P</span></p>
+          <div class="mg-orn" id="ornaments" aria-hidden="true"></div>
+        </div>
+      </section>
+      <div id="emptyState" class="cover-empty" hidden>
+        <span class="cover-empty-mark" aria-hidden="true">0</span>
+        <h2 id="emptyTitle">先选择练习范围</h2>
+        <p id="emptyText">勾选至少一讲，就可以开始听辨。</p>
+        <button class="btn sec" type="button" data-scope-open>修改范围</button>
+      </div>
+    </div>
+    <section class="hv-foot" aria-label="复习足迹">
+      <div class="hv-num"><strong id="answeredStat" class="num">0</strong><span>已答题数</span></div>
+      <div class="hv-num"><strong id="accuracyStat" class="num">—</strong><span>四项正确率</span></div>
+      <div id="fieldStats" class="field-stats"></div>
+      <ol class="hv-credit" id="wallCredits" aria-label="海报上的图像"></ol>
+    </section>
+  </section>
+
+  <!-- 听辨 -->
+  <section id="trainRoom" hidden>
+    <section id="questionSection" class="question-section" hidden>
+      <div class="session-toolbar">
+        <button id="roomHome" class="tb-back" type="button">← <span class="long">暂存并</span>返回</button>
+        <div class="tb-progress">
+          <span id="sessionProgress" class="tb-count" aria-live="polite">已完成 0 题</span>
+          <span id="qSegs" class="q-segs" aria-hidden="true"></span>
+          <span class="session-meter" aria-hidden="true"><i id="sessionMeter"></i></span>
+          <span id="roundProgress" class="round-progress" aria-live="polite" hidden></span>
+        </div>
+        <div class="tb-right"><span id="trainingIdentity" class="tb-mode"></span><button id="yearCardsButton" class="tb-cards" type="button" aria-haspopup="dialog" aria-controls="yearSheet" aria-expanded="false" aria-label="年份卡片" title="年份卡片"><span class="tb-cards-n num" aria-hidden="true">年</span>年份卡片</button><button id="finishButton" class="tb-finish" type="button">结束本轮</button></div>
+      </div>
+
+      <div id="questionAnchor" class="sr-only"><p id="roundText">ROUND 01</p><h2 id="trainingQuestionTitle">这一首，你认识吗？</h2><p id="answerIntroText"></p><span id="answerTypeLabel"></span></div>
+
+      <section id="audioPlayer" class="stage" aria-label="播放台">
+        <div class="rec-wrap" aria-hidden="true"><canvas id="deckRecord" class="rec"></canvas></div>
+        <div class="st-main">
+          <div class="st-head"><strong id="playerLabel" class="st-title">神秘曲目</strong><p id="stageSub" class="st-sub"></p></div>
+          <div class="st-ctl">
+            <button id="playButton" class="play" type="button" aria-label="播放当前歌曲"><span id="playIcon" aria-hidden="true"></span></button>
+            <div class="st-seek"><span id="currentTime" class="t">0:00</span><div class="seek-wrap"><div id="waveform" class="heard" aria-hidden="true"></div><input id="seekBar" type="range" min="0" max="1000" value="0" aria-label="音频播放进度"></div><span id="duration" class="t">0:00</span></div>
+            <div class="st-btns"><button id="back5" class="st-btn" type="button" aria-label="后退 5 秒">−5s</button><button id="replayButton" class="st-btn tb" type="button" aria-label="从头重听当前歌曲"><span aria-hidden="true">↺</span> <small id="replayLabel">重听</small></button><button id="fwd5" class="st-btn" type="button" aria-label="前进 5 秒">+5s</button></div>
+            <span id="playStatus" class="sr-only" aria-live="polite">准备播放</span>
+          </div>
+        </div>
+        <p id="stageYear" class="st-year slot" aria-label="年份在提交后显示"><i></i><i></i><i></i><i></i></p>
+      </section>
+
+      <div id="statusRow" class="status-row">
+        <h2 id="statusTitle" tabindex="-1">还差 4 项</h2>
+        <span class="status-right"><span id="statusHelp" class="status-help"></span><button id="skipButton" class="text-button" type="button">换一首</button></span>
+      </div>
+      <p id="resultAnnounce" class="sr-only" aria-live="polite"></p>
+
+      <details id="uncertainNotice" class="notice" hidden><summary>这段音频的标签待核实，按课件知识作答</summary><p>内嵌音频标签与课件不一致。本题按课件知识评分，声音与曲目的对应关系尚待确认。具体差异在提交后显示。</p></details>
+      <p class="answer-rule sr-only">年份以题目注明的口径为准，风格按课件最具体的归类作答。</p>
+      <details id="writtenRule" class="answer-rule written-rule" hidden><summary>填写说明与自动匹配规则</summary><p>中韩英文名称及已收录别名均可，大小写、空格、标点不影响匹配。年份请写课件的具体年份，年代范围不代替年份。四项全部填写或明确选择「不知道」后才能提交，空白不会自动计分。自动匹配未识别的正确写法，可提交后自行核对更正。</p></details>
+
+      <div id="fieldTabs" class="field-tabs" aria-hidden="true"></div>
+      <div id="fixTable" class="fix-table"></div>
+
+      <div class="fields-wrap">
+        <span id="curPlate" class="cur-plate" aria-hidden="true"></span>
+        <form id="answerForm">
+          <div id="answerFields" class="answer-fields"></div>
+          <div id="submitBar" class="submit-bar"><span id="selectionCount" aria-live="polite">已选 0 / 4 项</span><button id="submitButton" class="btn" type="submit" aria-keyshortcuts="Enter" disabled>提交</button></div>
+        </form>
+      </div>
+
+      <section id="courseNote" class="course-note" aria-label="这张唱片的故事"><p class="wait">提交后显示这张唱片的故事。</p></section>
+      <section id="feedback" class="feedback" hidden></section>
+    </section>
+    <div id="trainingArchiveSlot"></div>
+    <!-- 年份卡片：答题中随时打开的年代档案（原「年代档案墙」组件，按年份排开，一首歌一张卡）。打开它不改变题目、已选答案和计分。 -->
+    <aside id="yearSheet" class="ysheet" role="dialog" aria-modal="false" aria-labelledby="yearSheetTitle" hidden>
+      <div class="ys-head"><p class="ys-k">年份卡片 · 按年份排开</p><h2 id="yearSheetTitle">这一轮听过的年份</h2><button id="yearSheetClose" class="ys-close" type="button">收起 <span aria-hidden="true">×</span></button></div>
+      <p id="yearSheetNote" class="ys-note"></p>
+      <div id="yearSheetSlot" class="ys-body"></div>
+    </aside>
+  </section>
+
+  <!-- 本轮报告 -->
+  <section id="reportRoom" hidden>
+    <section id="summarySection" class="summary-section" hidden aria-labelledby="summaryTitle">
+      <div class="poster">
+        <div class="p-text">
+          <p id="summarySubtitle" class="p-k"></p>
+          <div class="p-score"><b id="posterBig" class="p-big"></b><small id="posterBigLabel"></small></div>
+          <h2 id="summaryTitle" class="p-title" tabindex="-1">训练完成</h2>
+          <div id="summaryStats" class="summary-stats"></div>
+        </div>
+        <div class="p-bars"><svg id="roundBars" role="img"></svg></div>
+        <div class="p-collage" id="posterCollage" aria-hidden="true"></div>
+        <p class="p-shout" id="posterShout" aria-hidden="true"></p>
+        <div class="p-fish" id="posterFish"></div>
+        <div class="p-confetti" id="posterConfetti" aria-hidden="true"></div>
+        <p class="p-legend" id="posterLegend">每一条是一首歌，实线越长，答对的项越多</p>
+      </div>
+
+      <div class="r-body">
+        <section class="r-sec r-fields"><h2>四项 · 本轮与上一轮</h2><div id="summaryFields" class="field-stats"></div><p class="small muted" id="fieldsNote"></p></section>
+        <section class="r-sec r-next" id="nextStep" aria-label="下一步">
+          <p class="small muted">下一步</p>
+          <h2 id="nextTitle">再听一轮</h2>
+          <p class="why" id="nextWhy"></p>
+          <p class="diag" id="nextDiag"></p>
+          <div class="summary-actions">
+            <button id="targetedReviewButton" class="btn" type="button">这些歌再练一轮 →</button>
+            <button id="restartButton" class="link" type="button">同样的范围再来一轮</button>
+            <button id="summaryArchiveButton" class="link" type="button">查看图鉴</button>
+            <button id="doneButton" class="link" type="button">返回首页</button>
+          </div>
+        </section>
+        <section class="r-trend" id="trendWrap"><p class="small muted">最近几轮 · 四项正确率</p><svg id="trendChart" role="img"></svg></section>
+      </div>
+
+      <div class="r-lists">
+        <section class="r-sec r-wrong">
+          <div class="summary-list-heading"><h2>本轮错题</h2><p id="summaryListDescription" class="small muted"></p></div>
+          <div id="summarySongs" class="summary-songs"></div>
+          <div id="summaryCorrect" class="summary-correct"></div>
+          <p id="summaryUnknown" class="summary-rule"></p>
+          <p class="summary-rule">只统计已提交的答案，换歌和未提交的题目不计入成绩。</p>
+        </section>
+        <section class="r-sec r-insights"><section id="memoryInsights" class="memory-insights" aria-label="四维记忆分析"></section><div class="r-note" id="reportNote"></div></section>
+      </div>
+    </section>
+    <section class="r-rounds" aria-labelledby="roundsTitle"><div class="r-rounds-head"><h2 id="roundsTitle">每一轮</h2><p class="small muted">点一轮，看它的结果。</p></div><div id="sessionList" class="session-list"></div></section>
+    <div id="summaryArchiveSlot"></div>
+  </section>
+
+  <!-- 图鉴 -->
+  <section id="archiveRoom" hidden>
+    <div class="band" id="decadeBand">
+      <div class="band-top"><h1>图鉴</h1><span id="bandSub"></span></div>
+      <nav class="decades" id="decadeNav" aria-label="年代"></nav>
+    </div>
+    <div id="archiveSlot">
+      <details id="archivePanel" class="archive-panel">
+        <summary>本轮记录 <span id="archiveCount"></span></summary>
+        <p class="sr-only">提交后收录课程标准答案；新一题开始时保护档案。</p>
+        <div id="archiveFilters" class="a-filters">
+          <div id="archiveTabs" class="a-tabs"><button data-archive-tab="round" type="button">本轮记录</button><button data-archive-tab="all" type="button">累计图鉴</button></div>
+          <div class="archive-controls">
+            <label class="a-check"><input id="archiveWeak" type="checkbox"><span>待巩固</span></label>
+            <label class="a-check"><input id="archiveYearWeak" type="checkbox"><span>年份弱</span></label>
+            <select id="archiveYear" aria-label="筛选年份"></select>
+            <select id="archiveArtist" aria-label="筛选音乐家"></select>
+            <select id="archiveStyle" aria-label="筛选风格"></select>
+            <input id="archiveSearch" type="search" aria-label="搜索曲目" placeholder="搜索曲名、音乐家、风格" autocomplete="off" autocapitalize="off" spellcheck="false">
+          </div>
+          <div id="statusChips" class="chips status-chips" role="group" aria-label="按状态筛选"></div>
+          <button id="facetToggle" class="facet-toggle" type="button" aria-expanded="false" aria-controls="archiveFacets"></button>
+          <div id="archiveFacets" class="a-facets">
+            <div id="lectureChips" class="chips" role="group" aria-label="按讲次筛选"></div>
+            <div id="styleChips" class="style-chips" role="group" aria-label="按风格筛选"></div>
+          </div>
+        </div>
+        <p class="a-legend"><span>四格依次是 歌名 · 年份 · 音乐家 · 风格</span><span><span class="m4"><i class="s"></i></span> 稳定</span><span><span class="m4"><i class="w"></i></span> 加强中</span><span><span class="m4"><i class="r"></i></span> 明显薄弱</span><span><span class="m4"><i class="n"></i></span> 未测</span></p>
+        <div id="archiveContent" class="archive-wall" tabindex="0" aria-label="按年代排列的曲目"></div>
+        <div class="a-foot">
+          <details class="a-manage">
+            <summary>馆藏管理 · 备份与恢复</summary>
+            <div class="a-manage-body">
+              <p id="memorySave" role="status"></p>
+              <button id="memoryRetry" class="link" type="button">重试保存</button>
+              <button id="memoryExport" class="link" type="button">导出学习备份</button>
+              <label class="memory-import link">合并学习备份<input id="memoryImport" type="file" accept="application/json,.json"></label>
+            </div>
+          </details>
+          <details class="a-manage a-about">
+            <summary>目录说明</summary>
+            <div class="a-manage-body">
+              <p class="catalog-rule">年份与音乐家角色按课件标注；补充资料与标签差异在每首的说明中注明。风格分组只为浏览方便，不是考试口径。</p>
+              <p id="courseAuditSummary" class="course-audit-summary"></p>
+            </div>
+          </details>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- 记录 -->
+  <section id="historyRoom" hidden>
+    <div class="room-head"><h1>结果</h1><p class="muted">还没有完成的一轮。听完一轮，结果和每一轮的记录都会出现在这里。</p><button class="btn" type="button" data-go-home>回到首页开始 →</button></div>
+  </section>
+</main>
+
+<footer class="site-footer"><span>大肥鱼陪你，把旋律和知识连起来。</span><span><span id="catalogSummary"></span> · <span id="totalAudioCount"></span></span></footer>
+
+<!-- 设置：题型、每轮题数、转场速度。练习范围在首页「这一轮」里选。 -->
+<div id="settingsDrawer" class="drawer" hidden>
+  <div class="drawer-scrim" data-close-settings></div>
+  <aside class="drawer-panel sidebar" aria-label="设置" role="dialog" aria-modal="true" tabindex="-1">
+    <div class="drawer-head"><h2>设置</h2><button class="link" type="button" data-close-settings>完成</button></div>
+    <details id="scopeDetails" class="scope-card" open>
+      <summary class="sr-only">题型、题数与转场</summary>
+      <div class="training-settings">
+        <label for="questionType">题型</label><select id="questionType"><option value="choice">选择题 · 四选一，可选不知道</option><option value="written">填写题 · 自己写四项</option></select><p id="questionTypeHint"></p>
+        <label class="toggle-row set-switch"><input id="roundLimit" type="checkbox" checked><span>限定每轮题数<small>关掉后，每一轮把所选范围里的歌全部听一遍。</small></span></label>
+        <label for="sessionLength">每轮题数</label><select id="sessionLength"><option value="10">10 题</option><option value="20">20 题</option></select><p id="sessionLengthHint">随机抽取，轮内不重复；范围里的歌不够时，按范围里的首数出题。</p>
+        <label class="toggle-row set-switch"><input id="followMotion" type="checkbox" checked><span>首页随鼠标轻微移动<small>只有唱片贴纸和大字的回声会跟着鼠标；关掉后首页完全静止。</small></span></label>
+        <span class="set-label" id="motionSpeedLabel">转场速度</span>
+        <div class="seg" role="radiogroup" aria-labelledby="motionSpeedLabel"><label><input type="radio" name="motionSpeed" value="1" checked><span>标准转场</span></label><label><input type="radio" name="motionSpeed" value="2"><span>2 倍速转场</span></label></div>
+        <p>页面切换、开场和结算动画的时长减半，立即生效；按钮与答题反馈一直是即时的。系统开启「减少动态效果」时，转场一律省略。</p>
+      </div>
+    </details>
+  </aside>
+</div>
+
+<div id="miniPlayer" class="mini-player" role="region" aria-label="正在试听" hidden><button id="miniToggle" class="play" type="button" aria-label="暂停"></button><div class="mp-info"><b id="miniTitle"></b><span id="miniMeta"></span></div><div class="mp-line" aria-hidden="true"><i id="miniLine"></i></div><button id="miniClose" class="mp-close" type="button" aria-label="关闭试听">×</button></div>
+
+<audio id="audio" preload="none"></audio>
+<dialog id="trainingConfirmDialog" class="training-confirm" aria-labelledby="trainingConfirmTitle" aria-describedby="trainingConfirmDescription">
+  <h2 id="trainingConfirmTitle">结束本轮训练？</h2>
+  <p id="trainingConfirmDescription"></p>
+  <div class="confirmation-actions">
+    <button id="trainingConfirmCancel" class="btn sec" type="button" autofocus>取消</button>
+    <button id="trainingConfirmProceed" class="btn" type="button">确认结束</button>
+  </div>
+</dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

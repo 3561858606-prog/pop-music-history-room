@@ -1,0 +1,488 @@
+// 探索：首页就是这张盘。转（拖动）、贴近（进入一条年代带）、落（唱针）。
+import * as M from './model.js';
+import {flatDisc} from './flat.js';
+import {player} from './audio.js';
+import {sleeveLayout} from './sleeve-layout.js';
+import {nameHTML, storyHTML} from './reading.js';
+import {hasVideo, videoFigureHTML, mountVideo, retryVideo, videoOf} from './video.js';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const {TAU, rings, bands, GEO} = M;
+
+export async function initExplore(ctx) {
+  const canvas = $('gl'), hud = $('hud'), panel = $('panel'), live = $('live'), flatHost = $('flatHost'), stage = $('stage');
+  const view = {mode: 'over', band: -1, song: null, kbBand: bands.length - 1, flat: false, needle: 'idle', intro: false};
+  let disc = null, flat = null, chipAt = null;
+  const spread = document.createElement('section'); spread.className = 'sleeve-spread'; spread.hidden = true; spread.setAttribute('aria-label','同年封套'); stage.appendChild(spread);
+  let spreadKey = '', spreadPosition = '';
+  const overviewSleeves = band => [...new Map(band.ids.map(id => { const t = M.byId.get(id); return [t.year,id]; })).values()];
+  const yearItems = () => view.song ? M.yearTracks(M.byId.get(view.song).year) : [];
+  function positionSpread(api = disc) {
+    if (spread.hidden) return;
+    if (api && !view.flat) {   // 立体：按钮每一帧跟着封套在画面上的实际位置
+      const edge = panelEdge(), hits = new Map(api.sleeveHits().map(h => [h.g.id, h])), W = api.state.W;
+      const list = [...spread.querySelectorAll('[data-cover]')];
+      for (const b of list) {
+        const h = hits.get(b.dataset.cover);
+        if (!h || h.x1 > edge || h.x0 < 0 || h.x1 > W) { b.style.visibility = 'hidden'; continue; }
+        const w = h.x1 - h.x0, ht = h.y1 - h.y0;
+        b.style.visibility = ''; b.style.transform = `translate3d(${h.x0.toFixed(1)}px,${h.y0.toFixed(1)}px,0)`;
+        b.style.width = w.toFixed(1) + 'px'; b.style.height = 'auto'; b.querySelector('.st-art').style.height = ht.toFixed(1) + 'px';
+        b.dataset.columns = list.length;
+      }
+      spread.style.setProperty('--spread-right', Math.max(20, W - edge + 28) + 'px');
+      spreadPosition = ''; return;
+    }
+    const bounds = api ? null : stage.getBoundingClientRect(), width = api?.state.W || bounds.width, height = api?.state.H || bounds.height;
+    const pf = innerWidth > 860 ? panel.offsetWidth / width : 0;
+    const key = [spreadKey,width,height,pf].join(':'); if (spreadPosition === key) return; spreadPosition = key;
+    const slots = sleeveLayout(yearItems().map(t => { const c = M.coverOf(t); return {id:t.id,ratio:c ? c.w/c.h : 1}; }), width,height,pf);
+    for (const slot of slots) {
+      const b = spread.querySelector(`[data-cover="${slot.id}"]`); if (!b) continue;
+      b.style.visibility = '';
+      b.style.transform = `translate3d(${slot.x}px,${slot.y}px,0)`; b.style.width = slot.width + 'px'; b.style.height = slot.height + 'px';
+      b.querySelector('.st-art').style.height = slot.width + 'px'; b.dataset.columns = slot.columns;
+    }
+    spread.style.setProperty('--spread-right', Math.max(20,width*pf+36)+'px');
+  }
+  function renderSpread() {
+    spread.hidden = view.mode !== 'close'; if (spread.hidden) { spreadKey = ''; return; }
+    const current = M.byId.get(view.song), items = yearItems(), key = current.year + ':' + view.band + ':' + view.flat;
+    spread.dataset.flat = view.flat ? '1' : '0';
+    if (key !== spreadKey) {
+      spreadKey = key; spreadPosition = '';
+      const years = [...new Set(bands[view.band].ids.map(id => M.byId.get(id).year))];
+      spread.innerHTML = `<header class="spread-head"><h2><b>${current.year}</b><span>${items.length} 首 · 同年封套已展开</span></h2><p>点击封套选歌，再落针试听</p><nav class="spread-years" aria-label="切换年份">${years.map(y => `<button data-year="${y}" aria-current="${y === current.year ? 'true' : 'false'}">${y}</button>`).join('')}</nav></header>
+        <div class="spread-covers">${items.map(t => { const c = M.coverOf(t); return `<button class="sleeve-target" data-cover="${t.id}" aria-label="${esc(M.titleOf(t))}，${esc(t.artist)}，${t.year}" aria-pressed="${t.id === current.id}"><span class="st-art">${c ? `<img src="${c.url}" alt="" data-shape="${c.shape}" draggable="false">` : '<span>封面待补</span>'}</span><span class="st-title" aria-hidden="true">${esc(M.titleOf(t))}</span><span class="st-artist" aria-hidden="true">${esc(t.artist)}</span></button>`; }).join('')}</div>`;
+    }
+    for (const b of spread.querySelectorAll('[data-cover]')) b.setAttribute('aria-pressed', String(b.dataset.cover === view.song));
+    positionSpread();
+  }
+  spread.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.cover) select(M.ringOf.get(b.dataset.cover));
+    if (b.dataset.year) { const t = M.yearTracks(+b.dataset.year)[0]; if (t) { select(M.ringOf.get(t.id)); spread.querySelector(`[data-year="${t.year}"]`)?.focus(); } }
+  });
+  // 指针停在封套上：盘上那张封套微微抬起
+  spread.addEventListener('pointerover', e => { const b = e.target.closest('[data-cover]'); disc?.setHover(b ? M.ringOf.get(b.dataset.cover).i : -1); });
+  spread.addEventListener('pointerleave', () => disc?.setHover(-1));
+  spread.addEventListener('focusin', e => { const b = e.target.closest('[data-cover]'); if (b) disc?.setHover(M.ringOf.get(b.dataset.cover).i); });
+  spread.addEventListener('keydown', e => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key === 'Escape') { backOver(); e.preventDefault(); return; }
+    const b = e.target.closest('[data-cover]'); if (!b) return;
+    const list = [...spread.querySelectorAll('[data-cover]')];
+    let next;
+    if (e.key === 'Home') next = 0; else if (e.key === 'End') next = list.length-1;
+    if (next !== undefined) { list[next].click(); list[next].focus({preventScroll:true}); e.preventDefault(); }
+  });
+  addEventListener('resize', () => positionSpread());
+
+  /* ---------- 盘：立体或平面 ---------- */
+  async function mount() {
+    disc?.destroy(); disc = null; flat = null; flatHost.replaceChildren(); hud.replaceChildren(); hudBuilt = false;
+    view.flat = M.prefs.flat;
+    if (!view.flat) {
+      try {
+        const {createDisc} = await import('./gl.js');
+        disc = createDisc(canvas, {reducedMotion: ctx.reduced, onFrame: updateHud, panelFrac: () => innerWidth > 860 ? panel.offsetWidth / stage.clientWidth : 0, onLost: () => { M.prefs.flat = true; mount(); }});
+      } catch (e) { console.warn('WebGL 不可用，改用平面的盘：', e.message); view.flat = true; }
+    }
+    canvas.hidden = view.flat; flatHost.hidden = !view.flat; stage.dataset.flat = view.flat ? '1' : '0';
+    if (view.flat) mountFlat();
+    $('discHelp').textContent = view.flat ? '平面盘 · ↑↓ 换年代 · ←→ 换歌 · 空格落针或抬针'
+      : matchMedia('(pointer:coarse)').matches ? '拖动转盘 · 点一条年代带贴近' : '拖动转盘 · 点一条年代带贴近 · ↑↓ 换年代 ←→ 换歌 · 空格落针或抬针';
+    applyView(true);
+  }
+  function mountFlat() {
+    flat = flatDisc({detail: true, digits: true, decades: true, title: '母盘（平面）'});
+    flatHost.replaceChildren(flat.svg);
+    const at = e => { const b = flat.svg.getBoundingClientRect(), vb = flat.svg.viewBox.baseVal;
+      const x = vb.x + (e.clientX - b.left) / b.width * vb.width, y = vb.y + (e.clientY - b.top) / b.height * vb.height;
+      return M.ringAtRadius(Math.hypot(x, y), 2.5); };
+    flat.svg.addEventListener('click', e => { const g = at(e); if (g) enterBand(bands[g.band], g); });
+    flat.svg.addEventListener('pointermove', e => { const g = at(e); flat.svg.style.cursor = g ? 'pointer' : ''; });
+    if (view.song) flat.setFocus(view.song);
+  }
+
+  /* ---------- HUD：盘缘数字、年代名、年份牌 ---------- */
+  let hudBuilt = false; const H = {digits: [], decs: [], tags: [], chip: null};
+  function buildHud() {
+    hud.replaceChildren(); H.digits = []; H.decs = []; H.tags = [];
+    for (let d = 0; d < 10; d++) { const n = document.createElement('span'); n.className = 'hud-digit'; n.textContent = d; hud.appendChild(n); H.digits.push(n); }
+    for (const b of bands) { const n = document.createElement('span'); n.className = 'hud-dec'; n.textContent = b.label; hud.appendChild(n); H.decs.push(n); }
+    for (let i = 0; i < 22; i++) { const n = document.createElement('span'); n.className = 'hud-tag'; hud.appendChild(n); H.tags.push(n); }
+    H.chip = document.createElement('span'); H.chip.className = 'hud-chip'; hud.appendChild(H.chip);
+    hudBuilt = true;
+  }
+  const place = (n, p, show = true) => { if (!p || !show) { n.style.opacity = 0; return; } n.style.opacity = ''; n.style.transform = `translate3d(${p[0].toFixed(1)}px,${p[1].toFixed(1)}px,0) translate(-50%,-50%)`; };
+  function updateHud(api) {
+    if (!hudBuilt) buildHud();
+    positionSpread(api);
+    const S = api.state, close = S.mode === 'close', hide = S.mode === 'dive' || S.mode === 'intro' || S.light < .6;
+    const focusDigit = view.song ? M.byId.get(view.song).year % 10 : -1;
+    const rd = close ? bands[S.band].outer + GEO.unit * 2.2 : 1.062;
+    for (let d = 0; d < 10; d++) {
+      const a = d / 10 * TAU + S.rot, p = api.project([rd * Math.sin(a), close ? .004 : 0, -rd * Math.cos(a)]);
+      const n = H.digits[d]; place(n, p, !hide && p && p[1] > 40 && p[1] < S.H + 20);
+      n.classList.toggle('on', d === focusDigit); n.classList.toggle('near', close);
+    }
+    const ad = 176 * Math.PI / 180;
+    bands.forEach((b, i) => { const p = api.project([b.mid * Math.sin(ad), 0, -b.mid * Math.cos(ad)]);
+      place(H.decs[i], p, !hide && !close && (S.W > 520 || b.ids.length >= 4)); H.decs[i].classList.toggle('on', i === (S.hover >= 0 ? rings[S.hover].band : view.kbBand) && !close); });
+    const edge = panelEdge();
+    const hits = close ? api.sleeveHits().filter(h => h.top[0] < edge) : [];
+    const years = new Map();   // 同一年的封套共用一块年份牌
+    for (const h of hits) { const y = h.g.t.year, e = years.get(y) || {y, x: 0, top: 1e9, n: 0, on: false}; e.x += h.top[0]; e.top = Math.min(e.top, h.top[1]); e.n++; e.on ||= h.g.id === view.song; years.set(y, e); }
+    const tags = close ? [] : [...years.values()];
+    H.tags.forEach((n, i) => { const e = tags[i]; if (!e || hide) { n.style.opacity = 0; return; }
+      if (n.textContent !== String(e.y)) n.textContent = e.y;
+      n.classList.toggle('on', e.on); place(n, [e.x / e.n, e.top - 12]); });
+    for (let d = 0; d < 10; d++) { const r = H.digits[d].style.transform.match(/translate3d\(([-\d.]+)px/); if (r && +r[1] > edge) H.digits[d].style.opacity = 0; }
+    if (chipAt && !hide) { H.chip.style.opacity = 1; H.chip.style.transform = `translate3d(${chipAt.x + 14}px,${chipAt.y - 30}px,0)`; } else H.chip.style.opacity = 0;
+  }
+  const panelEdge = () => innerWidth > 860 ? panel.getBoundingClientRect().left - 8 : 1e9;
+  function setChip(g, x, y) {
+    if (!hudBuilt) return;
+    if (!g) { chipAt = null; H.chip.style.opacity = 0; return; }
+    if (H.chip.dataset.id !== g.id) { H.chip.dataset.id = g.id; H.chip.innerHTML = `<b>${g.t.year}</b>${esc(M.titleOf(g.t))}`; }
+    chipAt = {x, y}; disc?.request();
+  }
+
+  /* ---------- 视图状态 ---------- */
+  const say = text => { live.textContent = text; };
+  function applyView(snap = false) {
+    stage.dataset.mode = view.mode;
+    const g = view.song ? M.ringOf.get(view.song) : null;
+    if (disc) {
+      if (view.mode === 'close') { disc.setMode('close', view.band); disc.setSleeves(yearItems().map(t => t.id), 1); if (g) disc.rotateTo(disc.frontPhi(g.id)); }
+      else { disc.setMode('over'); disc.setSleeves(hoverBand >= 0 ? overviewSleeves(bands[hoverBand]) : [], .62); }
+      disc.setFocus(g ? g.i : -1);
+      if (snap) disc.jumpCamera();
+    }
+    flat?.setFocus(view.song);
+    renderPanel(); renderSpread();
+  }
+  function frontRing(band) {   // 这条带里离观众最近的一圈
+    const front = disc ? ((Math.PI - disc.state.rot) % TAU + TAU) % TAU : 0;
+    let best = null, bd = 9;
+    for (const id of band.ids) { const g = M.ringOf.get(id); const d = Math.abs(((g.phi - front + Math.PI) % TAU + TAU) % TAU - Math.PI); if (d < bd) { bd = d; best = g; } }
+    return best;
+  }
+  function enterBand(band, g = null) {
+    view.mode = 'close'; view.band = band.i; view.kbBand = band.i; hoverBand = -1; setChip(null);
+    select(g || frontRing(band), false);
+    applyView();
+    say(`${band.name}，${band.ids.length} 首。${view.song ? M.byId.get(view.song).year + ' ' + M.byId.get(view.song).song : ''}`);
+  }
+  function select(g, apply = true) {
+    if (!g) return;
+    view.song = g.id;
+    disc?.rotateTo(g.phi);
+    if (apply) { if (g.band !== view.band || view.mode !== 'close') return enterBand(bands[g.band], g); applyView(); say(`${g.t.year}，${g.t.song}，${g.t.artist}`); }
+  }
+  function backOver() {
+    if (view.mode === 'over') return;
+    view.mode = 'over'; view.band = -1; view.song = null; applyView(); disc?.home(); say('整张盘');
+    focusDisc();
+  }
+  function stepSong(dir) {
+    const ids = bands[view.band].ids, i = ids.indexOf(view.song), n = rings[(M.ringOf.get(ids[i]).i + dir + rings.length) % rings.length].id;
+    if (n && n !== view.song) select(M.ringOf.get(n));
+  }
+  function stepBand(dir) {
+    const i = (view.band + dir + bands.length) % bands.length; if (i === view.band) return;
+    const cur = view.song ? M.ringOf.get(view.song) : null, band = bands[i];
+    let best = null, bd = 9;   // 换到新年代里辐线最近的一首
+    for (const id of band.ids) { const g = M.ringOf.get(id), d = cur ? Math.abs(((g.phi - cur.phi + Math.PI) % TAU + TAU) % TAU - Math.PI) : 0; if (d < bd) { bd = d; best = g; } }
+    enterBand(band, best);
+  }
+
+  /* ---------- 指针 ---------- */
+  let hoverBand = -1, drag = null, springBack = 0;   // 贴近时松手：盘带着惯性转一下，再弹回这一年的正面
+  const local = e => { const b = canvas.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
+  function hit(x, y) {
+    const sg = disc.pickSleeve(x, y); if (sg) return {g: sg, band: bands[sg.band], sleeve: true};
+    const h = disc.pick(x, y); if (!h) return null;
+    if (h.r < GEO.RL) return {label: true};
+    const band = M.bandAtRadius(h.r); if (!band || h.r > 1) return h.r <= 1.02 ? {rim: true} : null;
+    let g = M.ringAtRadius(h.r, view.mode === 'close' ? 1 : 3);
+    if (!g || g.band !== band.i) g = band.ids.map(id => M.ringOf.get(id)).reduce((a, b) => Math.abs(b.mid - h.r) < Math.abs(a.mid - h.r) ? b : a);
+    return {g, band};
+  }
+  canvas.addEventListener('pointermove', e => {
+    if (!disc || view.intro) return;
+    const [x, y] = local(e);
+    if (drag) {
+      const h = disc.pick(x, y), now = performance.now();
+      if (!drag.moved && Math.hypot(x - drag.x0, y - drag.y0) > 5) { drag.moved = true; disc.setDragging(true); setChip(null); canvas.classList.add('grabbing'); }
+      if (drag.moved) {
+        let d = h && drag.last !== null && h.r > .05 && h.r < 2.2 ? ((h.world - drag.last + Math.PI) % TAU + TAU) % TAU - Math.PI : (x - drag.px) * -.004;
+        if (Math.abs(d) > .5) d = 0;
+        disc.rotateBy(d); const dt = Math.max(1, now - drag.t) / 1000; drag.v = drag.v * .6 + (d / dt) * .4; drag.t = now;
+        drag.last = h ? h.world : null;
+      } else if (h) drag.last = h.world;
+      drag.px = x; return;
+    }
+    const t = hit(x, y), g = t?.g || null;
+    canvas.style.cursor = t?.g || t?.label ? 'pointer' : t?.rim ? 'grab' : '';
+    disc.setHover(g ? g.i : -1);
+    setChip(g, x, y);
+    if (view.mode === 'over') { const hb = t?.band ? t.band.i : -1; if (hb !== hoverBand) { hoverBand = hb; disc.setSleeves(hb >= 0 ? bands[hb].ids : [], .62); } }
+  });
+  canvas.addEventListener('pointerdown', e => {
+    canvas.classList.remove('kb');
+    if (!disc || e.button !== 0) return;
+    if (view.intro) return endIntro();
+    const [x, y] = local(e), h = disc.pick(x, y);
+    drag = {x0: x, y0: y, px: x, moved: false, last: h ? h.world : null, v: 0, t: performance.now()};
+    canvas.setPointerCapture(e.pointerId);
+  });
+  const release = e => {
+    if (!drag) return; const d = drag; drag = null; canvas.classList.remove('grabbing');
+    if (d.moved) { disc.setDragging(false, performance.now() - d.t < 80 ? Math.max(-6, Math.min(6, d.v)) : 0); if (view.mode === 'close' && view.song) { clearTimeout(springBack); springBack = setTimeout(() => { if (drag || view.mode !== 'close' || !view.song) return;
+      const near = disc.fanMode() === 'arc' ? disc.nearestSleeve() : null;   // 弧形转盘：转到哪张就选哪张
+      if (near && near !== view.song) select(M.ringOf.get(near)); else disc.rotateTo(disc.frontPhi(view.song)); }, ctx.reduced() ? 0 : 520); } return; }
+    if (e.type === 'pointercancel') return;
+    const [x, y] = local(e), t = hit(x, y);
+    if (!t) return;
+    if (t.label) return view.mode === 'close' ? backOver() : null;
+    if (t.g) { if (view.mode === 'close' && t.g.band === view.band) select(t.g); else enterBand(t.band, t.g); }
+  };
+  canvas.addEventListener('pointerup', release); canvas.addEventListener('pointercancel', release);
+  canvas.addEventListener('pointerleave', () => { if (drag) return; disc?.setHover(-1); setChip(null); if (view.mode === 'over' && hoverBand >= 0) { hoverBand = -1; disc?.setSleeves([], .62); } });
+  canvas.addEventListener('wheel', e => { if (!disc || view.intro) return; e.preventDefault(); disc.rotateBy((Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * .0016); }, {passive: false});
+  canvas.addEventListener('dblclick', e => { if (!disc) return; const [x, y] = local(e), t = hit(x, y); if (t?.g && view.song === t.g.id) toggleNeedle(); });
+
+  /* ---------- 键盘 ---------- */
+  function focusDisc() { (view.flat ? flatHost : canvas).focus({preventScroll: true}); }
+  document.addEventListener('keydown', e => {
+    const room = $('roomDisc'), t = e.target;
+    if (room.hidden || e.defaultPrevented || e.isComposing || e.keyCode === 229 ||
+        e.altKey || e.ctrlKey || e.metaKey || e.shiftKey ||
+        (!room.contains(t) && t !== document.body && t !== document.documentElement) ||
+        t.closest?.('input,textarea,select,[contenteditable],a,summary,[role=slider],video')) return;
+    const k = e.key, button = t.closest?.('button');
+    const songButton = button?.matches('[data-song],[data-cover],.needle-btn');
+    if (k === ' ' && button && !songButton) return;
+    if (k === 'Enter' && button) return;
+    if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter','Escape',' '].includes(k)) return;
+    if (k === 'Escape' && view.mode !== 'close') return;
+    e.preventDefault();
+    if (e.repeat && (k === ' ' || k === 'Enter')) return;
+    if (view.intro) endIntro();
+    const overview = view.mode === 'over';
+    if (overview) enterBand(bands[view.kbBand]);
+    if (k === 'ArrowLeft' || k === 'ArrowRight') stepSong(k === 'ArrowRight' ? 1 : -1);
+    else if (k === 'ArrowUp' || k === 'ArrowDown') stepBand(k === 'ArrowUp' ? 1 : -1);
+    else if (k === 'Escape') backOver();
+    else if (k === ' ' || !overview) toggleNeedle();
+    focusDisc();
+  });
+
+  /* ---------- 落针 ---------- */
+  let needleToken = 0;
+  function toggleNeedle(id = view.song) {
+    const t = M.byId.get(id); if (!t) return;
+    if (player.current()?.id === id) return liftNeedle();
+    pauseVideo();
+    const g = M.ringOf.get(id), token = ++needleToken;
+    player.prepare(t); view.needle = 'dropping'; renderNeedle();
+    if (!disc) { player.start(); return; }
+    disc.arm(g.mid, true); disc.setPlay(g.i, false);
+    const t0 = performance.now();
+    const wait = () => { if (token !== needleToken) return;
+      if (disc.armSettled() || performance.now() - t0 > 2600 || ctx.reduced()) { player.start(); disc.setPlay(g.i, true); } else requestAnimationFrame(wait); };
+    requestAnimationFrame(wait);
+  }
+  function liftNeedle() { needleToken++; player.stop(); }
+
+  /* ---------- 课件视频 ---------- */
+  // 正在看的视频跨面板重绘保留（同一首歌），换歌或离开唱片页就停下。
+  let liveVideo = null;
+  function pauseVideo() { liveVideo?.querySelector('video')?.pause(); }
+  function keepVideo() {
+    const fresh = panel.querySelector('.vid');
+    if (liveVideo && fresh && liveVideo.dataset.video === fresh.dataset.video) fresh.replaceWith(liveVideo);
+    else if (liveVideo) { liveVideo.querySelector('video')?.pause(); liveVideo = null; }
+  }
+  function playVideo(fig, at = 0) {
+    liveVideo = fig;
+    mountVideo(fig, {at, onPlay: () => { if (player.current()) liftNeedle(); }});
+  }
+  player.on((state, t) => {
+    if (state === 'playing') { view.needle = 'playing'; say(`正在播放 ${t.song}`); }
+    else if (state === 'loading') view.needle = 'dropping';
+    else if (state === 'waiting') { view.needle = 'buffering'; say('音频正在缓冲'); }
+    else { view.needle = 'idle'; disc?.arm(null, false); disc?.setPlay(-1, false); if (state === 'error' || state === 'blocked') say('这段音频现在放不出来'); }
+    renderNeedle();
+  });
+  function renderNeedle() {
+    const b = panel.querySelector('.needle-btn'); if (!b) return;
+    const mine = player.current()?.id === view.song;
+    b.dataset.state = mine ? view.needle : 'idle';
+    b.querySelector('span').textContent = !mine ? '落针试听' : view.needle === 'playing' ? '抬起唱针' : view.needle === 'buffering' ? '正在缓冲…' : '唱针正在落下…';
+    b.setAttribute('aria-pressed', mine ? 'true' : 'false');
+  }
+
+  /* ---------- 右侧：标签上的曲目表 ---------- */
+  const inScope = id => M.prefs.scope.includes(id);
+  const dropLabel = pool => M.prefs.size === 'all' ? `落针 · 全部 ${pool} 首` : `落针 · 随机 ${M.sizeFor(pool)} 首`;
+  const poolSize = () => M.tracks.filter(t => M.lectureIds(t).some(inScope)).length;
+  function renderPanel() {
+    panel.dataset.mode = view.mode;
+    if (view.mode === 'close') return renderClose();
+    if (liveVideo) { pauseVideo(); liveVideo = null; }
+    const st = M.stats(), all = M.prefs.scope.length === M.lectures.length;
+    const pool = M.tracks.filter(t => M.lectureIds(t).some(inScope)).length;
+    panel.innerHTML = `
+      <div class="p-over">
+        <h1 class="p-years">1854<i>—</i>1968</h1>
+        <p class="p-sub">75 首 · 七讲 · 刻满 ${st.full} 圈${st.some ? `，刻了一部分 ${st.some} 圈` : ''}</p>
+        <button class="drop-btn" id="startRound"><span>${dropLabel(pool)}</span><kbd>进入听辨 →</kbd></button>
+        ${M.unfinished().length ? `<button class="resume-round" data-resume="${M.unfinished()[0].id}">继续未完成的一轮 · 已答 ${M.unfinished()[0].entries.length} / ${M.unfinished()[0].size} 首 →</button>` : ''}
+        <div class="seg question-types" role="group" aria-label="题型"><button data-type="choice" aria-pressed="${M.prefs.questionType === 'choice'}">选择题</button><button data-type="written" aria-pressed="${M.prefs.questionType === 'written'}">填空题</button></div>
+        <div class="p-opts">
+          <div class="seg" role="group" aria-label="一轮几首">${[[10, '10 首'], [20, '20 首'], ['all', '全部听完'], ['custom', '自定义']].map(([v, t]) => `<button data-size="${v}" aria-pressed="${M.prefs.size === v}">${t}</button>`).join('')}</div>
+          ${M.prefs.size === 'custom' ? `<label class="p-custom">每轮 <input id="customSize" type="number" inputmode="numeric" min="1" max="${pool}" value="${Math.min(M.prefs.custom, pool)}" aria-label="自定义每轮首数"> 首 <span>（最多 ${pool}）</span></label>` : ''}
+          <span class="p-scope">${all ? '范围：全部七讲' : `范围：${M.prefs.scope.length} 讲，${pool} 首`}</span>
+        </div>
+        <div class="p-head"><span>SIDE A · 七讲</span><span>点方格加入范围</span></div>
+        <ol class="lec-list">${M.lectures.map(l => `
+          <li data-lec="${l.id}">
+            <button class="lec-name" data-start="${l.id}" title="只练这一讲"><i>A${l.id}</i><b>${esc(l.label)}</b><em>${l.count} 首</em></button>
+            <button class="lec-box" role="checkbox" aria-checked="${inScope(l.id)}" aria-label="把「${esc(l.label)}」加入范围" data-toggle="${l.id}"></button>
+          </li>`).join('')}</ol>
+        <p class="p-foot">盘面每一圈是一首歌：外圈 1854，内圈 1968。一圈正好十年，盘缘的 0—9 是年份的个位数。</p>
+      </div>`;
+    $('legendSrc').textContent = st.source === 'demo' ? '当前是示意数据' : st.source === 'empty' ? '这台浏览器里还没有作答记录' : st.source === 'proto' ? '按原型里的作答绘制' : '按这台浏览器里的学习记录绘制';
+  }
+  function laneRow(key, v, id) {
+    const s = M.fieldStatus(id, key), text = s ? (s === '数据不足' && !v ? '还没刻' : s) : Math.round(v * 100) + '%';
+    return `<div class="lane"><dt>${M.FIELD_NAMES[key]}</dt><dd><span class="lane-bar" style="--v:${v}"></span><em>${text}</em></dd></div>`;
+  }
+  let keepScroll = false;
+  function renderClose() {
+    const top = panel.scrollTop;
+    const sameSong = panel.querySelector('.song')?.dataset.track === view.song;
+    const storyOpen = sameSong && panel.querySelector('.story-long')?.open;
+    const band = bands[view.band], t = M.byId.get(view.song), g = M.ringOf.get(view.song), lanes = M.lanesOf(t.id), story = M.storyOf(t), cover = M.coverOf(t);
+    const mates = M.spokeMates(t), style = M.styleOf(t);
+    panel.innerHTML = `
+      <div class="p-close">
+        <button class="p-back" id="backOver">← 整张盘<kbd>Esc</kbd></button>
+        <div class="p-band"><b>${band.label}</b><span>${band.ids.length} 首 · ${band.decade < 1950 ? '78 转粗纹' : '密纹'}</span>
+          <span class="p-bandnav"><button data-band="1" aria-label="更晚的年代（向内）" ${view.band === bands.length - 1 ? 'disabled' : ''}>↑</button><button data-band="-1" aria-label="更早的年代（向外）" ${view.band === 0 ? 'disabled' : ''}>↓</button></span></div>
+        <article class="song" data-track="${t.id}" aria-live="off">
+          <div class="song-top">
+            ${cover ? `<img class="song-cover" data-shape="${cover.shape}" src="${cover.url}" alt="" width="${cover.w}" height="${cover.h}">` : ''}
+            <div><div class="song-year">${t.year}</div><div class="song-spoke">${band.label} 带 · ${t.year % 10} 号辐</div></div>
+          </div>
+          <h2>${nameHTML(t, 'song', M.titleOf(t))}</h2>
+          <div class="song-meta name-meta"><p>${nameHTML(t, 'artist')}</p><p>${nameHTML(t, 'style')}</p><p>${M.lectureIds(t).map(id => '第 ' + id + ' 讲 ' + esc(M.lectureLabel(id))).join('；')}</p></div>
+          ${cover ? `<details class="cover-info"><summary>${esc(M.coverLabel(cover))}</summary><p>${esc(cover.album || '')}<br>${esc(cover.artist || '')}</p><p>${esc(cover.note || '')}</p>${cover.source ? `<a href="${esc(cover.source)}" target="_blank" rel="noopener noreferrer">封面来源 ↗</a>` : ''}</details>` : ''}
+          ${videoFigureHTML(t)}
+          <button class="needle-btn" aria-pressed="false"><i></i><span>落针试听</span><kbd>空格</kbd></button>
+          <dl class="lanes" aria-label="这一圈的四道刻纹">${M.KEYS.map((k, i) => laneRow(k, lanes[i], t.id)).join('')}</dl>
+          ${storyHTML(story)}
+          ${mates.length ? `<div class="spoke"><h3>${t.year % 10} 号辐上还有</h3><p>${mates.map(o => `<button data-song="${o.id}">${o.year} ${esc(M.titleOf(o))}</button>`).join('')}</p></div>` : ''}
+        </article>
+        <div class="p-head"><span>${band.label} · ${band.ids.length} 首</span><span>←→ 换歌</span></div>
+        <ol class="band-list">${band.ids.map(id => { const o = M.byId.get(id); return `<li><button data-song="${id}" aria-current="${id === view.song}"${hasVideo(id) ? ' class="has-video"' : ''}><i>${o.year}</i><b>${esc(M.titleOf(o))}</b>${hasVideo(id) ? '<em class="vid-mark" title="有课件视频"><span class="sr-only">有课件视频</span></em>' : ''}<span class="mini-cut" style="--v:${M.avgCut(id)}"></span></button></li>`; }).join('')}</ol>
+      </div>`;
+    keepVideo();
+    renderNeedle();
+    if (storyOpen) panel.querySelector('.story-long')?.setAttribute('open', '');
+    panel.scrollTop = keepScroll || sameSong ? top : 0; keepScroll = false;
+  }
+  panel.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const fig = b.closest('.vid');
+    if (fig && b.hasAttribute('data-vid-play')) return playVideo(fig);
+    if (fig && b.hasAttribute('data-vid-jump')) return playVideo(fig, videoOf(fig.dataset.video)?.songAt || 0);
+    if (fig && b.hasAttribute('data-vid-retry')) return retryVideo(fig);
+    if (b.dataset.resume) return ctx.resumeRound(b.dataset.resume);
+    if (b.dataset.type) { M.prefs.questionType = b.dataset.type; M.savePrefs(); renderPanel(); panel.querySelector(`[data-type="${b.dataset.type}"]`)?.focus(); return; }
+    if (b.id === 'startRound') return ctx.startRound(M.prefs.scope, b);
+    if (b.id === 'backOver') return backOver();
+    if (b.dataset.size) { const v = b.dataset.size; M.prefs.size = /^\d+$/.test(v) ? +v : v; M.savePrefs(); renderPanel();
+      if (v === 'custom') { const i = $('customSize'); i?.focus(); i?.select(); } else panel.querySelector(`[data-size="${v}"]`)?.focus(); return; }
+    if (b.dataset.start) return ctx.startRound([+b.dataset.start], b);
+    if (b.dataset.toggle) { const id = +b.dataset.toggle, s = new Set(M.prefs.scope); s.has(id) ? s.delete(id) : s.add(id);
+      if (!s.size) return say('至少留一讲'); M.prefs.scope = M.lectures.map(l => l.id).filter(i => s.has(i)); M.savePrefs(); renderPanel();
+      panel.querySelector(`[data-toggle="${id}"]`)?.focus(); return; }
+    if (b.dataset.song) { keepScroll = !!b.closest('.band-list'); select(M.ringOf.get(b.dataset.song)); panel.querySelector(`.band-list [data-song="${b.dataset.song}"]`)?.focus({preventScroll: true}); return; }
+    if (b.dataset.band) return stepBand(+b.dataset.band);
+    if (b.classList.contains('needle-btn')) return toggleNeedle();
+  });
+  // 讲次悬停：这一讲的圈在盘上亮起来
+  const lecMarks = id => disc?.setMarks(id ? M.tracks.filter(t => M.lectureIds(t).includes(id)).map(t => t.id) : []);
+  panel.addEventListener('pointerover', e => { const li = e.target.closest('[data-lec]'); lecMarks(li ? +li.dataset.lec : 0); });
+  panel.addEventListener('pointerleave', () => lecMarks(0));
+  panel.addEventListener('focusin', e => { const li = e.target.closest('[data-lec]'); lecMarks(li ? +li.dataset.lec : 0); });
+  panel.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && view.mode === 'close') backOver();
+    if (e.key === 'Enter' && e.target.id === 'customSize') { e.target.blur(); $('startRound')?.focus(); }
+  });
+  // 自定义首数：边输边更新按钮上的数字，离开输入框时收回到合法范围
+  panel.addEventListener('input', e => {
+    if (e.target.id !== 'customSize') return;
+    const n = Math.round(+e.target.value); if (!n || n < 1) return;
+    M.prefs.custom = Math.min(n, M.tracks.length); M.savePrefs();
+    const s = $('startRound')?.querySelector('span'); if (s) s.textContent = dropLabel(poolSize());
+  });
+  panel.addEventListener('focusout', e => { if (e.target.id === 'customSize') e.target.value = Math.min(M.prefs.custom, poolSize()); });
+
+  M.onChange(what => { if (what === 'lanes') { disc?.refreshLanes(); if (view.flat) mountFlat(); } if (!$('roomDisc').hidden) renderPanel(); });
+
+  /* ---------- 入口：只在第一次 ---------- */
+  let introTimer = 0;
+  function playIntro() {
+    if (!disc || ctx.reduced()) return;
+    view.intro = true; stage.dataset.intro = '1'; $('introSkip').hidden = false;
+    disc.setMode('intro'); disc.jumpCamera(); disc.setLight(0, 1.5, true);
+    requestAnimationFrame(() => { disc.setLight(1, 0); disc.setMode('over', -1, 2.3); });
+    clearTimeout(introTimer); introTimer = setTimeout(() => endIntro(false), 1400);
+  }
+  function endIntro(snap = true) {
+    if (!view.intro) return; clearTimeout(introTimer);
+    view.intro = false; stage.dataset.intro = '0'; $('introSkip').hidden = true;
+    if (snap && disc) { disc.setLight(1, 0, true); disc.setMode('over'); disc.jumpCamera(); }
+  }
+  $('introSkip').addEventListener('click', () => endIntro());
+  addEventListener('keydown', () => { if (view.intro) endIntro(); }, true);
+
+  await mount();
+
+  return {
+    renderNow: n => disc?.renderNow(n),
+    remount: mount,
+    intro: playIntro,
+    get flat() { return view.flat; },
+    // 钻进标签：返回动画时长（毫秒）
+    dive() { spread.hidden = true; if (!disc || ctx.reduced()) return 0; liftNeedle(); setChip(null); stage.dataset.mode = 'dive'; disc.setMode('dive', -1, 6.2); return 520; },
+    // 从标签拉远回到盘面
+    surface(fromLabel) {
+      liftNeedle();
+      if (disc && fromLabel && !ctx.reduced()) { disc.setMode('dive'); disc.jumpCamera(); }
+      view.mode = 'over'; view.band = -1; view.song = null; applyView(!fromLabel || ctx.reduced());
+      if (disc && fromLabel) disc.setMode('over', -1, 3.4);
+      disc?.home();
+    },
+    // 一轮结束后回到盘面：把这一轮答过的圈当场刻上
+    celebrate(list) {
+      if (!list?.length) return;
+      if (!disc) return;
+      const todo = list.filter(c => c.before.some((v, i) => Math.abs(v - c.after[i]) > .004));
+      disc.setMarks(list.map(c => c.id));
+      todo.forEach((c, i) => setTimeout(() => disc.cut(c.id, c.before, c.after, 1100), 500 + i * 260));
+      setTimeout(() => disc.setMarks([]), 500 + todo.length * 260 + 2600);
+      // 动画开始前先把这些圈放回旧的样子
+      for (const c of todo) disc.cut(c.id, c.before, c.before, 1);
+    },
+    focusSong(id) { const g = M.ringOf.get(id); if (g) enterBand(bands[g.band], g); },
+    pause() { liftNeedle(); pauseVideo(); },
+    focus: focusDisc
+  };
+}

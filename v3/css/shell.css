@@ -1,0 +1,86 @@
+/* Header, navigation, footer, drawer, dialog, toast */
+/* The header is the anchor: it stays above anything a transition puts over the page, and is opaque so nothing shows through it. */
+.site-header{position:relative;z-index:13;height:var(--bar);display:flex;align-items:center;gap:44px;padding:0 var(--m);border-bottom:1px solid var(--rule);background:var(--paper)}
+.brand{display:flex;align-items:center;gap:10px;white-space:nowrap}
+.brand strong{font-weight:600;font-size:16px}
+/* A slow record with a wedge cut out of it: without the wedge, concentric rings look the same at every angle and the turning cannot be seen. */
+.brand-disc{position:relative;width:20px;height:20px;border-radius:50%;flex:0 0 auto;transition:transform .4s var(--ease)}
+.brand-disc::before{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(from -15deg,var(--paper) 0 30deg,transparent 30deg),radial-gradient(circle,var(--paper) 0 2px,var(--ink) 2.4px 4.4px,var(--paper) 4.6px 5.4px,var(--ink) 5.6px 7.4px,var(--paper) 7.6px 8.2px,var(--ink) 8.4px);animation:brand-spin 24s linear infinite}
+@keyframes brand-spin{to{transform:rotate(360deg)}}
+[data-page-hidden] .brand-disc::before{animation-play-state:paused}
+.brand:hover .brand-disc{transform:rotate(180deg)}
+.tabs{position:relative;display:flex;gap:28px;height:100%}
+.tab{font-size:15px;color:var(--ink-2);height:100%;transition:color var(--t-press) linear}
+.tab:hover,.tab[data-current]{color:var(--ink)}
+.tab-ink{position:absolute;left:0;bottom:-1px;height:2px;width:1px;background:var(--ink);transform-origin:left;transition:transform 180ms var(--hit)}
+.room-label{display:none}
+body[data-room=train] .site-header,body[data-room=train] .site-footer{display:none}
+.site-footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:20px var(--m) 32px;font-size:13px;color:var(--ink-3);border-top:1px solid var(--rule);margin-top:40px}
+.room-head{padding:40px var(--m) 20px;display:flex;align-items:baseline;gap:16px}
+.room-head h1{font:800 56px/1 var(--f-lat);font-family:var(--f-ui);font-weight:600;font-size:34px}
+
+.drawer{position:fixed;inset:0;z-index:30}
+.drawer-scrim{position:absolute;inset:0;background:rgba(20,20,20,.28);opacity:0;transition:opacity var(--t-base) linear}
+.drawer-panel{position:absolute;right:0;top:0;bottom:0;width:min(440px,100%);background:var(--surface);padding:22px 24px calc(32px + env(safe-area-inset-bottom,0px));overflow-y:auto;transform:translateX(100%);transition:transform var(--t-scene) var(--ease);outline:none}
+.drawer[data-open] .drawer-scrim{opacity:1}
+.drawer[data-open] .drawer-panel{transform:none}
+.drawer-head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:16px}
+.drawer-head h2{font-size:20px;font-weight:600}
+.scope-card>summary{list-style:none}
+.section-heading{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.section-heading h3{font-size:15px;font-weight:600}
+.deck-option{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--rule);cursor:pointer}
+.deck-option input,.toggle-row input{accent-color:var(--cobalt);width:16px;height:16px;margin:0}
+.deck-text strong{display:block;font-size:15px;font-weight:600;line-height:1.35}
+.deck-text small{font-size:13px;color:var(--ink-2)}
+.deck-number{font-size:13px;color:var(--ink-2)}
+.deck-number b{font:600 14px var(--f-lat);margin-right:2px}
+.scope-summary{display:flex;justify-content:space-between;align-items:baseline;padding:12px 0;font-size:14px;color:var(--ink-2)}
+.scope-summary strong{font:600 18px var(--f-lat);color:var(--ink)}
+.toggle-row{display:grid;grid-template-columns:20px minmax(0,1fr);gap:10px;align-items:start;padding:8px 0;font-size:15px;cursor:pointer}
+.toggle-row small{display:block;font-size:13px;color:var(--ink-2);line-height:1.5}
+.training-settings{display:grid;gap:4px;margin-top:10px}
+.training-settings label{font-size:13px;color:var(--ink-3);margin-top:10px}
+.training-settings select{height:44px;width:100%;background:var(--surface);border:1px solid var(--field);border-radius:2px;padding:0 10px;font-size:15px}
+.training-settings p{font-size:13px;color:var(--ink-2);line-height:1.55}
+
+.training-confirm{border:0;border-top:3px solid var(--ink);background:var(--surface);padding:24px;width:min(440px,calc(100vw - 32px));color:var(--ink)}
+.training-confirm::backdrop{background:rgba(20,20,20,.3)}
+.training-confirm[open]{animation:dlg .16s var(--ease)}
+@keyframes dlg{from{opacity:0;transform:translateY(6px)}}
+.training-confirm h2{font-size:20px;font-weight:600}
+.training-confirm p{font-size:15px;color:var(--ink-2);margin:8px 0 20px}
+.confirmation-actions{display:flex;justify-content:flex-end;gap:10px}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;font-size:14px;border-radius:2px;z-index:40;max-width:min(520px,calc(100vw - 32px));animation:toast var(--t-quick) var(--ease)}
+@keyframes toast{from{opacity:0;transform:translate(-50%,6px)}}
+.cobalt-morph{position:fixed;left:0;top:0;background:var(--cobalt);z-index:20;pointer-events:none;transform-origin:0 0}
+
+@media (max-width:760px){
+  body{padding-bottom:calc(56px + env(safe-area-inset-bottom,0px))}
+  body[data-room=train]{padding-bottom:0}
+  .site-header{gap:16px}
+  .tabs{position:fixed;left:0;right:0;bottom:0;height:calc(56px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);gap:0;background:var(--surface);border-top:1px solid var(--rule);z-index:10}
+  .tab{flex:1;font-size:13px}
+  .tab-ink{top:-1px;bottom:auto}
+  .site-footer{margin-top:24px;padding-bottom:20px}
+  .room-head{padding:20px var(--m) 12px}
+}
+
+/* settings: segmented choice for the transition speed */
+.set-label{font-size:13px;color:var(--ink-3);margin-top:14px}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--ink);border-radius:2px;overflow:hidden}
+.seg label{margin:0;display:block;cursor:pointer}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:grid;place-items:center;min-height:44px;font-size:14px;color:var(--ink);transition:background-color var(--t-press) linear,color var(--t-press) linear}
+.seg label+label span{border-left:1px solid var(--ink)}
+.seg input:checked+span{background:var(--ink);color:var(--paper)}
+.seg input:focus-visible+span{outline:2px solid var(--cobalt);outline-offset:-4px}
+
+/* One material system across rooms: headings of each room use the poster face, the settings sheet and the confirm note
+   are paper pinned with a strip of tape. Learning surfaces (the answer fields) stay plain. */
+.drawer-panel{background:var(--surface) url(../assets/tex/paper-2.png) 0 0/256px}
+.drawer-head h2,.room-head h1,.band-top h1{font-family:var(--f-poster,var(--f-ui));font-weight:900;letter-spacing:.02em}
+.training-confirm{border:0;padding:26px 26px 20px;background:var(--surface) url(../assets/tex/paper-2.png) 0 0/256px;box-shadow:0 10px 30px rgba(20,20,20,.28);overflow:visible}
+.training-confirm::before{content:"";position:absolute;top:-10px;left:50%;width:110px;height:20px;transform:translateX(-50%) rotate(-2deg);background:rgba(226,219,193,.92);box-shadow:0 1px 1px rgba(20,20,20,.14)}
+.training-confirm h2{font-family:var(--f-poster,var(--f-ui));font-weight:900}
+.room-head{padding:28px var(--m) 8px;display:grid;gap:10px;justify-items:start}

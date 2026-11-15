@@ -1,0 +1,59 @@
+/* Room transitions v7 「纵深」 (ui/transitions.js). During a transition the browser shows the old page as an image and the
+   new room live underneath; both, and the stage of printer's marks above them, move only by transform and opacity
+   (the iris is the one clip-path). The masthead keeps its place whenever both rooms show it. */
+:root{--hit:cubic-bezier(.08,.82,.17,1)}
+
+/* the student can always act: clicks go to the live room, and any input ends the transition at once */
+::view-transition{pointer-events:none}
+html[data-tx]::view-transition{background:var(--tx-void,#DDD9CE)}
+html[data-tx]::view-transition-old(root),html[data-tx]::view-transition-new(root){animation:none;mix-blend-mode:normal;backface-visibility:hidden}
+html[data-tx]::view-transition-image-pair(root){perspective:1600px}
+@media (max-width:760px){html[data-tx]::view-transition-image-pair(root){perspective:900px}}
+/* the old page lies down over the issue that is opening beneath it */
+html[data-tx=home]::view-transition-old(root){z-index:1}
+html[data-tx]::view-transition-group(tx-stage),html[data-tx]::view-transition-new(tx-stage),html[data-tx]::view-transition-old(tx-stage),
+html[data-tx]::view-transition-group(tx-header),html[data-tx]::view-transition-new(tx-header),
+html[data-tx]::view-transition-group(tx-tabs),html[data-tx]::view-transition-new(tx-tabs),
+html[data-tx]::view-transition-group(tx-pg-l),html[data-tx]::view-transition-new(tx-pg-l),
+html[data-tx]::view-transition-group(tx-pg-r),html[data-tx]::view-transition-new(tx-pg-r){animation:none}
+html[data-tx]::view-transition-old(tx-header),html[data-tx]::view-transition-old(tx-tabs),
+html[data-tx]::view-transition-old(tx-pg-l),html[data-tx]::view-transition-old(tx-pg-r){display:none}
+
+/* ---- the stage: printer's marks. Ink on the paper wall, paper on the black of the archive and of the box. */
+.tx-stage{position:fixed;inset:0;z-index:12;pointer-events:none;overflow:hidden;contain:strict;--tx-mark:#141414;--tx-soft:rgba(20,20,20,.38)}
+.tx-stage[data-tone=ink]{--tx-mark:#F1F0EA;--tx-soft:rgba(241,240,234,.42)}
+.tx-stage>*{position:absolute;margin:0;opacity:0}
+/* crop marks at the corners of the screen (and of the poster being printed) */
+.tx-crop{z-index:4;width:22px;height:22px;border:0 solid var(--tx-mark)}
+.tx-crop[data-c=tl]{border-width:1.5px 0 0 1.5px;transform-origin:0 0}
+.tx-crop[data-c=tr]{border-width:1.5px 1.5px 0 0;transform-origin:100% 0}
+.tx-crop[data-c=bl]{border-width:0 0 1.5px 1.5px;transform-origin:0 100%}
+.tx-crop[data-c=br]{border-width:0 1.5px 1.5px 0;transform-origin:100% 100%}
+.tx-crop-s{border-color:var(--ink)}
+/* the slug: where you are going, in the corner, like the line printed outside the trim */
+.tx-slug{z-index:4;display:flex;align-items:baseline;gap:10px;font:600 12.5px/1 var(--f-ui);letter-spacing:.12em;color:var(--tx-mark);white-space:nowrap}
+.tx-slug b{font:700 12px/1 var(--f-lat);letter-spacing:.08em;color:var(--red)}
+.tx-word{z-index:4;font:600 10.5px/1 var(--f-lat);letter-spacing:.32em;color:var(--tx-mark);white-space:nowrap}
+/* registration mark, hairlines and their nodes at the point you pressed */
+.tx-reg{z-index:5;width:40px;height:40px;border:1.5px solid var(--tx-mark);border-radius:50%}
+.tx-reg::before,.tx-reg::after{content:"";position:absolute;left:50%;top:50%;background:var(--tx-mark)}
+.tx-reg::before{width:64px;height:1.5px;margin:-.75px 0 0 -32px}
+.tx-reg::after{width:1.5px;height:64px;margin:-32px 0 0 -.75px}
+.tx-ax{z-index:3;background:var(--tx-soft)}
+.tx-node{z-index:3;width:7px;height:7px;border:1px solid var(--tx-mark);background:var(--tx-void-c,transparent)}
+.tx-ring{z-index:2;border:1px solid var(--tx-soft);border-radius:50%}
+/* the rim of the opening into the listening room: the record's cobalt edge */
+.tx-rim{z-index:2;border:14px solid var(--cobalt);border-radius:50%;box-shadow:0 0 0 1px rgba(255,255,255,.35) inset}
+/* a cobalt sheet carrying no content between the stage, the poster and the start button */
+.tx-sheet{z-index:3;left:0;top:0;transform-origin:0 0;background:var(--cobalt) url(../assets/tex/ink-2.png) 0 0/256px}
+.tx-fish{z-index:6;position:absolute!important}
+/* the archive's blinds, and the word printed across them */
+.tx-curtain{z-index:1;left:0;width:100%;perspective:1400px;opacity:1}
+.tx-slat{position:absolute;left:0;width:100%;background:#141414;transform-origin:50% 0;backface-visibility:hidden;opacity:0}
+.tx-big{position:absolute;left:0;right:0;top:50%;display:grid;justify-items:center;gap:14px;margin-top:-.62em;font:900 clamp(64px,10.5vw,176px)/.9 var(--f-poster);color:#F1F0EA;letter-spacing:.04em;opacity:0;
+  text-shadow:0 .09em 0 rgba(215,48,31,.55),0 .18em 0 rgba(215,48,31,.28),0 .27em 0 rgba(215,48,31,.12)}
+.tx-big small{font:600 clamp(10px,.9vw,13px)/1 var(--f-lat);letter-spacing:.34em;color:rgba(241,240,234,.62);text-shadow:none}
+@media (max-width:760px){.tx-crop{width:16px;height:16px}.tx-slug{font-size:11.5px;gap:8px}.tx-word{font-size:9.5px;letter-spacing:.24em}.tx-big{font-size:min(19vw,96px)}}
+
+/* the mini player stays with the header as an anchor */
+.mini-player{z-index:12}

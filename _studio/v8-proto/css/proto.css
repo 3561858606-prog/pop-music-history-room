@@ -717,3 +717,15 @@ body:not([data-room=disc]) .g-toast{display:none}
   .d-group ul{grid-template-columns:1fr}
 }
 @media (min-width:641px) and (max-width:860px){.d-group ul{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* ---------- 视频画质：720p / 1080p ---------- */
+.vid-acts{display:flex;align-items:center;gap:8px;flex:none}
+.vid-q{display:inline-flex;border:1px solid var(--faint);border-radius:2px;overflow:hidden}
+.vid-q button{font:600 11px/1 var(--num);letter-spacing:.03em;padding:6px 7px;color:var(--dim)}
+.vid-q button+button{border-left:1px solid var(--faint)}
+.vid-q button:hover{color:var(--fg);background:var(--wash)}
+.vid-q button[aria-pressed=true]{color:var(--ink);background:var(--amber)}
+.vid-len b{font-weight:700;color:var(--amber);margin-right:6px}
+.vid-note{font-size:12px;color:var(--dim);margin-top:6px}
+.vid-note:empty{display:none}
+@media(max-width:860px){.vid-acts{flex-direction:column;align-items:flex-end;gap:6px}}

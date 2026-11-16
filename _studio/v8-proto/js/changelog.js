@@ -1,11 +1,15 @@
 // 更新说明与「小设计」合集。界面在 guide.js。
 //
-// 每次更新：在 RELEASES 最前面加一条。v 用日期，同一天第二次更新写成 '2026-11-20b'。
+// 每次更新：在 RELEASES 最前面加一条。v 用日期，同一天第二次更新在日期后加 b、c（如 '2026-11-16b'）。
 //   t: 'new' 新功能 · 'fix' 修复 · 'tweak' 改进
 //   go（可选）：'start' 上手指南 · 'details' 小设计 · 'history' 历史页 · 'catalog-video' 目录里的「有视频」 · 'disc' 盘面
 // 老用户打开网站时，左下角会出现一次这条更新的小纸片；新用户只看上手指南，不打扰。
 // 新的小设计加到 DESIGNS 里，since 写这次更新的 v，更新说明里会标「新」。
 export const RELEASES = [
+  {v: '2026-11-16b', title: '1080p 课件视频', items: [
+    {t: 'new', text: '4 段课件视频可以看 1080p 原画：两段 Maple Leaf Rag（自动钢琴、班卓琴）、Cross Road Blues、Hound Dog 电视现场。', go: 'catalog-video'},
+    {t: 'tweak', text: '网速跟不上时自动换成 720p，从同一秒接着放；视频下方也可以自己选画质。'}
+  ]},
   {v: '2026-11-16', title: '课件视频、上手指南和导入备份', items: [
     {t: 'new', text: '8 首歌带「视频」标签，在歌曲详情里直接看课件视频。', go: 'catalog-video'},
     {t: 'new', text: '目录新增「有视频」筛选。'},
@@ -66,6 +70,7 @@ export const DESIGNS = [
   {id: 'celebrate', group: '唱片', title: '当场刻上', text: '一轮结束回到盘面，这一轮答过的圈会当着你的面刻上去。'},
   {id: 'lecture', group: '唱片', title: '只练一讲', text: '盘面右侧点讲名，就只练这一讲；点方格可以把几讲组合成范围。'},
   {id: 'cover', group: '唱片', title: '封面来源', text: '详情里的封面会注明是专辑封面、乐谱封面还是历史资料图，并附来源。'},
+  {id: 'quality', group: '唱片', title: '画质自动调', text: '1080p 视频卡住时会自动换成 720p，从同一秒接着放；视频下方也能自己选。', since: '2026-11-16b'},
   {id: 'songat', group: '唱片', title: '从音乐开始', text: '有的课件视频前面是讲解，点「从音乐开始」直接跳到音乐。'},
   {id: 'wave', group: '听辨', title: '真实的波形', text: '声槽是这首歌真实的音量起伏，点或拖就能跳到那一段。'},
   {id: 'keys', group: '听辨', title: '不用鼠标也行', text: '1—4 选择，0 没听出，Enter 提交，空格播放或暂停。'},

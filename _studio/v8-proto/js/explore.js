@@ -4,7 +4,7 @@ import {flatDisc} from './flat.js';
 import {player} from './audio.js';
 import {sleeveLayout} from './sleeve-layout.js';
 import {nameHTML, storyHTML} from './reading.js';
-import {hasVideo, videoFigureHTML, mountVideo, retryVideo, videoOf} from './video.js';
+import {hasVideo, videoFigureHTML, mountVideo, retryVideo, videoOf, setVideoQuality} from './video.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -402,6 +402,7 @@ export async function initExplore(ctx) {
     if (fig && b.hasAttribute('data-vid-play')) return playVideo(fig);
     if (fig && b.hasAttribute('data-vid-jump')) return playVideo(fig, videoOf(fig.dataset.video)?.songAt || 0);
     if (fig && b.hasAttribute('data-vid-retry')) return retryVideo(fig);
+    if (fig && b.dataset.vidQ) return setVideoQuality(fig, b.dataset.vidQ);
     if (b.dataset.resume) return ctx.resumeRound(b.dataset.resume);
     if (b.dataset.type) { M.prefs.questionType = b.dataset.type; M.savePrefs(); renderPanel(); panel.querySelector(`[data-type="${b.dataset.type}"]`)?.focus(); return; }
     if (b.id === 'startRound') return ctx.startRound(M.prefs.scope, b);

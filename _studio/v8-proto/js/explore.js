@@ -285,9 +285,14 @@ export async function initExplore(ctx) {
   /* ---------- 落针 ---------- */
   let needleToken = 0;
   function toggleNeedle(id = view.song) {
+    if (!M.byId.get(id)) return;
+    if (player.current()?.id === id && view.needle !== 'idle') return liftNeedle();
+    dropNeedle(id);
+  }
+  // 总是从头放这一首（单曲循环、上一首/下一首都走这里）
+  function dropNeedle(id) {
     const t = M.byId.get(id); if (!t) return;
-    if (player.current()?.id === id) return liftNeedle();
-    pauseVideo();
+    pauseVideo(); noteHistory(id);
     const g = M.ringOf.get(id), token = ++needleToken;
     player.prepare(t); view.needle = 'dropping'; renderNeedle();
     if (!disc) { player.start(); return; }
@@ -298,6 +303,153 @@ export async function initExplore(ctx) {
     requestAnimationFrame(wait);
   }
   function liftNeedle() { needleToken++; player.stop(); }
+
+  /* ---------- 播放模式：顺序 / 随机 / 单曲循环，像听歌软件一样 ----------
+     播放范围跟着右侧勾选的讲次；顺序按盘上由外到内（年份从早到晚）。
+     顺序播放放到最后一首就停；随机播放把范围洗一遍再放，放完重新洗；单曲循环一直放这一首。
+     上一首：放了 3 秒以上先回到这首开头；随机时按播放记录往回退。 */
+  const MODES = ['order', 'shuffle', 'one'];
+  const MODE_LABEL = {order: '顺序播放', shuffle: '随机播放', one: '单曲循环'};
+  if (!MODES.includes(M.prefs.playMode)) M.prefs.playMode = 'order';
+  const playlist = () => { const ids = rings.map(g => g.id).filter(id => M.lectureIds(M.byId.get(id)).some(l => M.prefs.scope.includes(l))); return ids.length ? ids : rings.map(g => g.id); };
+  let bag = [], played = [];
+  const noteHistory = id => { if (played.at(-1) !== id) played.push(id); if (played.length > 200) played.shift(); };
+  function orderStep(cur, dir, wrap) {
+    const list = playlist(); if (!list.length) return null;
+    let i = list.indexOf(cur);
+    if (i < 0) { const r = M.ringOf.get(cur)?.i ?? -1; i = dir > 0 ? list.findIndex(id => M.ringOf.get(id).i > r) - 1 : list.findIndex(id => M.ringOf.get(id).i >= r); if (i < -1) i = dir > 0 ? list.length - 1 : list.length; }
+    const j = i + dir;
+    if (j >= 0 && j < list.length) return list[j];
+    return wrap ? list[(j + list.length) % list.length] : null;
+  }
+  function shuffleNext(cur) {
+    const list = playlist();
+    bag = bag.filter(id => list.includes(id) && id !== cur);
+    if (!bag.length) { bag = list.filter(id => id !== cur); for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; } }
+    return bag.shift() ?? cur;
+  }
+  function nextOf(cur, auto) {
+    const mode = M.prefs.playMode;
+    if (mode === 'one' && auto) return cur;
+    if (mode === 'shuffle') return shuffleNext(cur);
+    return orderStep(cur, 1, !auto);   // 顺序播放：自动放到最后一首停下；手动点下一首会绕回第一首
+  }
+  function prevOf(cur) {
+    if (M.prefs.playMode === 'shuffle' && played.length > 1) { played.pop(); return played.pop(); }
+    return orderStep(cur, -1, true);
+  }
+  // 换到另一首：如果右侧正显示刚才那首，就跟着翻到新的一首（像播放器的“正在播放”）
+  function playTrack(id, from) {
+    if (!id) return;
+    if (from && view.mode === 'close' && view.song === from && id !== from) select(M.ringOf.get(id));
+    dropNeedle(id);
+  }
+  function skip(dir) {
+    const cur = player.current()?.id || view.song; if (!cur) return;
+    if (dir < 0 && player.time().t > 3) return dropNeedle(cur);
+    playTrack(dir > 0 ? nextOf(cur, false) : prevOf(cur), cur);
+  }
+  // 播放 / 暂停；放完停下后再点就从头放这一首
+  function togglePlay(want) {
+    const cur = player.current()?.id; if (!cur) return;
+    const active = ['playing', 'buffering', 'dropping'].includes(view.needle);
+    if (active && want !== 'play') return player.pause();
+    if (!active && want !== 'pause') return view.needle === 'paused' ? player.resume() : dropNeedle(cur);
+  }
+  function setMode(mode) {
+    M.prefs.playMode = mode; M.savePrefs(); bag = [];
+    renderBar(); say(tr(MODE_LABEL[mode]));
+  }
+
+  /* ---------- 正在播放：底部播放条 ---------- */
+  const ICON = {
+    prev: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14M19 5L9 12l10 7z"/></svg>',
+    next: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 5v14M5 5l10 7-10 7z"/></svg>',
+    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l12 7-12 7z"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>',
+    order: '<svg viewBox="0 0 24 24" aria-hidden="true" class="ln"><path d="M4 7h11M4 12h11M4 17h7"/><path d="M15 17h5m-2.5-2.5L20 17l-2.5 2.5"/></svg>',
+    shuffle: '<svg viewBox="0 0 24 24" aria-hidden="true" class="ln"><path d="M4 7h3.5c5 0 5 10 10 10H20m-2.5-2.5L20 17l-2.5 2.5"/><path d="M4 17h3.5c1.6 0 2.7-1 3.6-2.3m2.8-5.4C14.8 8 15.9 7 17.5 7H20m-2.5-2.5L20 7l-2.5 2.5"/></svg>',
+    one: '<svg viewBox="0 0 24 24" aria-hidden="true" class="ln"><path d="M17 7H8a4 4 0 0 0-4 4v1m3 5h9a4 4 0 0 0 4-4v-1"/><path d="M15 4.5L17.5 7 15 9.5M9 19.5L6.5 17 9 14.5"/><path d="M11.2 10.2l1.3-.9v5.4" class="one"/></svg>'
+  };
+  const bar = document.createElement('section');
+  bar.className = 'np'; bar.hidden = true; bar.setAttribute('aria-label', tr('正在播放'));
+  bar.innerHTML = `<div class="np-main">
+      <button class="np-song" data-np="show" title="${tr('在盘上显示这首歌')}"><span class="np-cover"></span><span class="np-meta"><b></b><small></small></span></button>
+      <div class="np-ctrl">
+        <button data-np="prev" aria-label="${tr('上一首')}" title="${tr('上一首')}">${ICON.prev}</button>
+        <button data-np="toggle" class="np-play"></button>
+        <button data-np="next" aria-label="${tr('下一首')}" title="${tr('下一首')}">${ICON.next}</button>
+      </div>
+      <button data-np="mode" class="np-mode"></button>
+      <button data-np="stop" class="np-x" aria-label="${tr('停止播放')}" title="${tr('停止播放')}">×</button>
+    </div>
+    <div class="np-prog"><span class="np-t">0:00</span><input type="range" min="0" max="1000" value="0" step="1" aria-label="${tr('播放进度')}"><span class="np-d">0:00</span></div>`;
+  $('roomDisc').append(bar);
+  const range = bar.querySelector('input'), clockOf = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  let seeking = false;
+  function renderBar() {
+    const t = player.current();
+    bar.hidden = !t; $('roomDisc').dataset.np = t ? '1' : '0';
+    const mode = M.prefs.playMode, mb = bar.querySelector('.np-mode');
+    mb.innerHTML = `${ICON[mode]}<span>${tr(MODE_LABEL[mode])}</span>`;
+    mb.setAttribute('aria-label', tr('播放模式：{m}（点一下切换）', {m: tr(MODE_LABEL[mode])})); mb.title = mb.getAttribute('aria-label'); mb.dataset.mode = mode;
+    if (!t) { mediaSession(null); return; }
+    const playing = view.needle === 'playing' || view.needle === 'buffering' || view.needle === 'dropping';
+    const pb = bar.querySelector('.np-play'); pb.innerHTML = playing ? ICON.pause : ICON.play;
+    pb.setAttribute('aria-label', tr(playing ? '暂停' : '播放')); pb.title = pb.getAttribute('aria-label');
+    if (bar.dataset.track !== t.id) {
+      bar.dataset.track = t.id;
+      const c = M.coverOf(t);
+      bar.querySelector('.np-cover').innerHTML = c ? `<img src="${c.url}" alt="" width="44" height="44">` : `<i>${t.year}</i>`;
+      bar.querySelector('.np-meta b').textContent = M.titleOf(t);
+      bar.querySelector('.np-meta small').textContent = `${t.artist} · ${t.year}`;
+      mediaSession(t);
+    }
+    bar.dataset.state = view.needle;
+    progress();
+    if ('mediaSession' in navigator) try { navigator.mediaSession.playbackState = playing ? 'playing' : 'paused'; } catch {}
+  }
+  function progress() {
+    if (seeking || bar.hidden) return;
+    const {t, d} = player.time(), dur = d || player.current()?.duration || 0;
+    range.value = dur ? Math.round(t / dur * 1000) : 0;
+    range.style.setProperty('--p', (dur ? t / dur * 100 : 0) + '%');
+    range.setAttribute('aria-valuetext', `${clockOf(t)} / ${clockOf(dur)}`);
+    bar.querySelector('.np-t').textContent = clockOf(t); bar.querySelector('.np-d').textContent = clockOf(dur);
+  }
+  player.element.addEventListener('timeupdate', progress);
+  player.element.addEventListener('loadedmetadata', progress);
+  range.addEventListener('input', () => {
+    seeking = true; const dur = player.time().d || player.current()?.duration || 0;
+    range.style.setProperty('--p', range.value / 10 + '%');
+    bar.querySelector('.np-t').textContent = clockOf(range.value / 1000 * dur);
+  });
+  range.addEventListener('change', () => { const dur = player.time().d || player.current()?.duration || 0; player.seek(range.value / 1000 * dur); seeking = false; progress(); });
+  bar.addEventListener('click', e => {
+    const act = e.target.closest('[data-np]')?.dataset.np; if (!act) return;
+    const cur = player.current()?.id;
+    if (act === 'toggle') return togglePlay();
+    if (act === 'prev') return skip(-1);
+    if (act === 'next') return skip(1);
+    if (act === 'mode') return setMode(MODES[(MODES.indexOf(M.prefs.playMode) + 1) % MODES.length]);
+    if (act === 'stop') return liftNeedle();
+    if (act === 'show' && cur) { const g = M.ringOf.get(cur); if (view.mode !== 'close' || view.song !== cur) enterBand(bands[g.band], g); }
+  });
+  // 系统的媒体控制（锁屏、耳机、键盘上的播放键）
+  function mediaSession(t) {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      if (!t) { navigator.mediaSession.metadata = null; navigator.mediaSession.playbackState = 'none'; return; }
+      const c = M.coverOf(t);
+      navigator.mediaSession.metadata = new MediaMetadata({title: M.titleOf(t), artist: `${t.artist} · ${t.year}`, album: tr('大众音乐史复习室'), artwork: c ? [{src: c.url}] : []});
+    } catch {}
+  }
+  if ('mediaSession' in navigator) {
+    const h = (a, fn) => { try { navigator.mediaSession.setActionHandler(a, fn); } catch {} };
+    h('play', () => togglePlay('play')); h('pause', () => togglePlay('pause'));
+    h('previoustrack', () => skip(-1)); h('nexttrack', () => skip(1));
+    h('seekto', d => { if (d.seekTime != null) player.seek(d.seekTime); });
+  }
 
   /* ---------- 课件视频 ---------- */
   // 正在看的视频跨面板重绘保留（同一首歌），换歌或离开唱片页就停下。
@@ -313,17 +465,24 @@ export async function initExplore(ctx) {
     mountVideo(fig, {at, onPlay: () => { if (player.current()) liftNeedle(); }});
   }
   player.on((state, t) => {
+    if (state === 'ended' && t) {   // 一首放完：按播放模式接下一首
+      const next = nextOf(t.id, true);
+      if (next) { playTrack(next, t.id); return; }
+      say(tr('已经放到范围里的最后一首'));
+    }
     if (state === 'playing') { view.needle = 'playing'; say(tr('正在播放 {s}', {s: t.song})); }
     else if (state === 'loading') view.needle = 'dropping';
     else if (state === 'waiting') { view.needle = 'buffering'; say(tr('音频正在缓冲')); }
+    else if (state === 'paused' && player.current()) { view.needle = 'paused'; disc?.setPlay(M.ringOf.get(t.id)?.i ?? -1, false); }
     else { view.needle = 'idle'; disc?.arm(null, false); disc?.setPlay(-1, false); if (state === 'error' || state === 'blocked') say(tr('这段音频现在放不出来')); }
-    renderNeedle();
+    if (state === 'playing' && disc) disc.setPlay(M.ringOf.get(t.id)?.i ?? -1, true);
+    renderNeedle(); renderBar();
   });
   function renderNeedle() {
     const b = panel.querySelector('.needle-btn'); if (!b) return;
     const mine = player.current()?.id === view.song;
     b.dataset.state = mine ? view.needle : 'idle';
-    b.querySelector('span').textContent = tr(!mine ? '落针试听' : view.needle === 'playing' ? '抬起唱针' : view.needle === 'buffering' ? '正在缓冲…' : '唱针正在落下…');
+    b.querySelector('span').textContent = tr(!mine || view.needle === 'idle' ? '落针试听' : view.needle === 'playing' || view.needle === 'paused' ? '抬起唱针' : view.needle === 'buffering' ? '正在缓冲…' : '唱针正在落下…');
     b.setAttribute('aria-pressed', mine ? 'true' : 'false');
   }
 

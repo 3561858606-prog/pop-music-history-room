@@ -108,5 +108,10 @@ export const player = {
   time: () => ({t: needle.element.currentTime, d: needle.element.duration || 0}),
   prepare(track) { started = false; needle.load(track); needle.play({warm: true}); listener?.('loading', track); },
   start() { started = true; try { needle.element.currentTime = 0; } catch {} needle.play({fadeIn: true}); },
-  stop() { started = false; const t = needle.current(); needle.stop(); if (t) listener?.('stopped', t); }
+  stop() { started = false; const t = needle.current(); needle.stop(); if (t) listener?.('stopped', t); },
+  // 播放条用：暂停 / 继续 / 拖进度
+  pause() { if (started && needle.current()) needle.pause(); },
+  resume() { if (started && needle.current()) needle.play(); },
+  seek(seconds) { return needle.seekTo(seconds); },
+  element: needle.element
 };

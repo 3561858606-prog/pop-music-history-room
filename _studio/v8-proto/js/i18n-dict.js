@@ -32,6 +32,7 @@ export const KO = {
   '稳定掌握': '확실히 앎', '仍需加强': '조금 더', '明显薄弱': '약함', '数据不足': '기록 부족', '基本掌握': '대체로 앎', '需要巩固': '복습 필요', '还没刻': '아직 안 새김',
   '75 首 · 七讲 · 外圈 1854 → 内圈 1968': '75곡 · 7강 · 바깥 1854 → 안쪽 1968', '暂无封面': '표지 없음',
   // explore
+  '在盘上显示这首歌': '레코드에서 이 곡 보기', '上一首': '이전 곡', '停止播放': '재생 멈추기', '播放进度': '재생 위치', '顺序播放': '순서대로', '随机播放': '셔플', '单曲循环': '한 곡 반복', '播放模式：{m}（点一下切换）': '재생 방식: {m} (눌러서 바꾸기)', '已经放到范围里的最后一首': '범위의 마지막 곡까지 재생했습니다',
   '同年封套': '같은 해 재킷', '同年封套已展开': '같은 해 재킷 펼침', '点击封套选歌，再落针试听': '재킷을 눌러 곡을 고르고 바늘을 내려 들어 보세요', '切换年份': '연도 바꾸기',
   '平面盘 · ↑↓ 换年代 · ←→ 换歌 · 空格落针或抬针': '평면 레코드 · ↑↓ 연대 · ←→ 곡 · 스페이스 바늘 내리기/올리기',
   '拖动转盘 · 点一条年代带贴近': '레코드를 끌어 돌리기 · 연대 띠를 눌러 확대',
@@ -144,6 +145,7 @@ export const EN = {
   '波形暂未载入': 'Waveform not loaded', '波形与音频不匹配': 'Waveform doesn’t match the audio', '{a}，共 {b}': '{a} of {b}', '短暂查看第 {n} 个词': 'Peek at word {n}',
   '稳定掌握': 'Solid', '仍需加强': 'Getting there', '明显薄弱': 'Weak', '数据不足': 'Too few answers', '基本掌握': 'Mostly known', '需要巩固': 'Needs review', '还没刻': 'Not cut yet',
   '75 首 · 七讲 · 外圈 1854 → 内圈 1968': '75 songs · 7 lectures · 1854 outside → 1968 inside', '暂无封面': 'No cover',
+  '在盘上显示这首歌': 'Show this song on the record', '上一首': 'Previous', '停止播放': 'Stop', '播放进度': 'Playback position', '顺序播放': 'In order', '随机播放': 'Shuffle', '单曲循环': 'Repeat one', '播放模式：{m}（点一下切换）': 'Play mode: {m} (click to change)', '已经放到范围里的最后一首': 'Reached the last song in the range',
   '同年封套': 'Same-year sleeves', '同年封套已展开': 'same-year sleeves spread out', '点击封套选歌，再落针试听': 'Click a sleeve to pick a song, then drop the needle', '切换年份': 'Switch year',
   '平面盘 · ↑↓ 换年代 · ←→ 换歌 · 空格落针或抬针': 'Flat record · ↑↓ decade · ←→ song · Space to drop or lift the needle',
   '拖动转盘 · 点一条年代带贴近': 'Drag to spin · click a decade band to zoom in',

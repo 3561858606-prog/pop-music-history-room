@@ -7,7 +7,8 @@
 // 老用户打开网站时，左下角会出现一次这条更新的小纸条；新用户只看上手指南，不打扰。
 // 新的小设计加到 DESIGNS 里，since 写这次更新的 v，更新说明里会标「新」。
 export const RELEASES = [
-  {v: '2026-11-16c', title: {zh: '三种语言和问题反馈', ko: '3개 언어 지원과 문의하기', en: 'Three languages and feedback'}, items: [
+  {v: '2026-11-16c', title: {zh: '播放模式、三种语言和问题反馈', ko: '재생 방식, 3개 언어, 문의하기', en: 'Play modes, three languages and feedback'}, items: [
+    {t: 'new', text: {zh: '落针试听像听歌软件一样：底部播放条有上一首、暂停、下一首和进度条，可选顺序播放、随机播放、单曲循环。', ko: '바늘 내려 듣기가 음악 앱처럼 바뀌었습니다. 아래 재생 바에 이전 곡, 일시정지, 다음 곡, 재생 위치가 있고 순서대로·셔플·한 곡 반복을 고를 수 있습니다.', en: 'Needle-drop listening now works like a music app: a player bar with previous, pause, next and a progress bar, plus In order, Shuffle and Repeat one.'}, go: 'disc'},
     {t: 'new', text: {zh: '界面支持中文、한국어、English：点右上角的语言按钮切换。', ko: '화면을 중국어, 한국어, 영어로 볼 수 있습니다. 오른쪽 위 언어 버튼으로 바꾸세요.', en: 'The interface now comes in Chinese, Korean and English. Switch with the language button at the top right.'}},
     {t: 'new', text: {zh: '新增「问题反馈」：发现问题或有建议，可以直接联系作者。', ko: '‘문의하기’를 추가했습니다. 문제나 제안이 있으면 만든 사람에게 바로 연락할 수 있습니다.', en: 'New Feedback page: report a problem or suggest something straight to the author.'}, go: 'feedback'}
   ]},
@@ -87,5 +88,7 @@ export const DESIGNS = [
   {id: 'tabs', group: '记录', title: {zh: '多开也不乱', ko: '여러 탭도 안전', en: 'Safe across tabs'}, text: {zh: '同时开了两个页面，旧页面不会覆盖新页面的进度。', ko: '페이지를 두 개 열어도 오래된 쪽이 새 진행 상황을 덮어쓰지 않습니다.', en: 'With two tabs open, the older one can’t overwrite progress made in the newer one.'}},
   {id: 'flat', group: '其他', title: {zh: '平面盘', ko: '평면 레코드', en: 'Flat record'}, text: {zh: '设备不支持 3D 时，自动换成平面的盘，功能都在。', ko: '3D를 지원하지 않는 기기에서는 평면 레코드로 바뀌고, 기능은 그대로입니다.', en: 'On devices without 3D, it switches to a flat record with every feature intact.'}},
   {id: 'motion', group: '其他', title: {zh: '减少动态效果', ko: '동작 줄이기', en: 'Reduced motion'}, text: {zh: '系统里开了「减少动态效果」，网站的转场和动画会一起省掉。', ko: '시스템에서 ‘동작 줄이기’를 켜면 사이트의 전환과 애니메이션도 생략됩니다.', en: 'Turn on “Reduce motion” in your system and the site skips its transitions and animations too.'}},
+  {id: 'playlist', group: '唱片', since: '2026-11-16c', title: {zh: '播放范围跟着讲次', ko: '재생 범위는 고른 강의', en: 'Plays your chosen lectures'}, text: {zh: '顺序和随机播放只放右侧勾选的讲次；顺序就是盘上由外到内、年份从早到晚。', ko: '순서대로·셔플 재생은 오른쪽에서 고른 강의만 재생합니다. 순서는 레코드 바깥에서 안쪽, 연도가 이른 곡부터입니다.', en: 'In-order and shuffle play only the lectures ticked on the right; “in order” runs from the outer edge inwards, oldest year first.'}},
+  {id: 'mediakeys', group: '唱片', since: '2026-11-16c', title: {zh: '耳机和键盘也能切歌', ko: '이어폰·키보드로도 곡 넘기기', en: 'Headphone and media keys'}, text: {zh: '落针播放时，耳机按键、键盘上的播放键和手机锁屏控制都能暂停和切歌。', ko: '재생 중에는 이어폰 버튼, 키보드 재생 키, 휴대폰 잠금 화면에서도 일시정지와 곡 넘기기를 할 수 있습니다.', en: 'While a song plays, headphone buttons, keyboard media keys and your phone’s lock screen can pause and skip.'}},
   {id: 'lang', group: '其他', since: '2026-11-16c', title: {zh: '三种语言', ko: '3개 언어', en: 'Three languages'}, text: {zh: '右上角切换中文、한국어、English；歌名、人名的中韩英写法都在名字下方。', ko: '오른쪽 위에서 중국어·한국어·영어를 바꿀 수 있고, 곡명과 인명의 여러 표기는 이름 아래에 있습니다.', en: 'Switch between Chinese, Korean and English at the top right; the other spellings of song and artist names sit beneath each name.'}}
 ];

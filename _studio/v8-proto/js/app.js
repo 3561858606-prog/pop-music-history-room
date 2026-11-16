@@ -17,7 +17,7 @@ const SIDE = {disc: 'lacquer', catalog: 'lacquer', train: 'paper', result: 'pape
 const veil = $('veil');
 
 let explore = null, exploreP = null, current = null, pendingCuts = null, busy = false, currentHash = null;
-let lastRound = null;
+let lastRound = null, justFinished = false;
 const rememberRound = id => { try { sessionStorage.setItem('v8-proto-active-round', id || ''); } catch {} };
 const preferredRound = () => { let id; try { id = sessionStorage.getItem('v8-proto-active-round'); } catch {} return M.unfinished().find(r => r.id === id) || M.unfinished()[0]; };
 const notice = message => { const el = $('appNotice'); el.textContent = message; el.hidden = !message; };
@@ -25,14 +25,20 @@ const historyCtx = {report: id => go('result/' + encodeURIComponent(id)), resume
 const train = createTrain($('roomTrain'), {
   reduced,
   exit: () => go('disc'),
-  finish(r) { lastRound = r; pendingCuts = r.cuts; rememberRound(''); go('result/' + encodeURIComponent(r.id)); }
+  finish(r) { lastRound = r; justFinished = true; pendingCuts = r.cuts; rememberRound(''); go('result/' + encodeURIComponent(r.id)); }
 });
 
 // 上手指南：只在盘面上主动出现一次；?still（截图、检查画面）时不出现。
 const guide = createGuide({
   focusDisc: () => explore?.focus(),
   dropButton: () => document.getElementById('startRound'),
-  onDisc: () => current === 'disc' && roomOf() === 'disc'
+  onDisc: () => current === 'disc' && roomOf() === 'disc',
+  // 更新说明里「去看看」的去处
+  navigate(target) {
+    if (target === 'history') return go('history');
+    if (target === 'catalog-video') { cat.filter = 'video'; cat.q = ''; $('catSearch').value = ''; if (current === 'catalog') renderCatalog(); return go('catalog'); }
+    if (target === 'disc') { go('disc'); explore?.focus(); }
+  }
 });
 const returning = () => M.history().length > 0 || M.unfinished().length > 0 || M.stats().source === 'proto';
 const ensureExplore = () => exploreP ||= import('./explore.js').then(m => m.initExplore({reduced, startRound, resumeRound})).then(api => { explore = api; if (STILL || new URLSearchParams(location.search).has('debug')) window.__v8 = {explore: api}; return api; });
@@ -76,6 +82,8 @@ async function route() {
       const id = decodeURIComponent(location.hash.split('/')[1] || '');
       const report = M.history().find(r => r.id === id) || lastRound || M.history()[0];
       renderResult($('roomResult'), report, {toDisc: () => go('disc'), again: () => startRound(report?.scope || M.prefs.scope, report?.questionType), history: () => go('history')});
+      // 刚做完一轮：底部放一条小设计（一次一条）
+      if (justFinished) { justFinished = false; const tip = guide.tip(); if (tip) $('roomResult').querySelector('.rs-foot')?.insertAdjacentHTML('afterend', tip); }
       swap('result');
       $('roomResult').querySelector('[data-act=disc]')?.focus({preventScroll: true});
     } else if (room === 'history') {
@@ -91,7 +99,7 @@ async function route() {
       if (pendingCuts) { explore.celebrate(pendingCuts); pendingCuts = null; }
       let introPlayed = false;
       if (from === null && !M.prefs.introSeen) { M.prefs.introSeen = true; M.savePrefs(); explore.intro(); introPlayed = true; }
-      if (!STILL && !M.prefs.guideSeen) guide.auto({returning: returning(), delay: introPlayed && !reduced() ? 1800 : 500});
+      if (!STILL) guide.auto({returning: returning(), delay: introPlayed && !reduced() ? 1800 : 500});
       if (fromPaper) { await sleep(40); await veilTo(false, 320); }
       if (from !== null) explore.focus();
     }

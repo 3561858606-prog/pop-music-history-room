@@ -21,7 +21,8 @@ const veil = $('veil');
 let explore = null, exploreP = null, current = null, pendingCuts = null, busy = false, currentHash = null;
 let lastRound = null, justFinished = false;
 const rememberRound = id => { try { sessionStorage.setItem('v8-proto-active-round', id || ''); } catch {} };
-const preferredRound = () => { let id; try { id = sessionStorage.getItem('v8-proto-active-round'); } catch {} return M.unfinished().find(r => r.id === id) || M.unfinished()[0]; };
+// 这个标签页正在做的那一轮（哪怕一首都还没答，刷新后也接着做）；没有就取最近一轮答过题的。
+const preferredRound = () => { let id; try { id = sessionStorage.getItem('v8-proto-active-round'); } catch {} const own = id && M.roundById(id); return own?.state === 'active' ? own : M.unfinished()[0]; };
 const notice = message => { const el = $('appNotice'); el.textContent = message; el.hidden = !message; };
 const historyCtx = {report: id => go('result/' + encodeURIComponent(id)), resume: resumeRound, disc: () => go('disc')};
 const train = createTrain($('roomTrain'), {
@@ -75,7 +76,8 @@ async function route() {
     if (from === 'train') train.pause();
     if (from === 'disc') explore?.pause();
     if (room === 'train') {
-      if (!train.active()) { const saved = preferredRound(); if (!saved || !train.restore(saved)) await train.start(M.prefs.scope); rememberRound(train.id()); }
+      // 没有正在做的一轮（例如在结果页按了返回）：回到盘面，不要悄悄开一轮新的
+      if (!train.active()) { const saved = preferredRound(); if (!saved || !train.restore(saved)) { location.replace('#disc'); return; } rememberRound(train.id()); }
       // 钻进标签：镜头落向标签，纸色铺满，再换到纸面
       if (from === 'disc' && explore) { const ms = explore.dive(); if (ms) { await sleep(ms - 200); await veilTo(true, 200); } }
       swap('train'); train.resume();

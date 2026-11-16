@@ -171,7 +171,8 @@ export function refreshRecords() {
   return refreshTail;
 }
 export const history = () => rounds.filter(r => ['finished', 'legacy'].includes(r.state) && r.entries?.length).sort((a,b) => String(b.time || b.updatedAt || '').localeCompare(String(a.time || a.updatedAt || '')));
-export const unfinished = () => rounds.filter(r => r.state === 'active').sort((a,b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+// 「继续未完成的一轮」只算至少答过一首的；一首没答的空轮次不提示。
+export const unfinished = () => rounds.filter(r => r.state === 'active' && r.entries?.length > 0).sort((a,b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
 export const roundById = id => rounds.find(r => r.id === id);
 export async function saveRound(snapshot, entry) {
   const saved = await store.saveRound(snapshot, entry);

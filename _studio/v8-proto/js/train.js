@@ -509,7 +509,12 @@ export function createTrain(root, ctx) {
       try {
         await tail;
         if (saveError) throw Error(tr('当前内容尚未保存，请先重试保存后再切换轮次。'));
-        const latest = round ? M.roundById(round.id) : null;
+        let latest = round ? M.roundById(round.id) : null;
+        // 一首都没答就换掉的轮次：直接收起来（记为结束、不进历史），不留下「未完成」
+        if (round && !round.done.length && latest?.state === 'active') {
+          const data = snapshot(); data.state = 'finished'; data.reason = 'empty'; data.time = new Date().toISOString();
+          try { latest = await persist(data); } catch {}
+        }
         hideSheet(false); round = null; waveView?.destroy(); waveView = null; playback.stop();
         return latest;
       } finally { operating = false; saveUI(); }

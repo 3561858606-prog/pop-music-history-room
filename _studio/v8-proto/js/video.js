@@ -1,10 +1,13 @@
 // 课件视频：8 段从课件 PPTX 中原样提取的视频，与已有的 8 个视频音轨曲目一一对应。
 // 对应关系按讲次、页码以及 scripts/video-edits.json 记录的源媒体 SHA-256 核对（t73 按第 7 讲第 12 页）。
 // 视频目录由 index.html 的 <meta name="course-video-base"> 指定（默认站内 course-videos/）。
-// hd：有 1080p 原画（course-videos/1080/ 下，原片无损重封装），其余为 720p 网页版或原片本身（480p/720p）。
+// 画质档：原片（720p / 480p，在 course-videos/ 下），有的还有 1080p 原画（course-videos/1080/），
+// 另有 360p、240p 流畅档（course-videos/360/、/240/，scripts/make-media-tiers.mjs 生成）。各档码率见 media-tiers.js。
 import {esc} from './reading.js';
 import {site} from './model.js';
 import {t as tr} from './i18n.js';
+import {VIDEO as TIERS} from './media-tiers.js';
+import * as net from './net.js';
 
 const base = (() => {
   let v = document.querySelector('meta[name="course-video-base"]')?.content?.trim() || 'course-videos/';
@@ -27,20 +30,25 @@ export const videoOf = id => VIDEOS[id] || null;
 export const hasVideo = id => id in VIDEOS;
 export const videoCount = Object.keys(VIDEOS).length;
 
-/* ---------- 画质：有 1080p 的默认放 1080p；卡顿时自动换回 720p，也可以自己选 ---------- */
-const QKEY = 'v8-proto-video-quality', SLOW = 'v8-proto-video-slow';
+/* ---------- 画质：自动按网速挑档（网速要有码率的 2 倍），卡了自动往下降一档；也可以自己选 ---------- */
+const QKEY = 'v8-proto-video-quality';
 const get = (store, key) => { try { return store.getItem(key); } catch { return null; } };
 const put = (store, key, value) => { try { store.setItem(key, value); } catch {} };
-let choice = ['720', '1080'].includes(get(localStorage, QKEY)) ? get(localStorage, QKEY) : 'auto';
-let slow = get(sessionStorage, SLOW) === '1';   // 这次打开网站时卡过，之后的视频先放 720p
-const conn = navigator.connection;
-// 网速估计只在明显很慢（2G/3G）或开了省流量时才先放 720p；其余先放 1080p，真卡了再换。
-const autoHD = () => !slow && !conn?.saveData && !/(^|-)2g$|^3g$/.test(conn?.effectiveType || '');
-export const qualityOf = v => !v.hd ? null : choice !== 'auto' ? choice : autoHD() ? '1080' : '720';
-export const videoSrc = (v, q = qualityOf(v)) => base + (q === '1080' ? '1080/' : '') + v.file;
-const qualityHTML = (v, q) => v.hd ? `<span class="vid-q" role="group" aria-label="${tr('画质')}">${['720', '1080'].map(x => `<button data-vid-q="${x}" aria-pressed="${q === x}">${x}p</button>`).join('')}</span>` : '';
+let choice = /^(auto|\d{3,4})$/.test(get(localStorage, QKEY) || '') ? get(localStorage, QKEY) : 'auto';
+// 这段视频有哪些档：[[高度, kbps], …] 从高到低
+const tiersOf = v => Object.entries(TIERS[v.file] || {}).sort((a, b) => +b[0] - +a[0]);
+const kbpsOf = (v, q) => (TIERS[v.file] || {})[q] || 1500;
+const lowerOf = (v, q) => { const list = tiersOf(v), i = list.findIndex(([x]) => x === q); return i >= 0 && i < list.length - 1 ? list[i + 1][0] : null; };
+export function qualityOf(v) {
+  const list = tiersOf(v); if (!list.length) return null;
+  if (choice !== 'auto') return (list.find(([q]) => +q <= +choice) || list.at(-1))[0];
+  return net.pick(list, 2, list.find(([q]) => q === '360')?.[0]);
+}
+export const videoSrc = (v, q = qualityOf(v)) => base + (q === '1080' || q === '360' || q === '240' ? q + '/' : '') + v.file;
+const qualityHTML = (v, q) => { const list = tiersOf(v); if (list.length < 2) return '';
+  return `<span class="vid-q" role="group" aria-label="${tr('画质')}"><button data-vid-q="auto" aria-pressed="${choice === 'auto'}">${tr('自动')}</button>${list.map(([x]) => `<button data-vid-q="${x}" aria-pressed="${choice !== 'auto' && q === x}" data-now="${q === x ? 1 : 0}">${x}p</button>`).join('')}</span>`; };
 function note(fig, text) { const n = fig.querySelector('.vid-note'); if (n) n.textContent = text; }
-function syncQuality(fig) { const q = fig.dataset.q; fig.querySelectorAll('[data-vid-q]').forEach(b => b.setAttribute('aria-pressed', b.dataset.vidQ === q)); }
+function syncQuality(fig) { const q = fig.dataset.q; fig.querySelectorAll('[data-vid-q]').forEach(b => { const x = b.dataset.vidQ; b.setAttribute('aria-pressed', x === 'auto' ? choice === 'auto' : choice !== 'auto' && x === q); b.dataset.now = x === q ? 1 : 0; }); }
 // 换源：从同一秒接着放，原来在放就继续放。
 function swap(fig, q) {
   const v = videoOf(fig.dataset.video); fig.dataset.q = q; syncQuality(fig);
@@ -51,8 +59,9 @@ function swap(fig, q) {
 }
 export function setVideoQuality(fig, q) {
   choice = q; put(localStorage, QKEY, q);
-  if (fig.dataset.q !== q) swap(fig, q);
-  note(fig, tr(q === '1080' ? '已换成 1080p 原画。网速慢时可能需要缓冲。' : '已换成 720p。'));
+  const v = videoOf(fig.dataset.video), want = qualityOf(v);
+  if (fig.dataset.q !== want) swap(fig, want); else syncQuality(fig);
+  note(fig, q === 'auto' ? tr('自动画质：按网速选 {q}p，卡了会自动降低。', {q: want}) : tr('已换成 {q}p。', {q: want}) + (+want >= 720 ? ' ' + tr('网速慢时可能需要缓冲。') : ''));
 }
 
 const posterOf = id => `assets/video-posters/${id}.jpg`;
@@ -70,7 +79,7 @@ export function videoFigureHTML(t) {
       <button class="vid-start" data-vid-play aria-label="${tr('播放课件视频：{s}，{w}，时长 {d}', {s: esc(t.song), w: where, d: clock(v.duration)})}">
         <img src="${posterOf(t.id)}" alt="" width="640" height="360" decoding="async">
         <span class="vid-glyph" aria-hidden="true"><i></i></span>
-        <span class="vid-len" aria-hidden="true">${q === '1080' ? '<b>1080p</b>' : ''}${clock(v.duration)}</span>
+        <span class="vid-len" aria-hidden="true">${q ? `<b>${q}p</b>` : ''}${clock(v.duration)}</span>
       </button>
     </div>
     <figcaption>
@@ -91,29 +100,32 @@ export function mountVideo(fig, {at = 0, onPlay} = {}) {
     el.controls = true; el.playsInline = true; el.preload = 'auto';
     el.setAttribute('playsinline', ''); el.setAttribute('controlslist', 'nodownload');
     el.poster = posterOf(id);
-    if (v.hd && !fig.dataset.q) fig.dataset.q = qualityOf(v);
+    if (!fig.dataset.q) fig.dataset.q = qualityOf(v) || '';
     el.src = videoSrc(v, fig.dataset.q) + (at ? `#t=${at}` : '');
     el.setAttribute('aria-label', tr('课件视频') + ': ' + tr('第 {d} 讲 · 第 {s} 页', {d: v.deck, s: v.slide}));
     el.addEventListener('play', () => { fig.dataset.state = 'playing'; onPlay?.(); });
     el.addEventListener('pause', () => { if (fig.dataset.state === 'playing') fig.dataset.state = 'paused'; });
-    // 自动画质：1080p 播放中累计卡顿超过 3 秒、一次卡住 4 秒，或点了播放 8 秒还没开始，就换回 720p。
+    // 边播边量网速。自动画质下：播放中累计卡顿超过 2 秒、一次卡住 2.5 秒，或点了播放 6 秒还没开始，就降一档，从同一秒接着放。
+    net.watch(el, () => kbpsOf(v, fig.dataset.q), () => el.isConnected);
     let started = false, since = 0, stalled = 0, timer = 0;
     const downgrade = () => {
-      clearTimeout(timer); since = 0;
-      if (choice !== 'auto' || fig.dataset.q !== '1080') return;
-      slow = true; put(sessionStorage, SLOW, '1'); swap(fig, '720');
-      note(fig, tr('网速跟不上 1080p，已换成 720p，从同一秒接着放。想看原画可点 1080p。'));
+      clearTimeout(timer); since = 0; stalled = 0;
+      const lower = lowerOf(v, fig.dataset.q);
+      if (choice !== 'auto' || !lower) return;
+      net.penalize(kbpsOf(v, fig.dataset.q)); swap(fig, lower);
+      note(fig, tr('网速跟不上，已换成 {q}p，从同一秒接着放。', {q: lower}));
     };
     el.addEventListener('waiting', () => {
       fig.dataset.buffering = '1';
-      if (started && !since) { since = performance.now(); clearTimeout(timer); timer = setTimeout(downgrade, 4000); }
+      if (started && !since && !el.seeking) { since = performance.now(); clearTimeout(timer); timer = setTimeout(downgrade, 2500); }
     });
     el.addEventListener('playing', () => {
       delete fig.dataset.buffering; clearTimeout(timer);
-      if (since) { stalled += performance.now() - since; since = 0; if (stalled > 3000) downgrade(); }
+      if (since) { stalled += performance.now() - since; since = 0; if (stalled > 2000) downgrade(); }
       started = true;
     });
-    el.addEventListener('play', () => { if (!started && fig.dataset.q === '1080') { clearTimeout(timer); timer = setTimeout(() => { if (!started) downgrade(); }, 8000); } });
+    el.addEventListener('play', () => { if (!started) { clearTimeout(timer); timer = setTimeout(() => { if (!started) { started = false; downgrade(); } }, 6000); } });
+    el.addEventListener('loadstart', () => { started = false; });
     el.addEventListener('error', () => {
       fig.dataset.state = 'error';
       fig.querySelector('.vid-error').innerHTML = `${tr('视频暂时无法载入。')}<button data-vid-retry>${tr('重试')}</button>`;

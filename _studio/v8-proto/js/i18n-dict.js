@@ -3,6 +3,12 @@
 const s = (n, one, many) => (+n === 1 ? one : many).replace('{n}', n);
 
 export const KO = {
+  '流畅音质': '절약 음질',
+  '自动': '자동',
+  '自动画质：按网速选 {q}p，卡了会自动降低。': '자동 화질: 인터넷 속도에 맞춰 {q}p로 재생하고, 끊기면 자동으로 낮춥니다.',
+  '已换成 {q}p。': '{q}p로 바꿨습니다.',
+  '网速慢时可能需要缓冲。': '인터넷이 느리면 버퍼링이 생길 수 있습니다.',
+  '网速跟不上，已换成 {q}p，从同一秒接着放。': '인터넷 속도가 따라가지 못해 {q}p로 바꾸고 같은 지점부터 이어서 재생합니다.',
   '大众音乐史复习室': '대중음악사 복습실', '母盘': '마스터 디스크', '母盘（平面）': '마스터 디스크(평면)', '平面母盘': '평면 마스터 디스크',
   '跳到主要内容': '본문으로 건너뛰기', '页面': '페이지', '唱片': '레코드', '目录': '목록', '结果': '결과', '历史': '기록',
   '帮助、更新与反馈': '도움말, 업데이트, 문의', '帮助、更新与反馈（有新的更新）': '도움말, 업데이트, 문의 (새 업데이트 있음)', '语言': '언어', '说明': '안내',
@@ -119,6 +125,12 @@ export const KO = {
 };
 
 export const EN = {
+  '流畅音质': 'data-saver audio',
+  '自动': 'Auto',
+  '自动画质：按网速选 {q}p，卡了会自动降低。': 'Auto quality: playing {q}p for your connection; it steps down automatically if playback stalls.',
+  '已换成 {q}p。': 'Switched to {q}p.',
+  '网速慢时可能需要缓冲。': 'It may buffer on a slow connection.',
+  '网速跟不上，已换成 {q}p，从同一秒接着放。': 'Your connection couldn’t keep up, so it switched to {q}p and carried on from the same second.',
   '大众音乐史复习室': 'Pop Music History Room', '母盘': 'Master Disc', '母盘（平面）': 'Master Disc (flat)', '平面母盘': 'Flat master disc',
   '跳到主要内容': 'Skip to main content', '页面': 'Pages', '唱片': 'Record', '目录': 'Catalog', '结果': 'Results', '历史': 'History',
   '帮助、更新与反馈': 'Help, updates and feedback', '帮助、更新与反馈（有新的更新）': 'Help, updates and feedback (new update)', '语言': 'Language', '说明': 'Help',

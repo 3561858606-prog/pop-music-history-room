@@ -1,5 +1,7 @@
 // 母盘的数据模型：每首歌在盘上的位置，以及它被刻了多少。
 import {LITE} from './audio-lite.js';
+import {AUDIO} from './media-tiers.js';
+import * as net from './net.js';
 // 只读取 v3 的课程数据和记忆模块，不改动它们。原型的作答记录写在自己的存储键里。
 import {catalog} from '../../../v3/catalog.js';
 import {COVERS} from '../../../v3/covers.js';
@@ -85,7 +87,9 @@ const LECTURE_EN = {1: 'Concepts and Origins', 2: 'The 1920s (1)', 3: 'The 1920s
 export const lectureLabel = id => { const l = lectures.find(x => x.id === id); return !l ? '' : LANG === 'ko' ? l.ko || l.label : LANG === 'en' ? LECTURE_EN[id] || l.label : l.label; };
 export const styleOf = t => catalog.styles.find(s => s.id === t.style) || {label: t.style, sub: '', ko: ''};
 export const aliasesOf = (t, field, exclude = []) => alternateNames(t, field, catalog.styles, tracks, exclude);
-export const coverOf = t => { const c = PROTO_COVERS[t.id] || COVERS[t.id]; return c ? {...c, url: site(c.url || 'v3/' + c.img)} : null; };
+// 页面上用 480px 的轻量封面（img-lite/，scripts/make-cover-lite.mjs 生成）；原图地址留在 full。
+const coverPath = c => String(c.url || 'v3/' + c.img).replace(/^\/+/, '');
+export const coverOf = t => { const c = PROTO_COVERS[t.id] || COVERS[t.id]; return c ? {...c, url: site('img-lite/' + coverPath(c).replace(/\.png$/i, '.jpg')), full: site(coverPath(c))} : null; };
 export function coverLabel(cover) {
   if (!cover) return t('封面待补');
   if (cover.kind === 'leaflet') return t('唱片附页 · 同盘 A 面资料，非本曲封套');
@@ -97,9 +101,17 @@ let STORIES = null, storiesP = null;
 export const loadStories = () => storiesP ||= import('./stories.js').then(m => { STORIES = m.STORIES; }).catch(() => { storiesP = null; });
 export const storiesLoaded = () => !!STORIES;
 export const storyOf = t => STORIES?.[t.id] || null;
-// 码率高于 128k 的几首在网页里用压到 128k 的 audio-lite（320k 的源小六成）；原 mp3 留作退路（audio.js 加载失败时自动换回）。
-export const audioSrc = t => LITE.has(t.id) ? site('audio-lite/' + t.id + '.mp3') : site(t.src);
+// 音频两档：hd = 原档（码率高于 128k 的几首用压到 128k 的 audio-lite）；sd = 64k 流畅档（audio-sd）。
+// 按 net.js 测得的网速自动挑：网速要有码率的 3 倍才放 hd，否则放 sd，保证边下边播不卡。原 mp3 永远是最后的退路。
+const hdSrc = t => LITE.has(t.id) ? site('audio-lite/' + t.id + '.mp3') : site(t.src);
+const hdKbps = t => LITE.has(t.id) ? 128 : AUDIO[t.id]?.hd || 128;
+const hasSd = t => !!AUDIO[t.id] && AUDIO[t.id].sd < hdKbps(t) * .8;
+export const audioTier = t => hasSd(t) ? net.pick([['hd', hdKbps(t)], ['sd', AUDIO[t.id].sd]], 3) : 'hd';
+export const audioSrc = (t, tier = audioTier(t)) => tier === 'sd' && hasSd(t) ? site('audio-sd/' + t.id + '.mp3') : hdSrc(t);
 export const audioFallbackSrc = t => site(t.src);
+export const srcTier = src => String(src).includes('/audio-sd/') ? 'sd' : 'hd';
+export const srcKbps = (t, src) => srcTier(src) === 'sd' && AUDIO[t.id] ? AUDIO[t.id].sd : hdKbps(t);
+export const canDowngrade = (t, src) => srcTier(src) === 'hd' && hasSd(t);
 // 同名的几个版本（如三段 Maple Leaf Rag）在列表里带上版本说明
 const titleCount = new Map(); for (const t of tracks) titleCount.set(t.song, (titleCount.get(t.song) || 0) + 1);
 export const titleOf = t => titleCount.get(t.song) > 1 && t.versionLabel ? (LANG === 'zh' ? `${t.song}（${t.versionLabel.split(' · ')[0]}）` : `${t.song} (${tr(t.versionLabel.split(' · ')[0])})`) : t.song;

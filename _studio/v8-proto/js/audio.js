@@ -1,5 +1,6 @@
 // 训练与落针共用的媒体状态控制。淡入由音频时钟调度，不依赖画面帧率。
-import {audioSrc, audioFallbackSrc} from './model.js';
+import {audioSrc, audioFallbackSrc, srcKbps, srcTier, canDowngrade} from './model.js';
+import {watch, penalize} from './net.js';
 import {t} from './i18n.js';
 export function createAudio() {
   const element = new Audio(); element.preload = 'metadata';
@@ -47,16 +48,29 @@ export function createAudio() {
   element.addEventListener('playing', () => { if (track && !silent) set('playing'); });
   element.addEventListener('pause', () => { if (track && state !== 'ended' && state !== 'error' && !silent) set('paused'); });
   element.addEventListener('ended', () => { stopNoise(); if (track) set('ended'); });
-  let lastPlay = null;   // 最近一次 play() 的参数，退回 mp3 后照原样再放
+  let lastPlay = null;   // 最近一次 play() 的参数，换源后照原样再放
+  // 换源：从同一位置接着放（原来在放 / 正要放就继续放）
+  function switchSrc(src) {
+    const wanted = lastPlay && ['loading', 'playing', 'waiting'].includes(state);
+    resumeAt = element.currentTime || resumeAt || 0; token++;
+    silent = true; element.src = src; silent = false;
+    if (wanted) api.play({warm: lastPlay.warm}); else set('loading');
+  }
+  // 边播边量网速；卡住超过 1.5 秒（或点了播放 5 秒还没出声）就降到流畅档，从同一秒接着放。
+  watch(element, () => track ? srcKbps(track, element.currentSrc) : 128);
+  let stallTimer = 0, seekAt = 0;
+  element.addEventListener('seeking', () => { seekAt = performance.now(); });
+  const downgrade = () => {
+    clearTimeout(stallTimer);
+    if (!track || !canDowngrade(track, element.currentSrc || element.src) || !['loading', 'waiting'].includes(state)) return;
+    penalize(srcKbps(track, element.currentSrc)); switchSrc(audioSrc(track, 'sd'));
+  };
+  element.addEventListener('waiting', () => { if (track && !element.paused && performance.now() - seekAt > 1000) { clearTimeout(stallTimer); stallTimer = setTimeout(downgrade, 1500); } });
+  element.addEventListener('playing', () => clearTimeout(stallTimer));
   element.addEventListener('error', () => {
-    // 轻量版载不了（个别浏览器不支持 AAC 或文件缺失）：换回原 mp3，从同一位置接着放
-    if (track && track.src && element.src.includes('/audio-lite/')) {
-      const wanted = lastPlay && ['loading', 'playing', 'waiting'].includes(state);
-      resumeAt = element.currentTime || resumeAt || 0; token++;
-      silent = true; element.src = audioFallbackSrc(track); silent = false;
-      if (wanted) api.play(lastPlay); else set('loading');
-      return;
-    }
+    clearTimeout(stallTimer);
+    // 轻量版 / 流畅版载不了（个别浏览器或文件缺失）：换回原 mp3，从同一位置接着放
+    if (track && track.src && /\/audio-(lite|sd)\//.test(element.src)) { switchSrc(audioFallbackSrc(track)); return; }
     stopNoise(); if (track) set('error');
   });
   element.addEventListener('loadedmetadata', () => {
@@ -68,8 +82,10 @@ export function createAudio() {
     on(fn) { listener = fn; },
     current: () => track,
     failed: () => state === 'error' || state === 'blocked',
-    message: () => messages[state] || '',
-    load(t, at = 0) { token++; stopNoise(); silent = true; element.pause(); track = t; resumeAt = at; element.src = audioSrc(t); silent = false; set('loading'); },
+    // 网速慢时自动用的 64k 流畅档：在状态里标一下
+    message: () => (messages[state] || '') + (track && ['playing', 'waiting', 'paused'].includes(state) && srcTier(element.currentSrc || element.src) === 'sd' ? ' · ' + t('流畅音质') : ''),
+    tier: () => srcTier(element.currentSrc || element.src),
+    load(t, at = 0) { clearTimeout(stallTimer); token++; stopNoise(); silent = true; element.pause(); track = t; resumeAt = at; element.src = audioSrc(t); silent = false; set('loading'); },
     async play({fadeIn = false, warm = false} = {}) {
       if (!track) return false;
       lastPlay = {fadeIn, warm};
@@ -82,6 +98,7 @@ export function createAudio() {
         else element.muted = warm;
       } else if (gain) { gain.gain.cancelScheduledValues(context.currentTime); gain.gain.setValueAtTime(1, context.currentTime); }
       set('loading');
+      if (!warm) { clearTimeout(stallTimer); stallTimer = setTimeout(downgrade, 5000); }
       try {
         if (resumeAt !== null && element.readyState !== 0) applyPendingSeek();
         await element.play();

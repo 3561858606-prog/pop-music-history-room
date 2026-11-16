@@ -543,5 +543,16 @@ export function renderResult(root, last, ctx) {
     root.querySelector('#rsDisc').replaceChildren(d.svg);
   }
   root.onclick = e => { const a = e.target.closest('[data-act]')?.dataset.act; if (a === 'disc') ctx.toDisc(); else if (a === 'again') ctx.again(); else if (a === 'history') ctx.history(); };
-  root.onkeydown = e => { if (e.key === 'Enter' && !e.defaultPrevented && !e.isComposing && e.keyCode !== 229 && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.target.closest('button,a,input,select,textarea,[contenteditable]')) { e.preventDefault(); if (!e.repeat) ctx.toDisc(); } };
+  root._toDisc = ctx.toDisc;
+  // 挂在 document 上：点过页面空白处后焦点落在 body，监听挂在 root 上就收不到 Enter
+  if (!root._enterBound) {
+    root._enterBound = true;
+    document.addEventListener('keydown', e => {
+      const t = e.target;
+      if (e.key !== 'Enter' || root.hidden || e.defaultPrevented || e.isComposing || e.keyCode === 229 || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (!root.contains(t) && t !== document.body && t !== document.documentElement) return;
+      if (t.closest?.('button,a,input,select,textarea,[contenteditable]')) return;
+      e.preventDefault(); if (!e.repeat) root._toDisc?.();
+    });
+  }
 }

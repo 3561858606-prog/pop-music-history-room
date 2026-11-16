@@ -2,6 +2,7 @@
 // 这一页不加载 WebGL。动画只有三处：声槽前进、红笔订正、全对时刻下一段。
 import {FIELDS, NOT_HEARD, RandomQueue, buildQuestion, filterTracks, gradeQuestion, summarize} from '../../../v3/core.js';
 import * as M from './model.js';
+import {markPrefetched} from './net.js';
 import {gradeWritten, checkField} from './names.js';
 import {nameHTML, optionAliasesHTML, trackStoryHTML} from './reading.js';
 import {createAudio} from './audio.js';
@@ -89,7 +90,7 @@ export function createTrain(root, ctx) {
       const t = upcoming(); if (!t || t.id === warmedId) return;
       warmedId = t.id;
       fetch(new URL('../assets/waveforms/' + encodeURIComponent(t.id) + '.json', import.meta.url)).catch(() => {});
-      spare.src = M.audioSrc(t);
+      spare.src = M.audioSrc(t); markPrefetched(spare.src);
     };
     warmTimer = setTimeout(tick, 1500);
   }

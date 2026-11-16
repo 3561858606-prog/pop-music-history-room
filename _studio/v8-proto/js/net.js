@@ -1,7 +1,7 @@
 // 网速估计：音视频自动挑档用。
 // 量法：播放时每 2 秒看一次「已缓冲的秒数」涨了多少 × 这个文件的码率 = 实际下载速度（字节/秒）。
 // 不额外下载测速文件；结果存在本机半小时，下次打开直接用。卡顿时立刻往下调。
-// 还没量过时：浏览器给了网速提示（Chrome / 安卓）就打个对折用；没有就当作慢网，先放流畅档，量到快了再升。
+// 还没量过时：浏览器的网速提示只在它说「慢」时才信（它常常报 10 Mbps，实际却很慢）；否则先放流畅档，量到快了再升。
 const KEY = 'v8-proto-net', TTL = 30 * 60e3;
 let est = null;
 try { const v = JSON.parse(localStorage.getItem(KEY)); if (v && Date.now() - v.t < TTL && v.bps > 0) est = v; } catch {}
@@ -12,7 +12,7 @@ export function bandwidth() {
   if (est && Date.now() - est.t < TTL) return est.bps;
   const c = navigator.connection;
   if (c?.saveData) return 20e3;
-  if (c?.downlink) return c.downlink * 1e6 / 8 / 2;
+  if (c?.downlink && c.downlink < 1.5) return c.downlink * 1e6 / 8 / 2;
   return null;
 }
 export function report(bps) {
@@ -35,14 +35,24 @@ export function pick(tiers, margin = 2.5, unknown = null) {
 }
 
 // 量一个正在加载的媒体元素。kbps() 返回当前这个文件的码率。返回 stop()。
+// 提前预取过的文件会从缓存里秒到，不能拿来算网速。
+const prefetched = new Set();
+export const markPrefetched = url => prefetched.add(new URL(url, location.href).href);
 export function watch(el, kbps, alive = () => true) {
-  let last = null;
+  let last = null, start = 0, whole = false;
+  // 新文件开始加载：记下时间。网快时整首几秒内就下完，量不到「增长」，就按「下完用了多久」算一个下限。
+  el.addEventListener('loadstart', () => { start = performance.now(); whole = false; last = null; });
   const ahead = () => { const b = el.buffered; let end = 0; for (let i = 0; i < b.length; i++) end = Math.max(end, b.end(i)); return end; };
   const timer = setInterval(() => {
     if (!alive()) return clearInterval(timer);
-    if (!el.currentSrc || el.networkState !== 2 /* NETWORK_LOADING */) { last = null; return; }
-    const now = performance.now(), end = ahead(), d = el.duration;
-    if (last && last.src === el.currentSrc && end > last.end && !(Number.isFinite(d) && end >= d - .5)) {
+    if (!el.currentSrc) { last = null; return; }
+    const now = performance.now(), end = ahead(), d = el.duration, done = Number.isFinite(d) && end >= d - .5;
+    if (done && !whole && start && !prefetched.has(el.currentSrc) && (!last || last.src === el.currentSrc)) {
+      whole = true; const b = el.buffered;
+      if (b.length === 1 && b.start(0) < .5) report(d * kbps() * 125 / Math.max(.5, (now - start) / 1000));
+    }
+    if (el.networkState !== 2 /* NETWORK_LOADING */) { last = null; return; }
+    if (last && last.src === el.currentSrc && end > last.end && !done) {
       const secs = (now - last.now) / 1000;
       if (secs > 1) report((end - last.end) * kbps() * 125 / secs);
     }

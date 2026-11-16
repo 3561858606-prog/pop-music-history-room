@@ -1,5 +1,5 @@
 // 训练与落针共用的媒体状态控制。淡入由音频时钟调度，不依赖画面帧率。
-import {audioSrc} from './model.js';
+import {audioSrc, audioFallbackSrc} from './model.js';
 import {t} from './i18n.js';
 export function createAudio() {
   const element = new Audio(); element.preload = 'metadata';
@@ -47,7 +47,18 @@ export function createAudio() {
   element.addEventListener('playing', () => { if (track && !silent) set('playing'); });
   element.addEventListener('pause', () => { if (track && state !== 'ended' && state !== 'error' && !silent) set('paused'); });
   element.addEventListener('ended', () => { stopNoise(); if (track) set('ended'); });
-  element.addEventListener('error', () => { stopNoise(); if (track) set('error'); });
+  let lastPlay = null;   // 最近一次 play() 的参数，退回 mp3 后照原样再放
+  element.addEventListener('error', () => {
+    // 轻量版载不了（个别浏览器不支持 AAC 或文件缺失）：换回原 mp3，从同一位置接着放
+    if (track && track.src && element.src.includes('/audio-lite/')) {
+      const wanted = lastPlay && ['loading', 'playing', 'waiting'].includes(state);
+      resumeAt = element.currentTime || resumeAt || 0; token++;
+      silent = true; element.src = audioFallbackSrc(track); silent = false;
+      if (wanted) api.play(lastPlay); else set('loading');
+      return;
+    }
+    stopNoise(); if (track) set('error');
+  });
   element.addEventListener('loadedmetadata', () => {
     applyPendingSeek();
     if (state === 'loading' && element.paused) set('ready');
@@ -61,6 +72,7 @@ export function createAudio() {
     load(t, at = 0) { token++; stopNoise(); silent = true; element.pause(); track = t; resumeAt = at; element.src = audioSrc(t); silent = false; set('loading'); },
     async play({fadeIn = false, warm = false} = {}) {
       if (!track) return false;
+      lastPlay = {fadeIn, warm};
       const attempt = ++token;
       if (state === 'error') { resumeAt = api.position(); element.load(); }
       silent = warm;

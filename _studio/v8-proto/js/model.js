@@ -1,4 +1,5 @@
 // 母盘的数据模型：每首歌在盘上的位置，以及它被刻了多少。
+import {LITE} from './audio-lite.js';
 // 只读取 v3 的课程数据和记忆模块，不改动它们。原型的作答记录写在自己的存储键里。
 import {catalog} from '../../../v3/catalog.js';
 import {COVERS} from '../../../v3/covers.js';
@@ -96,7 +97,9 @@ let STORIES = null, storiesP = null;
 export const loadStories = () => storiesP ||= import('./stories.js').then(m => { STORIES = m.STORIES; }).catch(() => { storiesP = null; });
 export const storiesLoaded = () => !!STORIES;
 export const storyOf = t => STORIES?.[t.id] || null;
-export const audioSrc = t => site(t.src);
+// 码率高于 128k 的几首在网页里用压到 128k 的 audio-lite（320k 的源小六成）；原 mp3 留作退路（audio.js 加载失败时自动换回）。
+export const audioSrc = t => LITE.has(t.id) ? site('audio-lite/' + t.id + '.mp3') : site(t.src);
+export const audioFallbackSrc = t => site(t.src);
 // 同名的几个版本（如三段 Maple Leaf Rag）在列表里带上版本说明
 const titleCount = new Map(); for (const t of tracks) titleCount.set(t.song, (titleCount.get(t.song) || 0) + 1);
 export const titleOf = t => titleCount.get(t.song) > 1 && t.versionLabel ? (LANG === 'zh' ? `${t.song}（${t.versionLabel.split(' · ')[0]}）` : `${t.song} (${tr(t.versionLabel.split(' · ')[0])})`) : t.song;

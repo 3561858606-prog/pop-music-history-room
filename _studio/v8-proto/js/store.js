@@ -72,6 +72,17 @@ export class LearningStore {
   archiveDraft(snapshot) {
     return this.transaction(['meta'], tx => tx.objectStore('meta').put({key: uid('conflict-draft'), snapshot: clone(snapshot), time: new Date().toISOString()}));
   }
+  // 导入学习备份：只补上这里没有的作答和轮次，已有的一律不动。返回实际新增的数量。
+  importBackup(events, rounds) {
+    const added = {events: 0, rounds: 0};
+    return this.transaction(['events', 'rounds'], (tx, done) => {
+      done(added);
+      for (const [name, values, key] of [['events', events, 'eventId'], ['rounds', rounds, 'id']]) {
+        const s = tx.objectStore(name);
+        for (const value of values) { const q = s.get(value[key]); q.onsuccess = () => { if (!q.result) { s.put(clone(value)); added[name]++; } }; }
+      }
+    });
+  }
   async backup() {
     const [events, rounds, meta] = await Promise.all(['events', 'rounds', 'meta'].map(n => this.readAll(n)));
     return {version: 2, app: 'v8-proto', exportedAt: new Date().toISOString(), events, rounds, meta};

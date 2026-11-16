@@ -43,6 +43,14 @@ await test('填空判定：全角年份、名称标点、别名、不知道', as
   const miss=gradeWritten(t,{...correct,year:'1999',song:'__not_heard__'},catalog.styles,catalog.tracks);
   assert(miss.score===2&&miss.fields[0].isUnknown,'错答或不知道处理错误');
 });
+await test('导入备份只补缺、不覆盖已有记录，重复导入不重复计数', async () => {
+  const before=(await a.readAll('rounds')).find(r=>r.id==='round-a');
+  const added=await a.importBackup([event('a'),event('imported')],[{...round('round-a'),answers:{song:'from backup'}},{...round('round-new'),state:'finished',entries:[event('imported')]}]);
+  assert(added.events===1&&added.rounds===1,'新增数量错误 '+JSON.stringify(added));
+  const kept=(await a.readAll('rounds')).find(r=>r.id==='round-a');assert(kept.answers.song===before.answers.song&&kept.revision===before.revision,'已有轮次被覆盖');
+  const again=await b.importBackup([event('imported')],[{...round('round-new'),state:'finished',entries:[]}]);
+  assert(again.events===0&&again.rounds===0,'重复导入被计数');
+});
 a.close();b.close();indexedDB.deleteDatabase(name);
 output.textContent += '\n' + (results.every(x=>x.startsWith('PASS'))?'ALL PASS':'FAILED');
 document.title = results.every(x=>x.startsWith('PASS'))?'PASS · v8 隔离回归':'FAIL · v8 隔离回归';

@@ -189,6 +189,38 @@ export async function exportBackup() {
   backup.legacy = originals;
   return backup;
 }
+/* ---------- 导入学习备份（「历史」页导出的 JSON） ---------- */
+const ROUND_STATES = ['finished', 'legacy', 'active'];
+const playedRound = r => r.state !== 'active' && r.entries.length > 0;
+export function parseBackup(text) {
+  let data;
+  try { data = JSON.parse(text); } catch { throw new Error('读不出这个文件，它不是完整的备份文件。'); }
+  if (!data || typeof data !== 'object' || data.app !== 'v8-proto' || !Array.isArray(data.events) || !Array.isArray(data.rounds))
+    throw new Error('这个文件不是母盘学习备份。请选在「历史」页导出的「母盘学习备份-日期.json」。');
+  const candidates = data.events.filter(e => e && typeof e === 'object' && typeof e.eventId === 'string' && e.eventId);
+  const valid = new Set(Object.keys(migrate(null, candidates, catalog.tracks).events));   // 与正常记分同一套校验
+  const events = candidates.filter(e => valid.has(e.eventId));
+  const rounds = data.rounds.filter(r => r && typeof r === 'object' && typeof r.id === 'string' && r.id && ROUND_STATES.includes(r.state) && Array.isArray(r.entries));
+  return {events, rounds, exportedAt: typeof data.exportedAt === 'string' ? data.exportedAt : '', skipped: data.events.length - events.length};
+}
+// 先算一遍：备份里有多少，合并进来会新增多少。
+export async function previewImport(backup) {
+  const [events, saved] = await Promise.all([store.readAll('events'), store.readAll('rounds')]);
+  const haveEvents = new Set(events.map(e => e.eventId)), haveRounds = new Set(saved.map(r => r.id));
+  const fresh = backup.rounds.filter(r => !haveRounds.has(r.id));
+  return {
+    rounds: backup.rounds.filter(playedRound).length, events: backup.events.length,
+    newRounds: fresh.filter(playedRound).length, newActive: fresh.filter(r => r.state === 'active').length,
+    newEvents: backup.events.filter(e => !haveEvents.has(e.eventId)).length
+  };
+}
+export async function importBackup(backup) {
+  const added = await store.importBackup(backup.events, backup.rounds);
+  await refreshRecords(); emit('rounds');
+  channel?.postMessage({kind: 'events'});
+  return added;
+}
+
 // 一项的刻纹长度，0—1。每答对一次都往前刻一段；「稳定掌握」才刻满。
 export function fieldCut(f) {
   if (!f || !f.n) return 0;

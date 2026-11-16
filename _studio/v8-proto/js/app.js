@@ -4,6 +4,7 @@ import {createTrain, renderResult} from './train.js';
 import {renderHistory} from './history.js';
 import {nameHTML} from './reading.js';
 import {hasVideo, videoTag, videoCount} from './video.js';
+import {createGuide} from './guide.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -27,6 +28,13 @@ const train = createTrain($('roomTrain'), {
   finish(r) { lastRound = r; pendingCuts = r.cuts; rememberRound(''); go('result/' + encodeURIComponent(r.id)); }
 });
 
+// 上手指南：只在盘面上主动出现一次；?still（截图、检查画面）时不出现。
+const guide = createGuide({
+  focusDisc: () => explore?.focus(),
+  dropButton: () => document.getElementById('startRound'),
+  onDisc: () => current === 'disc' && roomOf() === 'disc'
+});
+const returning = () => M.history().length > 0 || M.unfinished().length > 0 || M.stats().source === 'proto';
 const ensureExplore = () => exploreP ||= import('./explore.js').then(m => m.initExplore({reduced, startRound, resumeRound})).then(api => { explore = api; if (STILL || new URLSearchParams(location.search).has('debug')) window.__v8 = {explore: api}; return api; });
 
 /* ---------- 路由 ---------- */
@@ -81,7 +89,9 @@ async function route() {
       await ensureExplore();
       explore.surface(fromPaper);       // 拉远：从标签退回整张盘
       if (pendingCuts) { explore.celebrate(pendingCuts); pendingCuts = null; }
-      if (from === null && !M.prefs.introSeen) { M.prefs.introSeen = true; M.savePrefs(); explore.intro(); }
+      let introPlayed = false;
+      if (from === null && !M.prefs.introSeen) { M.prefs.introSeen = true; M.savePrefs(); explore.intro(); introPlayed = true; }
+      if (!STILL && !M.prefs.guideSeen) guide.auto({returning: returning(), delay: introPlayed && !reduced() ? 1800 : 500});
       if (fromPaper) { await sleep(40); await veilTo(false, 320); }
       if (from !== null) explore.focus();
     }

@@ -4,6 +4,7 @@ import {flatDisc} from './flat.js';
 import {player} from './audio.js';
 import {sleeveLayout} from './sleeve-layout.js';
 import {nameHTML, storyHTML} from './reading.js';
+import {t as tr, join} from './i18n.js';
 import {hasVideo, videoFigureHTML, mountVideo, retryVideo, videoOf, setVideoQuality} from './video.js';
 
 const $ = id => document.getElementById(id);
@@ -14,7 +15,7 @@ export async function initExplore(ctx) {
   const canvas = $('gl'), hud = $('hud'), panel = $('panel'), live = $('live'), flatHost = $('flatHost'), stage = $('stage');
   const view = {mode: 'over', band: -1, song: null, kbBand: bands.length - 1, flat: false, needle: 'idle', intro: false};
   let disc = null, flat = null, chipAt = null;
-  const spread = document.createElement('section'); spread.className = 'sleeve-spread'; spread.hidden = true; spread.setAttribute('aria-label','同年封套'); stage.appendChild(spread);
+  const spread = document.createElement('section'); spread.className = 'sleeve-spread'; spread.hidden = true; spread.setAttribute('aria-label',tr('同年封套')); stage.appendChild(spread);
   let spreadKey = '', spreadPosition = '';
   const overviewSleeves = band => [...new Map(band.ids.map(id => { const t = M.byId.get(id); return [t.year,id]; })).values()];
   const yearItems = () => view.song ? M.yearTracks(M.byId.get(view.song).year) : [];
@@ -53,8 +54,8 @@ export async function initExplore(ctx) {
     if (key !== spreadKey) {
       spreadKey = key; spreadPosition = '';
       const years = [...new Set(bands[view.band].ids.map(id => M.byId.get(id).year))];
-      spread.innerHTML = `<header class="spread-head"><h2><b>${current.year}</b><span>${items.length} 首 · 同年封套已展开</span></h2><p>点击封套选歌，再落针试听</p><nav class="spread-years" aria-label="切换年份">${years.map(y => `<button data-year="${y}" aria-current="${y === current.year ? 'true' : 'false'}">${y}</button>`).join('')}</nav></header>
-        <div class="spread-covers">${items.map(t => { const c = M.coverOf(t); return `<button class="sleeve-target" data-cover="${t.id}" aria-label="${esc(M.titleOf(t))}，${esc(t.artist)}，${t.year}" aria-pressed="${t.id === current.id}"><span class="st-art">${c ? `<img src="${c.url}" alt="" data-shape="${c.shape}" draggable="false">` : '<span>封面待补</span>'}</span><span class="st-title" aria-hidden="true">${esc(M.titleOf(t))}</span><span class="st-artist" aria-hidden="true">${esc(t.artist)}</span></button>`; }).join('')}</div>`;
+      spread.innerHTML = `<header class="spread-head"><h2><b>${current.year}</b><span>${tr('{n} 首', {n: items.length})} · ${tr('同年封套已展开')}</span></h2><p>${tr('点击封套选歌，再落针试听')}</p><nav class="spread-years" aria-label="${tr('切换年份')}">${years.map(y => `<button data-year="${y}" aria-current="${y === current.year ? 'true' : 'false'}">${y}</button>`).join('')}</nav></header>
+        <div class="spread-covers">${items.map(t => { const c = M.coverOf(t); return `<button class="sleeve-target" data-cover="${t.id}" aria-label="${esc(M.titleOf(t))}, ${esc(t.artist)}, ${t.year}" aria-pressed="${t.id === current.id}"><span class="st-art">${c ? `<img src="${c.url}" alt="" data-shape="${c.shape}" draggable="false">` : `<span>${tr('封面待补')}</span>`}</span><span class="st-title" aria-hidden="true">${esc(M.titleOf(t))}</span><span class="st-artist" aria-hidden="true">${esc(t.artist)}</span></button>`; }).join('')}</div>`;
     }
     for (const b of spread.querySelectorAll('[data-cover]')) b.setAttribute('aria-pressed', String(b.dataset.cover === view.song));
     positionSpread();
@@ -91,12 +92,12 @@ export async function initExplore(ctx) {
     }
     canvas.hidden = view.flat; flatHost.hidden = !view.flat; stage.dataset.flat = view.flat ? '1' : '0';
     if (view.flat) mountFlat();
-    $('discHelp').textContent = view.flat ? '平面盘 · ↑↓ 换年代 · ←→ 换歌 · 空格落针或抬针'
-      : matchMedia('(pointer:coarse)').matches ? '拖动转盘 · 点一条年代带贴近' : '拖动转盘 · 点一条年代带贴近 · ↑↓ 换年代 ←→ 换歌 · 空格落针或抬针';
+    $('discHelp').textContent = tr(view.flat ? '平面盘 · ↑↓ 换年代 · ←→ 换歌 · 空格落针或抬针'
+      : matchMedia('(pointer:coarse)').matches ? '拖动转盘 · 点一条年代带贴近' : '拖动转盘 · 点一条年代带贴近 · ↑↓ 换年代 ←→ 换歌 · 空格落针或抬针');
     applyView(true);
   }
   function mountFlat() {
-    flat = flatDisc({detail: true, digits: true, decades: true, title: '母盘（平面）'});
+    flat = flatDisc({detail: true, digits: true, decades: true, title: tr('母盘（平面）')});
     flatHost.replaceChildren(flat.svg);
     const at = e => { const b = flat.svg.getBoundingClientRect(), vb = flat.svg.viewBox.baseVal;
       const x = vb.x + (e.clientX - b.left) / b.width * vb.width, y = vb.y + (e.clientY - b.top) / b.height * vb.height;
@@ -174,17 +175,17 @@ export async function initExplore(ctx) {
     view.mode = 'close'; view.band = band.i; view.kbBand = band.i; hoverBand = -1; setChip(null);
     select(g || frontRing(band), false);
     applyView();
-    say(`${band.name}，${band.ids.length} 首。${view.song ? M.byId.get(view.song).year + ' ' + M.byId.get(view.song).song : ''}`);
+    say(`${band.name}, ${tr('{n} 首', {n: band.ids.length})}. ${view.song ? M.byId.get(view.song).year + ' ' + M.byId.get(view.song).song : ''}`);
   }
   function select(g, apply = true) {
     if (!g) return;
     view.song = g.id;
     disc?.rotateTo(g.phi);
-    if (apply) { if (g.band !== view.band || view.mode !== 'close') return enterBand(bands[g.band], g); applyView(); say(`${g.t.year}，${g.t.song}，${g.t.artist}`); }
+    if (apply) { if (g.band !== view.band || view.mode !== 'close') return enterBand(bands[g.band], g); applyView(); say(`${g.t.year}, ${g.t.song}, ${g.t.artist}`); }
   }
   function backOver() {
     if (view.mode === 'over') return;
-    view.mode = 'over'; view.band = -1; view.song = null; applyView(); disc?.home(); say('整张盘');
+    view.mode = 'over'; view.band = -1; view.song = null; applyView(); disc?.home(); say(tr('整张盘'));
     focusDisc();
   }
   function stepSong(dir) {
@@ -312,23 +313,23 @@ export async function initExplore(ctx) {
     mountVideo(fig, {at, onPlay: () => { if (player.current()) liftNeedle(); }});
   }
   player.on((state, t) => {
-    if (state === 'playing') { view.needle = 'playing'; say(`正在播放 ${t.song}`); }
+    if (state === 'playing') { view.needle = 'playing'; say(tr('正在播放 {s}', {s: t.song})); }
     else if (state === 'loading') view.needle = 'dropping';
-    else if (state === 'waiting') { view.needle = 'buffering'; say('音频正在缓冲'); }
-    else { view.needle = 'idle'; disc?.arm(null, false); disc?.setPlay(-1, false); if (state === 'error' || state === 'blocked') say('这段音频现在放不出来'); }
+    else if (state === 'waiting') { view.needle = 'buffering'; say(tr('音频正在缓冲')); }
+    else { view.needle = 'idle'; disc?.arm(null, false); disc?.setPlay(-1, false); if (state === 'error' || state === 'blocked') say(tr('这段音频现在放不出来')); }
     renderNeedle();
   });
   function renderNeedle() {
     const b = panel.querySelector('.needle-btn'); if (!b) return;
     const mine = player.current()?.id === view.song;
     b.dataset.state = mine ? view.needle : 'idle';
-    b.querySelector('span').textContent = !mine ? '落针试听' : view.needle === 'playing' ? '抬起唱针' : view.needle === 'buffering' ? '正在缓冲…' : '唱针正在落下…';
+    b.querySelector('span').textContent = tr(!mine ? '落针试听' : view.needle === 'playing' ? '抬起唱针' : view.needle === 'buffering' ? '正在缓冲…' : '唱针正在落下…');
     b.setAttribute('aria-pressed', mine ? 'true' : 'false');
   }
 
   /* ---------- 右侧：标签上的曲目表 ---------- */
   const inScope = id => M.prefs.scope.includes(id);
-  const dropLabel = pool => M.prefs.size === 'all' ? `落针 · 全部 ${pool} 首` : `落针 · 随机 ${M.sizeFor(pool)} 首`;
+  const dropLabel = pool => M.prefs.size === 'all' ? tr('落针 · 全部 {n} 首', {n: pool}) : tr('落针 · 随机 {n} 首', {n: M.sizeFor(pool)});
   const poolSize = () => M.tracks.filter(t => M.lectureIds(t).some(inScope)).length;
   function renderPanel() {
     panel.dataset.mode = view.mode;
@@ -339,27 +340,28 @@ export async function initExplore(ctx) {
     panel.innerHTML = `
       <div class="p-over">
         <h1 class="p-years">1854<i>—</i>1968</h1>
-        <p class="p-sub">75 首 · 七讲 · 刻满 ${st.full} 圈${st.some ? `，刻了一部分 ${st.some} 圈` : ''}</p>
-        <button class="drop-btn" id="startRound"><span>${dropLabel(pool)}</span><kbd>进入听辨 →</kbd></button>
-        ${M.unfinished().length ? `<button class="resume-round" data-resume="${M.unfinished()[0].id}">继续未完成的一轮 · 已答 ${M.unfinished()[0].entries.length} / ${M.unfinished()[0].size} 首 →</button>` : ''}
-        <div class="seg question-types" role="group" aria-label="题型"><button data-type="choice" aria-pressed="${M.prefs.questionType === 'choice'}">选择题</button><button data-type="written" aria-pressed="${M.prefs.questionType === 'written'}">填空题</button></div>
+        <p class="p-sub">${tr('75 首 · 七讲 · 刻满 {n} 圈', {n: st.full})}${st.some ? tr('，刻了一部分 {n} 圈', {n: st.some}) : ''}</p>
+        <button class="drop-btn" id="startRound"><span>${dropLabel(pool)}</span><kbd>${tr('进入听辨 →')}</kbd></button>
+        ${M.unfinished().length ? `<button class="resume-round" data-resume="${M.unfinished()[0].id}">${tr('继续未完成的一轮 · 已答 {a} / {b} 首 →', {a: M.unfinished()[0].entries.length, b: M.unfinished()[0].size})}</button>` : ''}
+        <div class="seg question-types" role="group" aria-label="${tr('题型')}"><button data-type="choice" aria-pressed="${M.prefs.questionType === 'choice'}">${tr('选择题')}</button><button data-type="written" aria-pressed="${M.prefs.questionType === 'written'}">${tr('填空题')}</button></div>
         <div class="p-opts">
-          <div class="seg" role="group" aria-label="一轮几首">${[[10, '10 首'], [20, '20 首'], ['all', '全部听完'], ['custom', '自定义']].map(([v, t]) => `<button data-size="${v}" aria-pressed="${M.prefs.size === v}">${t}</button>`).join('')}</div>
-          ${M.prefs.size === 'custom' ? `<label class="p-custom">每轮 <input id="customSize" type="number" inputmode="numeric" min="1" max="${pool}" value="${Math.min(M.prefs.custom, pool)}" aria-label="自定义每轮首数"> 首 <span>（最多 ${pool}）</span></label>` : ''}
-          <span class="p-scope">${all ? '范围：全部七讲' : `范围：${M.prefs.scope.length} 讲，${pool} 首`}</span>
+          <div class="seg" role="group" aria-label="${tr('一轮几首')}">${[[10, tr('{n} 首', {n: 10})], [20, tr('{n} 首', {n: 20})], ['all', tr('全部听完')], ['custom', tr('自定义')]].map(([v, t]) => `<button data-size="${v}" aria-pressed="${M.prefs.size === v}">${t}</button>`).join('')}</div>
+          ${M.prefs.size === 'custom' ? `<label class="p-custom">${tr('每轮')} <input id="customSize" type="number" inputmode="numeric" min="1" max="${pool}" value="${Math.min(M.prefs.custom, pool)}" aria-label="${tr('自定义每轮首数')}"> ${tr('首')} <span>${tr('（最多 {n}）', {n: pool})}</span></label>` : ''}
+          <span class="p-scope">${all ? tr('范围：全部七讲') : tr('范围：{a} 讲，{b} 首', {a: M.prefs.scope.length, b: pool})}</span>
         </div>
-        <div class="p-head"><span>SIDE A · 七讲</span><span>点方格加入范围</span></div>
+        <div class="p-head"><span>${tr('SIDE A · 七讲')}</span><span>${tr('点方格加入范围')}</span></div>
         <ol class="lec-list">${M.lectures.map(l => `
           <li data-lec="${l.id}">
-            <button class="lec-name" data-start="${l.id}" title="只练这一讲"><i>A${l.id}</i><b>${esc(l.label)}</b><em>${l.count} 首</em></button>
-            <button class="lec-box" role="checkbox" aria-checked="${inScope(l.id)}" aria-label="把「${esc(l.label)}」加入范围" data-toggle="${l.id}"></button>
+            <button class="lec-name" data-start="${l.id}" title="${tr('只练这一讲')}"><i>A${l.id}</i><b>${esc(M.lectureLabel(l.id))}</b><em>${tr('{n} 首', {n: l.count})}</em></button>
+            <button class="lec-box" role="checkbox" aria-checked="${inScope(l.id)}" aria-label="${tr('把「{l}」加入范围', {l: esc(M.lectureLabel(l.id))})}" data-toggle="${l.id}"></button>
           </li>`).join('')}</ol>
-        <p class="p-foot">盘面每一圈是一首歌：外圈 1854，内圈 1968。一圈正好十年，盘缘的 0—9 是年份的个位数。</p>
+        <p class="p-foot">${tr('盘面每一圈是一首歌：外圈 1854，内圈 1968。一圈正好十年，盘缘的 0—9 是年份的个位数。')}</p>
+        <p class="p-feedback"><button data-open-guide="feedback">${tr('问题反馈')}</button></p>
       </div>`;
-    $('legendSrc').textContent = st.source === 'demo' ? '当前是示意数据' : st.source === 'empty' ? '这台浏览器里还没有作答记录' : st.source === 'proto' ? '按原型里的作答绘制' : '按这台浏览器里的学习记录绘制';
+    $('legendSrc').textContent = tr(st.source === 'demo' ? '当前是示意数据' : st.source === 'empty' ? '这台浏览器里还没有作答记录' : st.source === 'proto' ? '按原型里的作答绘制' : '按这台浏览器里的学习记录绘制');
   }
   function laneRow(key, v, id) {
-    const s = M.fieldStatus(id, key), text = s ? (s === '数据不足' && !v ? '还没刻' : s) : Math.round(v * 100) + '%';
+    const s = M.fieldStatus(id, key), text = s ? tr(s === '数据不足' && !v ? '还没刻' : s) : Math.round(v * 100) + '%';
     return `<div class="lane"><dt>${M.FIELD_NAMES[key]}</dt><dd><span class="lane-bar" style="--v:${v}"></span><em>${text}</em></dd></div>`;
   }
   let keepScroll = false;
@@ -371,25 +373,25 @@ export async function initExplore(ctx) {
     const mates = M.spokeMates(t), style = M.styleOf(t);
     panel.innerHTML = `
       <div class="p-close">
-        <button class="p-back" id="backOver">← 整张盘<kbd>Esc</kbd></button>
-        <div class="p-band"><b>${band.label}</b><span>${band.ids.length} 首 · ${band.decade < 1950 ? '78 转粗纹' : '密纹'}</span>
-          <span class="p-bandnav"><button data-band="1" aria-label="更晚的年代（向内）" ${view.band === bands.length - 1 ? 'disabled' : ''}>↑</button><button data-band="-1" aria-label="更早的年代（向外）" ${view.band === 0 ? 'disabled' : ''}>↓</button></span></div>
+        <button class="p-back" id="backOver">← ${tr('整张盘')}<kbd>Esc</kbd></button>
+        <div class="p-band"><b>${band.label}</b><span>${tr('{n} 首', {n: band.ids.length})} · ${tr(band.decade < 1950 ? '78 转粗纹' : '密纹')}</span>
+          <span class="p-bandnav"><button data-band="1" aria-label="${tr('更晚的年代（向内）')}" ${view.band === bands.length - 1 ? 'disabled' : ''}>↑</button><button data-band="-1" aria-label="${tr('更早的年代（向外）')}" ${view.band === 0 ? 'disabled' : ''}>↓</button></span></div>
         <article class="song" data-track="${t.id}" aria-live="off">
           <div class="song-top">
             ${cover ? `<img class="song-cover" data-shape="${cover.shape}" src="${cover.url}" alt="" width="${cover.w}" height="${cover.h}">` : ''}
-            <div><div class="song-year">${t.year}</div><div class="song-spoke">${band.label} 带 · ${t.year % 10} 号辐</div></div>
+            <div><div class="song-year">${t.year}</div><div class="song-spoke">${tr('{b} 带 · {n} 号辐', {b: band.label, n: t.year % 10})}</div></div>
           </div>
           <h2>${nameHTML(t, 'song', M.titleOf(t))}</h2>
-          <div class="song-meta name-meta"><p>${nameHTML(t, 'artist')}</p><p>${nameHTML(t, 'style')}</p><p>${M.lectureIds(t).map(id => '第 ' + id + ' 讲 ' + esc(M.lectureLabel(id))).join('；')}</p></div>
-          ${cover ? `<details class="cover-info"><summary>${esc(M.coverLabel(cover))}</summary><p>${esc(cover.album || '')}<br>${esc(cover.artist || '')}</p><p>${esc(cover.note || '')}</p>${cover.source ? `<a href="${esc(cover.source)}" target="_blank" rel="noopener noreferrer">封面来源 ↗</a>` : ''}</details>` : ''}
+          <div class="song-meta name-meta"><p>${nameHTML(t, 'artist')}</p><p>${nameHTML(t, 'style')}</p><p>${M.lectureIds(t).map(id => tr('第 {l} 讲', {l: id}) + ' ' + esc(M.lectureLabel(id))).join('; ')}</p></div>
+          ${cover ? `<details class="cover-info"><summary>${esc(M.coverLabel(cover))}</summary><p>${esc(cover.album || '')}<br>${esc(cover.artist || '')}</p><p>${esc(cover.note || '')}</p>${cover.source ? `<a href="${esc(cover.source)}" target="_blank" rel="noopener noreferrer">${tr('封面来源')} ↗</a>` : ''}</details>` : ''}
           ${videoFigureHTML(t)}
-          <button class="needle-btn" aria-pressed="false"><i></i><span>落针试听</span><kbd>空格</kbd></button>
-          <dl class="lanes" aria-label="这一圈的四道刻纹">${M.KEYS.map((k, i) => laneRow(k, lanes[i], t.id)).join('')}</dl>
+          <button class="needle-btn" aria-pressed="false"><i></i><span>${tr('落针试听')}</span><kbd>${tr('空格')}</kbd></button>
+          <dl class="lanes" aria-label="${tr('这一圈的四道刻纹')}">${M.KEYS.map((k, i) => laneRow(k, lanes[i], t.id)).join('')}</dl>
           ${storyHTML(story)}
-          ${mates.length ? `<div class="spoke"><h3>${t.year % 10} 号辐上还有</h3><p>${mates.map(o => `<button data-song="${o.id}">${o.year} ${esc(M.titleOf(o))}</button>`).join('')}</p></div>` : ''}
+          ${mates.length ? `<div class="spoke"><h3>${tr('{n} 号辐上还有', {n: t.year % 10})}</h3><p>${mates.map(o => `<button data-song="${o.id}">${o.year} ${esc(M.titleOf(o))}</button>`).join('')}</p></div>` : ''}
         </article>
-        <div class="p-head"><span>${band.label} · ${band.ids.length} 首</span><span>←→ 换歌</span></div>
-        <ol class="band-list">${band.ids.map(id => { const o = M.byId.get(id); return `<li><button data-song="${id}" aria-current="${id === view.song}"${hasVideo(id) ? ' class="has-video"' : ''}><i>${o.year}</i><b>${esc(M.titleOf(o))}</b>${hasVideo(id) ? '<em class="vid-mark" title="有课件视频"><span class="sr-only">有课件视频</span></em>' : ''}<span class="mini-cut" style="--v:${M.avgCut(id)}"></span></button></li>`; }).join('')}</ol>
+        <div class="p-head"><span>${band.label} · ${tr('{n} 首', {n: band.ids.length})}</span><span>${tr('←→ 换歌')}</span></div>
+        <ol class="band-list">${band.ids.map(id => { const o = M.byId.get(id); return `<li><button data-song="${id}" aria-current="${id === view.song}"${hasVideo(id) ? ' class="has-video"' : ''}><i>${o.year}</i><b>${esc(M.titleOf(o))}</b>${hasVideo(id) ? `<em class="vid-mark" title="${tr('有课件视频')}"><span class="sr-only">${tr('有课件视频')}</span></em>` : ''}<span class="mini-cut" style="--v:${M.avgCut(id)}"></span></button></li>`; }).join('')}</ol>
       </div>`;
     keepVideo();
     renderNeedle();
@@ -411,7 +413,7 @@ export async function initExplore(ctx) {
       if (v === 'custom') { const i = $('customSize'); i?.focus(); i?.select(); } else panel.querySelector(`[data-size="${v}"]`)?.focus(); return; }
     if (b.dataset.start) return ctx.startRound([+b.dataset.start], b);
     if (b.dataset.toggle) { const id = +b.dataset.toggle, s = new Set(M.prefs.scope); s.has(id) ? s.delete(id) : s.add(id);
-      if (!s.size) return say('至少留一讲'); M.prefs.scope = M.lectures.map(l => l.id).filter(i => s.has(i)); M.savePrefs(); renderPanel();
+      if (!s.size) return say(tr('至少留一讲')); M.prefs.scope = M.lectures.map(l => l.id).filter(i => s.has(i)); M.savePrefs(); renderPanel();
       panel.querySelector(`[data-toggle="${id}"]`)?.focus(); return; }
     if (b.dataset.song) { keepScroll = !!b.closest('.band-list'); select(M.ringOf.get(b.dataset.song)); panel.querySelector(`.band-list [data-song="${b.dataset.song}"]`)?.focus({preventScroll: true}); return; }
     if (b.dataset.band) return stepBand(+b.dataset.band);

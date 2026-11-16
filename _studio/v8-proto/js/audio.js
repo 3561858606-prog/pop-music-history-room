@@ -1,11 +1,12 @@
 // 训练与落针共用的媒体状态控制。淡入由音频时钟调度，不依赖画面帧率。
 import {audioSrc} from './model.js';
+import {t} from './i18n.js';
 export function createAudio() {
   const element = new Audio(); element.preload = 'metadata';
   let track = null, state = 'idle', listener = null, token = 0, resumeAt = null;
   let context = null, gain = null, noise = null, silent = false;
-  const messages = {idle: '点击播放收听', loading: '音频加载中…', ready: '音频已就绪，点击播放', playing: '正在播放',
-    paused: '已暂停', waiting: '正在缓冲…', ended: '播放完毕，可以重听', blocked: '浏览器需要你点击播放', error: '音频加载失败，点击播放重试'};
+  const messages = Object.fromEntries(Object.entries({idle: '点击播放收听', loading: '音频加载中…', ready: '音频已就绪，点击播放', playing: '正在播放',
+    paused: '已暂停', waiting: '正在缓冲…', ended: '播放完毕，可以重听', blocked: '浏览器需要你点击播放', error: '音频加载失败，点击播放重试'}).map(([k, v]) => [k, t(v)]));
   const set = value => { state = value; listener?.(state, track); };
   function stopNoise() { if (noise) { try { noise.stop(); } catch {} noise.disconnect(); noise = null; } }
   function graph() {

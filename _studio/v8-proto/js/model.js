@@ -8,6 +8,7 @@ import {status, KEYS, emptyMemory, record, migrate} from '../../../v3/memory.js'
 import {appearancesFor} from '../../../v3/track-model.js';
 import {LearningStore, uid} from './store.js';
 import {alternateNames} from './names.js';
+import {t, t as tr, LANG} from './i18n.js';
 export {uid};
 
 // 站点根目录：按本文件位置推算（_studio/v8-proto/js/ 往上三级），站点放在域名根或子路径（如 GitHub Pages 的 /仓库名/）都能用。
@@ -56,7 +57,7 @@ export const bands = [];
     rings.push({i: rings.length, id: t.id, t, outer, inner: outer - unit, mid: outer - unit / 2, phi,
       digit: t.year % 10, band: band.i, coarse: t.year < COARSE_UNTIL});
   }
-  for (const b of bands) { b.mid = (b.outer + b.inner) / 2; b.label = b.decade + 's'; b.name = b.decade + ' 年代'; }
+  for (const b of bands) { b.mid = (b.outer + b.inner) / 2; b.label = b.decade + 's'; b.name = t('{d} 年代', {d: b.decade}); }
 }
 export const ringOf = new Map(rings.map(r => [r.id, r]));
 export const yearTracks = year => (sameYear.get(year) || []).map(id => byId.get(id));
@@ -80,22 +81,23 @@ export function bandAtRadius(r) {
 /* ---------- 课程信息 ---------- */
 export const lectures = catalog.lectures;
 export const lectureIds = t => appearancesFor(t).map(a => a.deck);
-export const lectureLabel = id => lectures.find(l => l.id === id)?.label || '';
+const LECTURE_EN = {1: 'Concepts and Origins', 2: 'The 1920s (1)', 3: 'The 1920s (2)', 4: 'The Swing Era', 5: 'Popular Music after WWII', 6: 'Rock and Roll', 7: 'The 1960s: Rock and Soul'};
+export const lectureLabel = id => { const l = lectures.find(x => x.id === id); return !l ? '' : LANG === 'ko' ? l.ko || l.label : LANG === 'en' ? LECTURE_EN[id] || l.label : l.label; };
 export const styleOf = t => catalog.styles.find(s => s.id === t.style) || {label: t.style, sub: '', ko: ''};
 export const aliasesOf = (t, field, exclude = []) => alternateNames(t, field, catalog.styles, tracks, exclude);
 export const coverOf = t => { const c = PROTO_COVERS[t.id] || COVERS[t.id]; return c ? {...c, url: site(c.url || 'v3/' + c.img)} : null; };
 export function coverLabel(cover) {
-  if (!cover) return '封面待补';
-  if (cover.kind === 'leaflet') return '唱片附页 · 同盘 A 面资料，非本曲封套';
-  const kind = {album:'专辑封面',compilation:'再版合辑',sleeve:'单曲封套',label:'唱片标签',sheet:'乐谱封面',photo:'历史资料图',device:'播放设备',ad:'发行广告'}[cover.kind] || '历史图像';
-  return kind + (cover.match === 'context' ? ' · 作品或历史资料' : cover.match === 'version' ? ' · 同曲其他录音' : cover.match === 'unverified' ? ' · 录音版本未确认' : '');
+  if (!cover) return t('封面待补');
+  if (cover.kind === 'leaflet') return t('唱片附页 · 同盘 A 面资料，非本曲封套');
+  const kind = t({album:'专辑封面',compilation:'再版合辑',sleeve:'单曲封套',label:'唱片标签',sheet:'乐谱封面',photo:'历史资料图',device:'播放设备',ad:'发行广告'}[cover.kind] || '历史图像');
+  return kind + (cover.match === 'context' ? ' · ' + t('作品或历史资料') : cover.match === 'version' ? ' · ' + t('同曲其他录音') : cover.match === 'unverified' ? ' · ' + t('录音版本未确认') : '');
 }
 export const storyOf = t => STORIES[t.id] || null;
 export const audioSrc = t => site(t.src);
 // 同名的几个版本（如三段 Maple Leaf Rag）在列表里带上版本说明
 const titleCount = new Map(); for (const t of tracks) titleCount.set(t.song, (titleCount.get(t.song) || 0) + 1);
-export const titleOf = t => titleCount.get(t.song) > 1 && t.versionLabel ? `${t.song}（${t.versionLabel.split(' · ')[0]}）` : t.song;
-export const FIELD_NAMES = {song: '歌名', year: '年份', artist: '音乐家', style: '风格'};
+export const titleOf = t => titleCount.get(t.song) > 1 && t.versionLabel ? (LANG === 'zh' ? `${t.song}（${t.versionLabel.split(' · ')[0]}）` : `${t.song} (${tr(t.versionLabel.split(' · ')[0])})`) : t.song;
+export const FIELD_NAMES = {song: t('歌名'), year: t('年份'), artist: t('音乐家'), style: t('风格')};
 // 同一条辐线：年份个位数相同的歌。
 export const spokeMates = t => tracks.filter(o => o.id !== t.id && o.year % 10 === t.year % 10);
 
@@ -194,9 +196,9 @@ const ROUND_STATES = ['finished', 'legacy', 'active'];
 const playedRound = r => r.state !== 'active' && r.entries.length > 0;
 export function parseBackup(text) {
   let data;
-  try { data = JSON.parse(text); } catch { throw new Error('读不出这个文件，它不是完整的备份文件。'); }
+  try { data = JSON.parse(text); } catch { throw new Error(t('读不出这个文件，它不是完整的备份文件。')); }
   if (!data || typeof data !== 'object' || data.app !== 'v8-proto' || !Array.isArray(data.events) || !Array.isArray(data.rounds))
-    throw new Error('这个文件不是母盘学习备份。请选在「历史」页导出的「母盘学习备份-日期.json」。');
+    throw new Error(t('这个文件不是母盘学习备份。请选在「历史」页导出的「母盘学习备份-日期.json」。'));
   const candidates = data.events.filter(e => e && typeof e === 'object' && typeof e.eventId === 'string' && e.eventId);
   const valid = new Set(Object.keys(migrate(null, candidates, catalog.tracks).events));   // 与正常记分同一套校验
   const events = candidates.filter(e => valid.has(e.eventId));
@@ -262,6 +264,6 @@ export function setDemo(mode) { prefs.demo = mode; savePrefs(); emit('lanes'); }
 export function previewAnswer(entry) {
   const before = KEYS.map(k => fieldCut(memory.records[entry.id]?.fields?.[k]));
   const copy = migrate(memory, [], catalog.tracks);
-  if (!record(copy, entry, catalog.tracks, entry.eventId)) throw new Error('作答数据不完整，未保存。');
+  if (!record(copy, entry, catalog.tracks, entry.eventId)) throw new Error(t('作答数据不完整，未保存。'));
   return {before, after: KEYS.map(k => fieldCut(copy.records[entry.id]?.fields?.[k]))};
 }

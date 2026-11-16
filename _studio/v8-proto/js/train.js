@@ -8,6 +8,7 @@ import {createAudio} from './audio.js';
 import {flatDisc} from './flat.js';
 import {createWaveform} from './waveform.js';
 import {wordAnswerHTML, createWordPeek} from './word-peek.js';
+import {t as tr, join} from './i18n.js';
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 const clock = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -29,9 +30,9 @@ export function createTrain(root, ctx) {
   function saveUI() {
     const n = root.querySelector('.save-state'); if (!n) return;
     n.dataset.error = saveError ? '1' : '0';
-    n.querySelector('span').textContent = saveError ? saveError.message + ' 当前内容仍留在此页，请重试。' : saving ? '正在保存…' : savedAt ? '已保存在此浏览器 · ' + savedAt : '准备保存…';
+    n.querySelector('span').textContent = saveError ? saveError.message + ' ' + tr('当前内容仍留在此页，请重试。') : saving ? tr('正在保存…') : savedAt ? tr('已保存在此浏览器 · {t}', {t: savedAt}) : tr('准备保存…');
     n.querySelector('button').hidden = !saveError;
-    n.querySelector('button').textContent = saveError?.name === 'ConflictError' ? '保留草稿并载入最新进度' : '重试保存';
+    n.querySelector('button').textContent = tr(saveError?.name === 'ConflictError' ? '保留草稿并载入最新进度' : '重试保存');
     root.querySelectorAll('[data-act=next],[data-act=end]').forEach(b => { b.disabled = operating; });
     root.querySelectorAll('[data-field]').forEach(input => { input.disabled = operating || round?.answers[input.dataset.field] === NOT_HEARD; });
     const submit = root.querySelector('.submit'); if (submit) submit.disabled = operating || !round || !complete(round.answers);
@@ -55,7 +56,7 @@ export function createTrain(root, ctx) {
   async function start(scope, type = M.prefs.questionType) {
     await tail;
     const pool = filterTracks(M.catalog.tracks, scope);
-    if (!pool.length) throw Error('请至少选择一讲。');
+    if (!pool.length) throw Error(tr('请至少选择一讲。'));
     queue.reset();
     round = {id: M.uid('round'), revision: 0, startedAt: new Date().toISOString(), questionType: type === 'written' ? 'written' : 'choice',
       scope: [...scope], pool, size: M.sizeFor(pool.length), done: [], question: null, answers: {}, drafts: {}, phase: 'answer', col: 0, cuts: new Map()};
@@ -112,7 +113,7 @@ export function createTrain(root, ctx) {
       await M.store.archiveDraft(snapshot()); // 先保留冲突草稿，成功后才载入另一页的进度。
       await M.refreshRecords();
       const saved = M.roundById(round.id);
-      if (!saved) throw Error('未找到这轮记录，请导出备份后重试。');
+      if (!saved) throw Error(tr('未找到这轮记录，请导出备份后重试。'));
       saveError = null;
       if (saved.state === 'active') restore(saved);
       else { playback.stop(); round = null; ctx.finish(saved); }
@@ -144,7 +145,7 @@ export function createTrain(root, ctx) {
   const tick = () => { drawWave(); raf = !audio.paused && wave?.isConnected ? requestAnimationFrame(tick) : 0; };
   const kick = () => { if (!raf) raf = requestAnimationFrame(tick); syncPlay(); };
   const syncPlay = () => {
-    const b = root.querySelector('.g-play'); if (b) { b.dataset.on = audio.paused ? '0' : '1'; b.setAttribute('aria-label', audio.paused ? '播放' : '暂停'); }
+    const b = root.querySelector('.g-play'); if (b) { b.dataset.on = audio.paused ? '0' : '1'; b.setAttribute('aria-label', tr(audio.paused ? '播放' : '暂停')); }
     const n = root.querySelector('.audio-state'); if (n) { n.textContent = playback.message(); n.dataset.error = playback.failed() ? '1' : '0'; }
   };
   playback.on(kick);
@@ -156,16 +157,16 @@ export function createTrain(root, ctx) {
   function head() {
     const n = round.done.length + (round.phase === 'answer' ? 1 : 0);
     return `<header class="tr-top">
-        <button class="tr-back" data-act="back">← 盘面</button>
-        <div class="tr-count"><span class="tr-type">${round.questionType === 'written' ? '填空' : '选择'}</span>第 <b>${n}</b> / ${round.size} 首${round.size > 20 ? `<span class="tr-bar" aria-hidden="true"><i style="--v:${round.done.length / round.size}"></i></span>` : ''}<span class="tr-dots" aria-hidden="true" ${round.size > 20 ? 'hidden' : ''}>${Array.from({length: round.size > 20 ? 0 : round.size}, (_, i) => `<i data-s="${i < round.done.length ? (round.done[i].result.score === 4 ? 'ok' : 'miss') : i === n - 1 ? 'now' : ''}"></i>`).join('')}</span></div>
-        <div class="tr-right"><button class="tr-cards" data-act="cards" aria-expanded="${ys.open}" aria-controls="yearSheet">年份卡片<kbd>Y</kbd></button><button class="tr-end" data-act="end">结束本轮</button></div>
+        <button class="tr-back" data-act="back">← ${tr('盘面')}</button>
+        <div class="tr-count"><span class="tr-type">${tr(round.questionType === 'written' ? '填空' : '选择')}</span>${tr('第 <b>{n}</b> / {m} 首', {n, m: round.size})}${round.size > 20 ? `<span class="tr-bar" aria-hidden="true"><i style="--v:${round.done.length / round.size}"></i></span>` : ''}<span class="tr-dots" aria-hidden="true" ${round.size > 20 ? 'hidden' : ''}>${Array.from({length: round.size > 20 ? 0 : round.size}, (_, i) => `<i data-s="${i < round.done.length ? (round.done[i].result.score === 4 ? 'ok' : 'miss') : i === n - 1 ? 'now' : ''}"></i>`).join('')}</span></div>
+        <div class="tr-right"><button class="tr-cards" data-act="cards" aria-expanded="${ys.open}" aria-controls="yearSheet">${tr('年份卡片')}<kbd>Y</kbd></button><button class="tr-end" data-act="end">${tr('结束本轮')}</button></div>
       </header>
       <div class="groove">
-        <button class="g-play" data-act="play" data-on="0" aria-label="播放"></button>
-        <canvas class="g-wave" role="slider" tabindex="0" aria-label="音频波形与播放位置" aria-valuemin="0" aria-orientation="horizontal" aria-describedby="waveHint"></canvas>
+        <button class="g-play" data-act="play" data-on="0" aria-label="${tr('播放')}"></button>
+        <canvas class="g-wave" role="slider" tabindex="0" aria-label="${tr('音频波形与播放位置')}" aria-valuemin="0" aria-orientation="horizontal" aria-describedby="waveHint"></canvas>
         <span class="g-time">0:00</span>
-      </div><p class="wave-hint" id="waveHint">点击或拖动波形调进度<span class="wave-status" role="status"></span><button data-act="retry-wave" hidden>重新加载波形</button></p><p class="audio-state" role="status"></p>
-      <div class="save-state" role="status"><span></span><button data-act="retry-save" hidden>重试保存</button></div>`;
+      </div><p class="wave-hint" id="waveHint">${tr('点击或拖动波形调进度')}<span class="wave-status" role="status"></span><button data-act="retry-wave" hidden>${tr('重新加载波形')}</button></p><p class="audio-state" role="status"></p>
+      <div class="save-state" role="status"><span></span><button data-act="retry-save" hidden>${tr('重试保存')}</button></div>`;
   }
   function render() {
     if (!round) return;
@@ -181,7 +182,7 @@ export function createTrain(root, ctx) {
       onSeek: seek, onCommit: saveDraft, onToggle: toggle,
       onStatus(state) {
         const label = root.querySelector('.wave-status'), retry = root.querySelector('[data-act=retry-wave]');
-        if (label) label.textContent = state === 'loading' ? ' · 波形加载中…' : state === 'error' ? ' · 波形暂未载入，仍可点击调进度' : '';
+        if (label) label.textContent = state === 'loading' ? ' · ' + tr('波形加载中…') : state === 'error' ? ' · ' + tr('波形暂未载入，仍可点击调进度') : '';
         if (retry) retry.hidden = state !== 'error';
       }
     });
@@ -199,10 +200,10 @@ export function createTrain(root, ctx) {
         <div class="col" data-key="${f.key}" data-col="${ci}" role="radiogroup" aria-label="${M.FIELD_NAMES[f.key]}">
           <div class="col-h" aria-hidden="true"><i>${f.number}</i>${M.FIELD_NAMES[f.key]}</div>
           ${q.options[f.key].map((o, i) => `<button type="button" role="radio" aria-checked="false" data-v="${esc(o.value)}"><kbd>${i + 1}</kbd><span><b>${esc(f.key === 'year' ? o.value : o.label)}</b>${optionAliasesHTML(f.key, o)}</span></button>`).join('')}
-          <button type="button" role="radio" aria-checked="false" class="unknown" data-v="${NOT_HEARD}"><kbd>0</kbd><span>没听出</span></button>
+          <button type="button" role="radio" aria-checked="false" class="unknown" data-v="${NOT_HEARD}"><kbd>0</kbd><span>${tr('没听出')}</span></button>
         </div>`).join('')}
       </div>
-      <footer class="tr-foot"><span class="keys">1—4 选择 · 0 没听出 · ←→ 换列 · 空格 播放 · Enter 提交</span><button class="submit" data-act="submit" disabled>提交<kbd>Enter</kbd></button></footer>`;
+      <footer class="tr-foot"><span class="keys">${tr('1—4 选择 · 0 没听出 · ←→ 换列 · 空格 播放 · Enter 提交')}</span><button class="submit" data-act="submit" disabled>${tr('提交')}<kbd>Enter</kbd></button></footer>`;
   }
   function writtenHTML() {
     return `<p class="tr-status" id="trStatus" aria-live="polite"></p>
@@ -211,13 +212,13 @@ export function createTrain(root, ctx) {
         return `<div class="col" data-key="${f.key}" data-col="${ci}">
           <label class="col-h" for="written-${f.key}"><i>${f.number}</i>${M.FIELD_NAMES[f.key]}</label>
           <input id="written-${f.key}" class="written-answer" data-field="${f.key}" type="text" maxlength="200"
-            value="${esc(unknown ? round.drafts[f.key] || '' : round.answers[f.key] || '')}" aria-label="填写${M.FIELD_NAMES[f.key]}"
+            value="${esc(unknown ? round.drafts[f.key] || '' : round.answers[f.key] || '')}" aria-label="${tr('填写{f}', {f: M.FIELD_NAMES[f.key]})}"
             autocomplete="off" autocapitalize="off" spellcheck="false" ${f.key === 'year' ? 'inputmode="numeric"' : ''} ${unknown ? 'disabled' : ''}
-            placeholder="${f.key === 'year' ? '四位年份' : '填写' + M.FIELD_NAMES[f.key]}">
-          <button class="written-unknown" data-unknown="${f.key}" aria-pressed="${unknown}">${unknown ? '已标记没听出 · 继续填写' : '没听出'}<kbd>0</kbd></button>
+            placeholder="${f.key === 'year' ? tr('四位年份') : tr('填写{f}', {f: M.FIELD_NAMES[f.key]})}">
+          <button class="written-unknown" data-unknown="${f.key}" aria-pressed="${unknown}">${tr(unknown ? '已标记没听出 · 继续填写' : '没听出')}<kbd>0</kbd></button>
         </div>`; }).join('')}</div>
-      <p class="written-rule">接受课程中的名称、别名和中韩译名，忽略大小写及标点；年份需准确。空白项按 0 标记「没听出」，已有文字中的数字正常输入。</p>
-      <footer class="tr-foot"><span class="keys">←→ / Tab 换项 · 空白项 0 没听出 · Enter 提交 · Shift + ←→ 选文字</span><button class="submit" data-act="submit" disabled>提交<kbd>Enter</kbd></button></footer>`;
+      <p class="written-rule">${tr('接受课程中的名称、别名和中韩译名，忽略大小写及标点；年份需准确。空白项按 0 标记「没听出」，已有文字中的数字正常输入。')}</p>
+      <footer class="tr-foot"><span class="keys">${tr('←→ / Tab 换项 · 空白项 0 没听出 · Enter 提交 · Shift + ←→ 选文字')}</span><button class="submit" data-act="submit" disabled>${tr('提交')}<kbd>Enter</kbd></button></footer>`;
   }
   function updateAnswer() {
     const missing = FIELDS.filter(f => !String(round.answers[f.key] || '').trim());
@@ -226,10 +227,10 @@ export function createTrain(root, ctx) {
       for (const b of col.querySelectorAll('[role=radio]')) b.setAttribute('aria-checked', String(round.answers[col.dataset.key] === b.dataset.v));
     });
     const st = root.querySelector('#trStatus'), sb = root.querySelector('.submit');
-    if (st && round.questionType === 'written') st.textContent = missing.length ? '还差 ' + missing.map(f => M.FIELD_NAMES[f.key]).join('、') + '；可填课程原文或中韩译名。' : '四项都填了，按 Enter 提交';
+    if (st && round.questionType === 'written') st.textContent = missing.length ? tr('还差 {f}；可填课程原文或中韩译名。', {f: join(missing.map(f => M.FIELD_NAMES[f.key]))}) : tr('四项都填了，按 Enter 提交');
     else if (st) st.innerHTML = missing.length
-      ? `<span class="tr-now">按 <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> 选「${M.FIELD_NAMES[FIELDS[round.col].key]}」</span>还差 ${missing.map(f => M.FIELD_NAMES[f.key]).join('、')}`
-      : '四项都选了，按 <kbd>Enter</kbd> 提交';
+      ? `<span class="tr-now">${tr('按 <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> 选「{f}」', {f: M.FIELD_NAMES[FIELDS[round.col].key]})}</span>${tr('还差 {f}', {f: join(missing.map(f => M.FIELD_NAMES[f.key]))})}`
+      : tr('四项都选了，按 <kbd>Enter</kbd> 提交');
     if (sb) sb.disabled = operating || !!missing.length;
   }
   function choose(ci, value) {
@@ -254,40 +255,40 @@ export function createTrain(root, ctx) {
     const input = root.querySelector(`[data-field="${key}"]`), button = root.querySelector(`[data-unknown="${key}"]`);
     input.value = unknown ? round.drafts[key] || '' : round.answers[key]; input.disabled = unknown;
     button.setAttribute('aria-pressed', String(unknown));
-    button.innerHTML = `${unknown ? '已标记没听出 · 继续填写' : '没听出'}<kbd>0</kbd>`;
+    button.innerHTML = `${tr(unknown ? '已标记没听出 · 继续填写' : '没听出')}<kbd>0</kbd>`;
     const next = advance ? [...FIELDS.keys()].map(i => (ci + 1 + i) % 4).find(i => !String(round.answers[FIELDS[i].key] || '').trim()) : ci;
     round.col = next ?? ci; updateAnswer(); saveDraft();
     if (next === undefined) root.querySelector('.submit')?.focus({preventScroll: true});
     else focusCol(next);
   }
 
-  const optionLabel = (key, value) => value === NOT_HEARD ? '没听出' : key === 'style' ? (M.catalog.styles.find(s => s.id === value)?.label || value) : value;
+  const optionLabel = (key, value) => value === NOT_HEARD ? tr('没听出') : key === 'style' ? (M.catalog.styles.find(s => s.id === value)?.label || value) : value;
   function feedbackHTML() {
     const d = round.done[round.done.length - 1], t = d.track, g = M.ringOf.get(t.id), band = M.bands[g.band], cover = M.coverOf(t), story = M.storyOf(t);
     const wrong = d.result.fields.filter(f => !f.isCorrect), mates = M.spokeMates(t).slice(0, 6), last = round.done.length >= round.size;
     const grew = d.cut.after.some((v, i) => v > d.cut.before[i] + .004);
     return `<div class="fb" data-all="${wrong.length ? 0 : 1}">
         <div class="fb-main">
-          <p class="fb-verdict" aria-live="polite">${wrong.length ? verdictText(d) : '四项全对' + (grew ? '，这一圈往前刻了一段' : '')}</p>
+          <p class="fb-verdict" aria-live="polite">${wrong.length ? verdictText(d) : tr('四项全对') + (grew ? tr('，这一圈往前刻了一段') : '')}</p>
           <div class="fb-year">${t.year}</div>
           <h2>${nameHTML(t, 'song', M.titleOf(t))}</h2>
-          <div class="fb-meta name-meta"><p>${nameHTML(t, 'artist')}</p><p>${nameHTML(t, 'style')}</p><p>${M.lectureIds(t).map(id => '第 ' + id + ' 讲').join('、')}</p></div>
+          <div class="fb-meta name-meta"><p>${nameHTML(t, 'artist')}</p><p>${nameHTML(t, 'style')}</p><p>${join(M.lectureIds(t).map(id => tr('第 {l} 讲', {l: id})))}</p></div>
           <ul class="fb-rows">${d.result.fields.map(f => f.isCorrect
-            ? `<li data-ok="1"><span class="k">${M.FIELD_NAMES[f.key]}</span><span class="is">${esc(optionLabel(f.key, f.correct))}</span><span class="tick" aria-label="对">✓</span></li>`
+            ? `<li data-ok="1"><span class="k">${M.FIELD_NAMES[f.key]}</span><span class="is">${esc(optionLabel(f.key, f.correct))}</span><span class="tick" aria-label="${tr('对')}">✓</span></li>`
             : fixRowHTML(d, f)).join('')}</ul>
-          ${wrong.length ? `<p class="fix-rule">看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，按 Enter 核对。写错要重写；也可以不订正，直接下一首。</p>` : ''}
+          ${wrong.length ? `<p class="fix-rule">${tr('看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，按 Enter 核对。写错要重写；也可以不订正，直接下一首。')}</p>` : ''}
           ${storyHTML(story, 'fb-story')}
         </div>
         <aside class="fb-side">
-          ${cover ? `<img class="fb-cover" data-shape="${cover.shape}" src="${cover.url}" alt="${esc(t.song)} 的封面" width="${cover.w}" height="${cover.h}"><p class="fb-cover-caption">${esc(M.coverLabel(cover))}</p>` : ''}
+          ${cover ? `<img class="fb-cover" data-shape="${cover.shape}" src="${cover.url}" alt="${tr('{s} 的封面', {s: esc(t.song)})}" width="${cover.w}" height="${cover.h}"><p class="fb-cover-caption">${esc(M.coverLabel(cover))}</p>` : ''}
           <div class="fb-where">
             <div class="fb-disc" id="fbDisc"></div>
-            <div><p class="fb-pos"><b>${band.label} 带</b><b>${t.year % 10} 号辐</b></p>
-            ${mates.length ? `<p class="fb-mates">同一条辐线：${[...new Map(mates.map(o => [o.year + o.song, o])).values()].map(o => o.year + ' ' + esc(o.song)).join('、')}</p>` : ''}</div>
+            <div><p class="fb-pos"><b>${tr('{b} 带', {b: band.label})}</b><b>${tr('{n} 号辐', {n: t.year % 10})}</b></p>
+            ${mates.length ? `<p class="fb-mates">${tr('同一条辐线：')}${join([...new Map(mates.map(o => [o.year + o.song, o])).values()].map(o => o.year + ' ' + esc(o.song)))}</p>` : ''}</div>
           </div>
-          <dl class="fb-lanes" aria-label="这一圈的四道刻纹">${M.KEYS.map((k, i) => `<div><dt>${M.FIELD_NAMES[k]}</dt><dd><span class="lane-bar" style="--v:${d.cut.before[i]}" data-to="${d.cut.after[i]}"></span></dd></div>`).join('')}</dl>
+          <dl class="fb-lanes" aria-label="${tr('这一圈的四道刻纹')}">${M.KEYS.map((k, i) => `<div><dt>${M.FIELD_NAMES[k]}</dt><dd><span class="lane-bar" style="--v:${d.cut.before[i]}" data-to="${d.cut.after[i]}"></span></dd></div>`).join('')}</dl>
         </aside>
-        <footer class="tr-foot"><span class="keys">${wrong.length ? '订正框里 Enter 核对 · 框外 Enter 继续' : '空格 再听 · Enter 继续'}</span><button class="next" data-act="next" data-pending="${pendingFix(d) ? 1 : 0}">${nextLabel(d, last)}<kbd>Enter</kbd></button></footer>
+        <footer class="tr-foot"><span class="keys">${tr(wrong.length ? '订正框里 Enter 核对 · 框外 Enter 继续' : '空格 再听 · Enter 继续')}</span><button class="next" data-act="next" data-pending="${pendingFix(d) ? 1 : 0}">${nextLabel(d, last)}<kbd>Enter</kbd></button></footer>
       </div>`;
   }
 
@@ -296,20 +297,20 @@ export function createTrain(root, ctx) {
   const PEN = '<svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path d="M8 22 C6 8 40 3 62 4 C88 6 97 14 94 23 C90 35 52 38 30 36 C12 34 4 28 10 17" pathLength="1"/></svg>';
   const fixFor = result => { const w = result.fields.filter(f => !f.isCorrect); return w.length ? Object.fromEntries(w.map(f => [f.key, {state: 'todo', tries: 0}])) : null; };
   const pendingFix = d => d.fix ? Object.values(d.fix).filter(x => x.state !== 'done').length : 0;
-  const nextLabel = (d, last) => (pendingFix(d) ? '不订正，' : '') + (last ? '看这一轮' : '下一首');
+  const nextLabel = (d, last) => (pendingFix(d) ? tr('不订正，') : '') + tr(last ? '看这一轮' : '下一首');
   const verdictText = d => { const n = pendingFix(d), all = Object.keys(d.fix || {}).length;
-    return n ? `订正 ${d.result.fields.filter(f => !f.isCorrect).map(f => M.FIELD_NAMES[f.key]).join('、')}${n < all ? ` · 还差 ${n} 项` : ''}` : `订正完成 · ${all} 项都凭记忆写对了`; };
+    return n ? tr('订正 {f}', {f: join(d.result.fields.filter(f => !f.isCorrect).map(f => M.FIELD_NAMES[f.key]))}) + (n < all ? tr(' · 还差 {n} 项', {n}) : '') : tr('订正完成 · {n} 项都凭记忆写对了', {n: all}); };
   function fixRowHTML(d, f) {
-    const fx = d.fix?.[f.key] || {state: 'todo', tries: 0}, done = fx.state === 'done', ph = f.key === 'year' ? '写出四位年份' : '写出' + M.FIELD_NAMES[f.key];
+    const fx = d.fix?.[f.key] || {state: 'todo', tries: 0}, done = fx.state === 'done', ph = f.key === 'year' ? tr('写出四位年份') : tr('写出{f}', {f: M.FIELD_NAMES[f.key]});
     return `<li data-ok="0" data-key="${f.key}" data-fix="${fx.state}">
       <span class="k">${M.FIELD_NAMES[f.key]}</span><span class="was"><s>${esc(optionLabel(f.key, f.chosen))}</s></span>
       <span class="is pen"><span class="ans">${wordAnswerHTML(optionLabel(f.key, f.correct))}</span>${PEN}</span>
       <div class="fix">${done
-        ? `<span class="fix-ok"><b>✓</b> 已订正：${esc(fx.text || '')}${fx.tries > 1 ? `<small>写了 ${fx.tries} 次</small>` : ''}</span>`
+        ? `<span class="fix-ok"><b>✓</b> ${tr('已订正：')}${esc(fx.text || '')}${fx.tries > 1 ? `<small>${tr('写了 {n} 次', {n: fx.tries})}</small>` : ''}</span>`
         : `<input data-fix="${f.key}" type="text" maxlength="200" enterkeyhint="done" autocomplete="off" autocapitalize="off" spellcheck="false" ${f.key === 'year' ? 'inputmode="numeric"' : ''}
-            placeholder="${ph}" aria-label="订正${M.FIELD_NAMES[f.key]}：凭记忆写一遍，按 Enter 核对">
-           <button class="fix-check" data-act="fix" data-key="${f.key}">核对</button>
-           <span class="fix-msg" role="status">${fx.tries ? `不对，再看一眼，重写一遍（已写 ${fx.tries} 次）` : ''}</span>`}</div></li>`;
+            placeholder="${ph}" aria-label="${tr('订正{f}：凭记忆写一遍，按 Enter 核对', {f: M.FIELD_NAMES[f.key]})}">
+           <button class="fix-check" data-act="fix" data-key="${f.key}">${tr('核对')}</button>
+           <span class="fix-msg" role="status">${fx.tries ? tr('不对，再看一眼，重写一遍（已写 {n} 次）', {n: fx.tries}) : ''}</span>`}</div></li>`;
   }
   function checkFix(key) {
     peeks.hide();
@@ -321,13 +322,13 @@ export function createTrain(root, ctx) {
     if (checkField(d.track, key, input.value, M.catalog.styles, M.catalog.tracks)) {
       fx.state = 'done'; fx.text = input.value.trim();
       row.dataset.fix = 'done'; row.classList.remove('typing');
-      row.querySelector('.fix').innerHTML = `<span class="fix-ok"><b>✓</b> 已订正：${esc(fx.text)}${fx.tries > 1 ? `<small>写了 ${fx.tries} 次</small>` : ''}</span>`;
+      row.querySelector('.fix').innerHTML = `<span class="fix-ok"><b>✓</b> ${tr('已订正：')}${esc(fx.text)}${fx.tries > 1 ? `<small>${tr('写了 {n} 次', {n: fx.tries})}</small>` : ''}</span>`;
       const nextInput = root.querySelector('.fb-rows input[data-fix]');
       (nextInput || root.querySelector('.next'))?.focus({preventScroll: true});
     } else {
       fx.state = 'retry'; row.dataset.fix = 'retry';
       input.value = ''; row.classList.remove('typing');
-      row.querySelector('.fix-msg').textContent = `不对，再看一眼，重写一遍（已写 ${fx.tries} 次）`;
+      row.querySelector('.fix-msg').textContent = tr('不对，再看一眼，重写一遍（已写 {n} 次）', {n: fx.tries});
       input.classList.remove('shake'); void input.offsetWidth; input.classList.add('shake');
       input.focus();
     }
@@ -337,7 +338,7 @@ export function createTrain(root, ctx) {
   }
   function afterFeedback() {
     const d = round.done[round.done.length - 1];
-    const mini = flatDisc({detail: false, digits: true, focus: d.track.id, title: `${d.track.year} 在盘上的位置`});
+    const mini = flatDisc({detail: false, digits: true, focus: d.track.id, title: tr('{y} 在盘上的位置', {y: d.track.year})});
     root.querySelector('#fbDisc')?.replaceChildren(mini.svg);
     // 小盘先显示旧的刻纹，再刻到新的
     mini.cut(d.track.id, d.cut.before, 1);
@@ -354,7 +355,7 @@ export function createTrain(root, ctx) {
   function sheetEl() {
     if (ys.el) return ys.el;
     const el = ys.el = document.createElement('aside');
-    el.className = 'ys'; el.id = 'yearSheet'; el.hidden = true; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', '年份卡片');
+    el.className = 'ys'; el.id = 'yearSheet'; el.hidden = true; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', tr('年份卡片'));
     document.body.appendChild(el);
     el.addEventListener('click', e => {
       if (e.target.closest('[data-ys=close]') || e.target === el.querySelector('.ys-scrim')) return hideSheet();
@@ -380,24 +381,24 @@ export function createTrain(root, ctx) {
       const years = new Map();
       for (const id of b.ids) if (set.has(id)) { const t = M.byId.get(id); if (!years.has(t.year)) years.set(t.year, []); years.get(t.year).push(t); }
       if (!years.size) continue;
-      body.push(`<section><h3><b>${b.label}</b><span>${[...years.values()].reduce((n, a) => n + a.length, 0)} 首</span></h3><div class="ys-grid">${[...years].map(([y, list]) => `
-        <article class="yc"><header><span class="yc-year">${y}</span><span class="yc-spoke">${y % 10} 号辐</span></header>
+      body.push(`<section><h3><b>${b.label}</b><span>${tr('{n} 首', {n: [...years.values()].reduce((n, a) => n + a.length, 0)})}</span></h3><div class="ys-grid">${[...years].map(([y, list]) => `
+        <article class="yc"><header><span class="yc-year">${y}</span><span class="yc-spoke">${tr('{n} 号辐', {n: y % 10})}</span></header>
           <ul>${list.map(t => { const c = M.coverOf(t), l = M.lanesOf(t.id), miss = round.done.findLast(d => d.track.id === t.id)?.result.fields.filter(f => !f.isCorrect).map(f => M.FIELD_NAMES[f.key]);
             return `<li ${t.id === justId ? 'data-just' : ''}>${c ? `<img data-shape="${c.shape}" src="${c.url}" alt="" loading="lazy">` : '<i class="yc-noimg"></i>'}
-              <div><b>${nameHTML(t, 'song', M.titleOf(t))}</b><span>${nameHTML(t, 'artist')} · ${nameHTML(t, 'style')}</span>${miss?.length ? `<em>本轮订正：${miss.join('、')}</em>` : ''}</div>
-              <span class="c-lanes" role="img" aria-label="刻纹 ${Math.round(l.reduce((a, v) => a + v, 0) * 25)}%">${l.map(v => `<span style="--v:${v}"></span>`).join('')}</span></li>`; }).join('')}</ul>
+              <div><b>${nameHTML(t, 'song', M.titleOf(t))}</b><span>${nameHTML(t, 'artist')} · ${nameHTML(t, 'style')}</span>${miss?.length ? `<em>${tr('本轮订正：')}${join(miss)}</em>` : ''}</div>
+              <span class="c-lanes" role="img" aria-label="${tr('刻纹')} ${Math.round(l.reduce((a, v) => a + v, 0) * 25)}%">${l.map(v => `<span style="--v:${v}"></span>`).join('')}</span></li>`; }).join('')}</ul>
         </article>`).join('')}</div></section>`);
     }
-    const note = locked ? (roundIds.length ? '这一首还没提交：这里只放本轮已经答过的歌。累计的卡片在提交后可以看。' : '这一轮还没有答过的歌。提交第一首后，它会按年份出现在这里。')
-      : ys.tab === 'all' ? '听辨过的全部歌曲，按年份排。' : '这一轮答过的歌，按年份排。';
+    const note = tr(locked ? (roundIds.length ? '这一首还没提交：这里只放本轮已经答过的歌。累计的卡片在提交后可以看。' : '这一轮还没有答过的歌。提交第一首后，它会按年份出现在这里。')
+      : ys.tab === 'all' ? '听辨过的全部歌曲，按年份排。' : '这一轮答过的歌，按年份排。');
     const top = el.querySelector('.ys-body')?.scrollTop || 0, sameTab = el.dataset.tab === ys.tab;
     el.dataset.tab = ys.tab;
     el.innerHTML = `<div class="ys-scrim"></div><div class="ys-panel">
-      <header class="ys-head"><h2>年份卡片</h2>
-        <div class="seg" role="group" aria-label="范围"><button data-tab="round" aria-pressed="${ys.tab === 'round'}">本轮 ${roundIds.length}</button><button data-tab="all" aria-pressed="${ys.tab === 'all'}" ${locked ? 'disabled title="提交这一首后可以看"' : ''}>累计</button></div>
-        <button class="ys-close" data-ys="close">关闭<kbd>Esc</kbd></button></header>
+      <header class="ys-head"><h2>${tr('年份卡片')}</h2>
+        <div class="seg" role="group" aria-label="${tr('范围')}"><button data-tab="round" aria-pressed="${ys.tab === 'round'}">${tr('本轮')} ${roundIds.length}</button><button data-tab="all" aria-pressed="${ys.tab === 'all'}" ${locked ? `disabled title="${tr('提交这一首后可以看')}"` : ''}>${tr('累计')}</button></div>
+        <button class="ys-close" data-ys="close">${tr('关闭')}<kbd>Esc</kbd></button></header>
       <p class="ys-note">${note}</p>
-      <div class="ys-body" tabindex="0" aria-label="卡片列表">${body.join('') || '<p class="ys-empty">还没有卡片。</p>'}</div></div>`;
+      <div class="ys-body" tabindex="0" aria-label="${tr('卡片列表')}">${body.join('') || `<p class="ys-empty">${tr('还没有卡片。')}</p>`}</div></div>`;
     if (sameTab) el.querySelector('.ys-body').scrollTop = top;
   }
   function showSheet() {
@@ -503,11 +504,11 @@ export function createTrain(root, ctx) {
     resume() { render(); },
     pause() { peeks.hide(); hideSheet(false); playback.pause(); if (round && !operating) saveDraft(); },
     async discard() {
-      if (operating) throw Error('正在保存，请稍后再切换轮次。');
+      if (operating) throw Error(tr('正在保存，请稍后再切换轮次。'));
       peeks.hide(); operating = true; playback.pause();
       try {
         await tail;
-        if (saveError) throw Error('当前内容尚未保存，请先重试保存后再切换轮次。');
+        if (saveError) throw Error(tr('当前内容尚未保存，请先重试保存后再切换轮次。'));
         const latest = round ? M.roundById(round.id) : null;
         hideSheet(false); round = null; waveView?.destroy(); waveView = null; playback.stop();
         return latest;
@@ -520,26 +521,26 @@ export function createTrain(root, ctx) {
 /* ---------- 结果 ---------- */
 export function renderResult(root, last, ctx) {
   if (!last?.entries?.length) {
-    root.innerHTML = `<div class="rs rs-empty"><h1>还没有完成的一轮</h1><p>回到盘面，落针听十首。</p><button class="primary" data-act="disc">回到盘面</button></div>`;
+    root.innerHTML = `<div class="rs rs-empty"><h1>${tr('还没有完成的一轮')}</h1><p>${tr('回到盘面，落针听十首。')}</p><button class="primary" data-act="disc">${tr('回到盘面')}</button></div>`;
   } else {
     const sum = summarize(last.entries), n = last.entries.length, perfect = last.entries.filter(e => e.fields.every(f => f.isCorrect)).length;
     const grew = (last.cuts || []).filter(c => c.after.some((v, i) => v > c.before[i] + .004)).length;
-    const label = (key, value) => value === NOT_HEARD ? '没听出' : key === 'style' ? (M.catalog.styles.find(s => s.id === value)?.label || value) : value;
+    const label = (key, value) => value === NOT_HEARD ? tr('没听出') : key === 'style' ? (M.catalog.styles.find(s => s.id === value)?.label || value) : value;
     root.innerHTML = `<div class="rs">
       <header class="rs-head">
-        <p class="rs-kicker">这一轮 · ${n} 首 · ${!Array.isArray(last.scope) ? '旧记录 · 范围未保存' : last.scope.length === M.lectures.length ? '全部七讲' : '第 ' + last.scope.join('、') + ' 讲'} · ${last.questionType === 'written' ? '填空题' : '选择题'}${last.reason === 'early' ? ' · 提前结束' : ''}</p>
-        <h1><b>${perfect}</b><span>/ ${n} 首四项全对</span></h1>
-        <p class="rs-sub">${grew ? `${grew} 圈往前刻了一段。` : '这一轮没有新的刻纹。'}单项正确率 ${sum.accuracy}%。${(() => { const fx = last.entries.flatMap(e => Object.values(e.fix || {})); return fx.length ? `当场订正 ${fx.filter(x => x.state === 'done').length} / ${fx.length} 项。` : ''; })()}</p>
+        <p class="rs-kicker">${tr('这一轮')} · ${tr('{n} 首', {n})} · ${!Array.isArray(last.scope) ? tr('旧记录 · 范围未保存') : last.scope.length === M.lectures.length ? tr('全部七讲') : tr('第 {l} 讲', {l: join(last.scope)})} · ${tr(last.questionType === 'written' ? '填空题' : '选择题')}${last.reason === 'early' ? ' · ' + tr('提前结束') : ''}</p>
+        <h1><b>${perfect}</b><span>${tr('/ {n} 首四项全对', {n})}</span></h1>
+        <p class="rs-sub">${grew ? tr('{n} 圈往前刻了一段。', {n: grew}) : tr('这一轮没有新的刻纹。')}${tr('单项正确率 {p}%。', {p: sum.accuracy})}${(() => { const fx = last.entries.flatMap(e => Object.values(e.fix || {})); return fx.length ? tr('当场订正 {a} / {b} 项。', {a: fx.filter(x => x.state === 'done').length, b: fx.length}) : ''; })()}</p>
       </header>
       <div class="rs-grid">
-        <figure class="rs-disc"><div id="rsDisc"></div><figcaption>琥珀色的点是这一轮听过的圈</figcaption></figure>
+        <figure class="rs-disc"><div id="rsDisc"></div><figcaption>${tr('琥珀色的点是这一轮听过的圈')}</figcaption></figure>
         <dl class="rs-fields">${FIELDS.map(f => `<div><dt>${M.FIELD_NAMES[f.key]}</dt><dd><span class="lane-bar" style="--v:${sum.byField[f.key] / n}"></span><em>${sum.byField[f.key]} / ${n}</em></dd></div>`).join('')}</dl>
       </div>
       <ol class="rs-list">${last.entries.map(e => { const t = M.byId.get(e.id); if (!t) return ''; const miss = e.fields.filter(f => !f.isCorrect);
-        return `<li data-ok="${miss.length ? 0 : 1}"><i>${t.year}</i><b>${nameHTML(t, 'song', M.titleOf(t))}</b><span class="rs-artist">${nameHTML(t, 'artist')}</span><span class="rs-marks">${miss.length ? miss.map(f => `<em>${M.FIELD_NAMES[f.key]}：<s>${esc(label(f.key, f.chosen))}</s> ${esc(label(f.key, f.correct))}${e.fix?.[f.key] ? (e.fix[f.key].state === 'done' ? ' <i class="rs-fix" data-done="1">已订正</i>' : ' <i class="rs-fix">未订正</i>') : ''}</em>`).join('') : '✓'}</span></li>`; }).join('')}</ol>
-      <footer class="rs-foot"><button class="primary" data-act="disc">回到盘面，看它们刻上去<kbd>Enter</kbd></button><button data-act="again">再来一轮</button><button data-act="history">全部历史</button></footer>
+        return `<li data-ok="${miss.length ? 0 : 1}"><i>${t.year}</i><b>${nameHTML(t, 'song', M.titleOf(t))}</b><span class="rs-artist">${nameHTML(t, 'artist')}</span><span class="rs-marks">${miss.length ? miss.map(f => `<em>${M.FIELD_NAMES[f.key]}: <s>${esc(label(f.key, f.chosen))}</s> ${esc(label(f.key, f.correct))}${e.fix?.[f.key] ? (e.fix[f.key].state === 'done' ? ` <i class="rs-fix" data-done="1">${tr('已订正')}</i>` : ` <i class="rs-fix">${tr('未订正')}</i>`) : ''}</em>`).join('') : '✓'}</span></li>`; }).join('')}</ol>
+      <footer class="rs-foot"><button class="primary" data-act="disc">${tr('回到盘面，看它们刻上去')}<kbd>Enter</kbd></button><button data-act="again">${tr('再来一轮')}</button><button data-act="history">${tr('全部历史')}</button></footer>
     </div>`;
-    const d = flatDisc({detail: false, digits: true, marks: new Set(last.entries.map(e => e.id)), title: '这一轮在盘上的位置'});
+    const d = flatDisc({detail: false, digits: true, marks: new Set(last.entries.map(e => e.id)), title: tr('这一轮在盘上的位置')});
     root.querySelector('#rsDisc').replaceChildren(d.svg);
   }
   root.onclick = e => { const a = e.target.closest('[data-act]')?.dataset.act; if (a === 'disc') ctx.toDisc(); else if (a === 'again') ctx.again(); else if (a === 'history') ctx.history(); };

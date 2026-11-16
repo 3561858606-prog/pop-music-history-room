@@ -1,3 +1,4 @@
+import {t} from './i18n.js';
 // Per-audio PCM envelopes. Drawing is cached; playback only changes the reveal clip.
 const cache = new Map();
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
@@ -7,11 +8,11 @@ export const timeAtX = (clientX, bounds, duration) => bounds.width > 0 && validD
 export async function loadWaveform(track) {
   if (!cache.has(track.id)) {
     const request = fetch(new URL('../assets/waveforms/' + encodeURIComponent(track.id) + '.json', import.meta.url))
-      .then(response => { if (!response.ok) throw Error('波形暂未载入'); return response.json(); })
+      .then(response => { if (!response.ok) throw Error(t('波形暂未载入')); return response.json(); })
       .then(data => {
         if (data.version !== 1 || data.id !== track.id || data.src !== track.src || !validDuration(data.duration)
           || !Number.isInteger(data.bins) || data.bins < 1
-          || !['min','max','rms'].every(k => Array.isArray(data[k]) && data[k].length === data.bins && data[k].every(Number.isFinite))) throw Error('波形与音频不匹配');
+          || !['min','max','rms'].every(k => Array.isArray(data[k]) && data[k].length === data.bins && data[k].every(Number.isFinite))) throw Error(t('波形与音频不匹配'));
         return data;
       }).catch(error => { cache.delete(track.id); throw error; });
     cache.set(track.id, request);
@@ -79,7 +80,7 @@ export function createWaveform(canvas, {track, duration, position, onSeek, onCom
       context.fillStyle = '#EEE8DA'; context.fillRect(label, 0, tw, 15); context.fillStyle = '#16130F'; context.fillText(text, label + 4, 12);
     }
     const now = String(Math.round(time)), max = String(Math.round(dur));
-    if (canvas.getAttribute('aria-valuenow') !== now || canvas.getAttribute('aria-valuemax') !== max) { canvas.setAttribute('aria-valuenow', now); canvas.setAttribute('aria-valuetext', clock(time) + '，共 ' + clock(dur)); }
+    if (canvas.getAttribute('aria-valuenow') !== now || canvas.getAttribute('aria-valuemax') !== max) { canvas.setAttribute('aria-valuenow', now); canvas.setAttribute('aria-valuetext', t('{a}，共 {b}', {a: clock(time), b: clock(dur)})); }
     canvas.setAttribute('aria-valuemax', max);
   }
   async function load() {

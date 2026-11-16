@@ -1,9 +1,10 @@
 // 原型独立数据库。旧 localStorage 仅导入、保留；答案与轮次快照在同一事务提交。
+import {t} from './i18n.js';
 export const DB_NAME = 'v8-proto-learning-v2';
 export const uid = prefix => prefix + '-' + (globalThis.crypto?.randomUUID?.() || Date.now() + '-' + Math.random().toString(36).slice(2));
 const clone = value => JSON.parse(JSON.stringify(value));
 export class ConflictError extends Error {
-  constructor() { super('这一轮已在另一个页面更新，请重新载入后继续；也可以回盘面开始新一轮。'); this.name = 'ConflictError'; }
+  constructor() { super(t('这一轮已在另一个页面更新，请重新载入后继续；也可以回盘面开始新一轮。')); this.name = 'ConflictError'; }
 }
 export class LearningStore {
   constructor(name = DB_NAME) { this.name = name; this.db = null; }
@@ -18,7 +19,7 @@ export class LearningStore {
       };
       req.onsuccess = () => { this.db = req.result; this.db.onversionchange = () => this.db.close(); resolve(this); };
       req.onerror = () => reject(req.error);
-      req.onblocked = () => reject(new Error('学习存储正在升级，请关闭其他原型页面后重试。'));
+      req.onblocked = () => reject(new Error(t('学习存储正在升级，请关闭其他原型页面后重试。')));
     });
   }
   transaction(names, work, mode = 'readwrite') {
@@ -27,7 +28,7 @@ export class LearningStore {
       try {
         tx = this.db.transaction(names, mode);
         tx.oncomplete = () => resolve(value);
-        tx.onabort = () => reject(failure || tx.error || new Error('保存事务未完成'));
+        tx.onabort = () => reject(failure || tx.error || new Error(t('保存事务未完成')));
         tx.onerror = () => {};
         work(tx, v => { value = v; }, error => { failure = error; tx.abort(); });
       } catch (error) { if (tx) { failure = error; try { tx.abort(); } catch {} } else reject(error); }
@@ -62,7 +63,7 @@ export class LearningStore {
         if (!entry) return write();
         const q = events.get(entry.eventId);
         q.onsuccess = () => {
-          if (q.result && JSON.stringify(q.result) !== JSON.stringify(entry)) return fail(new Error('作答编号冲突，未覆盖原答案。'));
+          if (q.result && JSON.stringify(q.result) !== JSON.stringify(entry)) return fail(new Error(t('作答编号冲突，未覆盖原答案。')));
           if (!q.result) events.add(clone(entry));
           write();
         };

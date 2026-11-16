@@ -18,17 +18,18 @@
 <link rel="stylesheet" href="css/proto.css">
 </head>
 <body>
-<a class="skip" href="#main">跳到主要内容</a>
+<a class="skip" href="#main" data-i18n>跳到主要内容</a>
 
 <header class="top" id="top">
-  <a class="brand" href="#disc">大众音乐史复习室</a>
-  <nav class="tabs" aria-label="页面">
-    <a href="#disc" data-tab="disc">唱片</a>
-    <a href="#catalog" data-tab="catalog">目录</a>
-    <a href="#result" data-tab="result">结果</a>
-    <a href="#history" data-tab="history">历史</a>
+  <a class="brand" href="#disc" data-i18n>大众音乐史复习室</a>
+  <nav class="tabs" aria-label="页面" data-i18n-attr="aria-label">
+    <a href="#disc" data-tab="disc" data-i18n>唱片</a>
+    <a href="#catalog" data-tab="catalog" data-i18n>目录</a>
+    <a href="#result" data-tab="result" data-i18n>结果</a>
+    <a href="#history" data-tab="history" data-i18n>历史</a>
   </nav>
-  <button class="help-btn" id="helpBtn" type="button" aria-label="上手指南" title="上手指南">?</button>
+  <button class="lang-btn" id="langBtn" type="button" aria-haspopup="true" aria-expanded="false"></button>
+  <button class="help-btn" id="helpBtn" type="button" aria-label="帮助、更新与反馈" title="帮助、更新与反馈" data-i18n-attr="aria-label,title">?</button>
 </header>
 
 <main id="main">
@@ -36,27 +37,27 @@
   <section class="room room-disc" id="roomDisc" data-room="disc" hidden>
     <div class="stage" id="stage">
       <canvas id="gl" tabindex="0" role="application" aria-describedby="discHelp"
-        aria-label="母盘：外圈 1854 年，内圈 1968 年。方向键移动，回车进入，空格落针。"></canvas>
-      <div class="flat-host" id="flatHost" tabindex="0" role="application" aria-label="平面母盘" aria-describedby="discHelp" hidden></div>
+        aria-label="母盘：外圈 1854 年，内圈 1968 年。方向键移动，回车进入，空格落针。" data-i18n-attr="aria-label"></canvas>
+      <div class="flat-host" id="flatHost" tabindex="0" role="application" aria-label="平面母盘" aria-describedby="discHelp" data-i18n-attr="aria-label" hidden></div>
       <div class="hud" id="hud" aria-hidden="true"></div>
       <p class="stage-hint" id="discHelp"></p>
       <div class="legend" aria-hidden="true">
-        <span><i class="lg-cut"></i>刻过：记住了</span>
-        <span><i class="lg-blank"></i>漆面：还没记住</span>
+        <span><i class="lg-cut"></i><span data-i18n>刻过：记住了</span></span>
+        <span><i class="lg-blank"></i><span data-i18n>漆面：还没记住</span></span>
         <span class="lg-src" id="legendSrc"></span>
       </div>
     </div>
-    <aside class="panel" id="panel" aria-label="曲目表"></aside>
+    <aside class="panel" id="panel" aria-label="曲目表" data-i18n-attr="aria-label"></aside>
     <div class="sr-only" aria-live="polite" id="live"></div>
-    <button class="intro-skip" id="introSkip" hidden>跳过</button>
+    <button class="intro-skip" id="introSkip" data-i18n hidden>跳过</button>
   </section>
 
   <!-- 目录：高效的那一层 -->
   <section class="room room-catalog" id="roomCatalog" data-room="catalog" hidden>
     <div class="cat-head">
-      <h1>目录</h1>
-      <label class="cat-search"><span class="sr-only">搜索</span><input id="catSearch" type="search" placeholder="搜索歌名、音乐家、年份、风格" autocomplete="off"></label>
-      <div class="cat-filters" id="catFilters" role="group" aria-label="筛选"></div>
+      <h1 data-i18n>目录</h1>
+      <label class="cat-search"><span class="sr-only" data-i18n>搜索</span><input id="catSearch" type="search" placeholder="搜索歌名、音乐家、年份、风格" data-i18n-attr="placeholder" autocomplete="off"></label>
+      <div class="cat-filters" id="catFilters" role="group" aria-label="筛选" data-i18n-attr="aria-label"></div>
     </div>
     <div class="cat-body" id="catBody"></div>
   </section>

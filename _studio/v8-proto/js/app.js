@@ -5,6 +5,8 @@ import {renderHistory} from './history.js';
 import {nameHTML} from './reading.js';
 import {hasVideo, videoTag, videoCount} from './video.js';
 import {createGuide} from './guide.js';
+import {t as tr, join, applyStatic} from './i18n.js';
+applyStatic();
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -105,7 +107,7 @@ async function route() {
     }
     if (room !== 'disc' && room !== 'train' && room !== 'result' && from !== null) $(ROOMS[room]).querySelector('h1, button, [tabindex]')?.focus?.({preventScroll: true});
     window.scrollTo(0, 0);
-  } catch (error) { notice(error.message || '页面暂未载入，请刷新重试。'); }
+  } catch (error) { notice(error.message || tr('页面暂未载入，请刷新重试。')); }
   finally { busy = false; if (location.hash !== currentHash) route(); }
 }
 
@@ -127,11 +129,11 @@ async function resumeRound(id) {
   try {
     await train.flush(); await M.refreshRecords();
     let saved = M.roundById(id);
-    if (!saved || saved.state !== 'active') { notice('这一轮已结束，请在历史里查看。'); return; }
+    if (!saved || saved.state !== 'active') { notice(tr('这一轮已结束，请在历史里查看。')); return; }
     await train.discard();
     await M.refreshRecords(); saved = M.roundById(id);
-    if (!saved || saved.state !== 'active') { notice('这一轮已结束，请在历史里查看。'); go('history'); return; }
-    if (!train.restore(saved)) throw Error('这一轮的信息不完整，请导出备份后开始新一轮。');
+    if (!saved || saved.state !== 'active') { notice(tr('这一轮已结束，请在历史里查看。')); go('history'); return; }
+    if (!train.restore(saved)) throw Error(tr('这一轮的信息不完整，请导出备份后开始新一轮。'));
     rememberRound(id); notice(''); go('train');
   } catch (error) { notice(error.message); }
   finally { starting = false; }
@@ -139,7 +141,7 @@ async function resumeRound(id) {
 
 /* ---------- 目录：搜索和筛选，高效的那一层 ---------- */
 const cat = {q: '', filter: 'all'};
-const FILTERS = [['all', '全部'], ['open', '还没刻满'], ['year', '年份没记住'], ['new', '还没听过'], ['video', '有视频']];
+const FILTERS = [['all', tr('全部')], ['open', tr('还没刻满')], ['year', tr('年份没记住')], ['new', tr('还没听过')], ['video', tr('有视频')]];
 function renderCatalog() {
   $('catFilters').innerHTML = FILTERS.map(([k, label]) => `<button data-f="${k}" aria-pressed="${cat.filter === k}"${k === 'video' ? ' class="f-video"' : ''}>${k === 'video' ? `<i aria-hidden="true"></i>${label}<span>${videoCount}</span>` : label}</button>`).join('');
   const q = cat.q.trim().toLocaleLowerCase();
@@ -151,18 +153,18 @@ function renderCatalog() {
     if (cat.filter === 'video' && !hasVideo(t.id)) return false;
     if (!q) return true;
     const s = M.styleOf(t);
-    return [t.song, t.artist, t.songKo, t.artistKo, t.year, s.label, s.sub, hasVideo(t.id) ? '视频 video' : '', ...['song', 'artist', 'style'].flatMap(k => M.aliasesOf(t, k))].join(' ').toLocaleLowerCase().includes(q);
+    return [t.song, t.artist, t.songKo, t.artistKo, t.year, s.label, s.sub, hasVideo(t.id) ? '视频 video 비디오 영상' : '', ...['song', 'artist', 'style'].flatMap(k => M.aliasesOf(t, k))].join(' ').toLocaleLowerCase().includes(q);
   };
   let shown = 0;
   $('catBody').innerHTML = M.bands.map(b => {
     const rows = b.ids.map(id => M.byId.get(id)).filter(keep); if (!rows.length) return '';
     shown += rows.length;
-    return `<section class="cat-band"><h2><b>${b.label}</b><span>${rows.length} 首</span></h2><ol>${rows.map(t => { const l = M.lanesOf(t.id), s = M.styleOf(t);
+    return `<section class="cat-band"><h2><b>${b.label}</b><span>${tr('{n} 首', {n: rows.length})}</span></h2><ol>${rows.map(t => { const l = M.lanesOf(t.id), s = M.styleOf(t);
       // 「视频」标签紧跟主名，别写仍在下一行
       const title = nameHTML(t, 'song', M.titleOf(t)).replace('</span>', '</span>' + videoTag(t.id));
-      return `<li><button data-song="${t.id}"><i>${t.year}</i><b>${title}</b><span class="c-artist">${nameHTML(t, 'artist')}</span><span class="c-style">${nameHTML(t, 'style')}</span><span class="c-lec">第 ${M.lectureIds(t).join('、')} 讲</span>
-        <span class="c-lanes" role="img" aria-label="刻纹：${M.KEYS.map((k, i) => M.FIELD_NAMES[k] + Math.round(l[i] * 100) + '%').join('，')}">${l.map(v => `<span style="--v:${v}"></span>`).join('')}</span></button></li>`; }).join('')}</ol></section>`;
-  }).join('') || `<p class="cat-empty">没有符合条件的曲目。</p>`;
+      return `<li><button data-song="${t.id}"><i>${t.year}</i><b>${title}</b><span class="c-artist">${nameHTML(t, 'artist')}</span><span class="c-style">${nameHTML(t, 'style')}</span><span class="c-lec">${tr('第 {l} 讲', {l: join(M.lectureIds(t))})}</span>
+        <span class="c-lanes" role="img" aria-label="${tr('刻纹')}: ${M.KEYS.map((k, i) => M.FIELD_NAMES[k] + ' ' + Math.round(l[i] * 100) + '%').join(', ')}">${l.map(v => `<span style="--v:${v}"></span>`).join('')}</span></button></li>`; }).join('')}</ol></section>`;
+  }).join('') || `<p class="cat-empty">${tr('没有符合条件的曲目。')}</p>`;
   $('catBody').dataset.count = shown;
 }
 $('catSearch').addEventListener('input', e => { cat.q = e.target.value; renderCatalog(); });
@@ -170,13 +172,13 @@ $('catFilters').addEventListener('click', e => { const b = e.target.closest('[da
 $('catBody').addEventListener('click', async e => { const b = e.target.closest('[data-song]'); if (!b) return; const id = b.dataset.song; go('disc'); await ensureExplore(); await sleep(60); explore.focusSong(id); });
 
 M.onChange(what => {
-  if (what === 'prefs-error') notice('偏好暂未保存；作答记录不受影响。');
-  if (what === 'storage-error') notice('记录同步暂时失败，请保留页面后重试。');
+  if (what === 'prefs-error') notice(tr('偏好暂未保存；作答记录不受影响。'));
+  if (what === 'storage-error') notice(tr('记录同步暂时失败，请保留页面后重试。'));
   if (current === 'history') renderHistory($('roomHistory'), historyCtx);
 });
-notice('正在载入本地学习记录…');
+notice(tr('正在载入本地学习记录…'));
 try { await M.ready; lastRound = M.history()[0] || null; notice(''); await route(); }
 catch (error) {
-  notice('学习存储暂不可用：' + error.message + '。原有记录未改动，请刷新重试。');
-  const retry = document.createElement('button'); retry.textContent = '重新载入'; retry.onclick = () => location.reload(); $('appNotice').append(retry);
+  notice(tr('学习存储暂不可用：{m}。原有记录未改动，请刷新重试。', {m: error.message}));
+  const retry = document.createElement('button'); retry.textContent = tr('重新载入'); retry.onclick = () => location.reload(); $('appNotice').append(retry);
 }

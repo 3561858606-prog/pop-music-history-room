@@ -1,5 +1,6 @@
 // 平面的盘（SVG）。它是 WebGL 不可用时的探索页，也是训练反馈和结果页里的小盘。
 import {rings, bands, GEO, TAU, lanesOf, localXZ} from './model.js';
+import {t} from './i18n.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const el = (name, attrs = {}, parent) => { const n = document.createElementNS(NS, name); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; };
@@ -20,7 +21,7 @@ function arc(parent, r, phi, frac, width, color, opacity = 1) {
  * opts.decades 是否画年代名
  */
 export function flatDisc(opts = {}) {
-  const {detail = false, focus = null, marks = null, digits = true, decades = false, label = true, title = '母盘'} = opts;
+  const {detail = false, focus = null, marks = null, digits = true, decades = false, label = true, title = t('母盘')} = opts;
   const pad = digits ? 1.13 : 1.02;
   const svg = el('svg', {viewBox: `${-pad} ${-pad} ${pad * 2} ${pad * 2}`, role: 'img', 'aria-label': title, class: 'flat-disc'});
   el('circle', {r: 1, fill: C.lacquer}, svg);

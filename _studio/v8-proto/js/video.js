@@ -4,6 +4,7 @@
 // hd：有 1080p 原画（course-videos/1080/ 下，原片无损重封装），其余为 720p 网页版或原片本身（480p/720p）。
 import {esc} from './reading.js';
 import {site} from './model.js';
+import {t as tr} from './i18n.js';
 
 const base = (() => {
   let v = document.querySelector('meta[name="course-video-base"]')?.content?.trim() || 'course-videos/';
@@ -37,7 +38,7 @@ const conn = navigator.connection;
 const autoHD = () => !slow && !conn?.saveData && !/(^|-)2g$|^3g$/.test(conn?.effectiveType || '');
 export const qualityOf = v => !v.hd ? null : choice !== 'auto' ? choice : autoHD() ? '1080' : '720';
 export const videoSrc = (v, q = qualityOf(v)) => base + (q === '1080' ? '1080/' : '') + v.file;
-const qualityHTML = (v, q) => v.hd ? `<span class="vid-q" role="group" aria-label="画质">${['720', '1080'].map(x => `<button data-vid-q="${x}" aria-pressed="${q === x}">${x}p</button>`).join('')}</span>` : '';
+const qualityHTML = (v, q) => v.hd ? `<span class="vid-q" role="group" aria-label="${tr('画质')}">${['720', '1080'].map(x => `<button data-vid-q="${x}" aria-pressed="${q === x}">${x}p</button>`).join('')}</span>` : '';
 function note(fig, text) { const n = fig.querySelector('.vid-note'); if (n) n.textContent = text; }
 function syncQuality(fig) { const q = fig.dataset.q; fig.querySelectorAll('[data-vid-q]').forEach(b => b.setAttribute('aria-pressed', b.dataset.vidQ === q)); }
 // 换源：从同一秒接着放，原来在放就继续放。
@@ -51,30 +52,30 @@ function swap(fig, q) {
 export function setVideoQuality(fig, q) {
   choice = q; put(localStorage, QKEY, q);
   if (fig.dataset.q !== q) swap(fig, q);
-  note(fig, q === '1080' ? '已换成 1080p 原画。网速慢时可能需要缓冲。' : '已换成 720p。');
+  note(fig, tr(q === '1080' ? '已换成 1080p 原画。网速慢时可能需要缓冲。' : '已换成 720p。'));
 }
 
 const posterOf = id => `assets/video-posters/${id}.jpg`;
 export const clock = s => { s = Math.round(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 
 // 目录与曲目表里的小标签。
-export const videoTag = id => hasVideo(id) ? '<span class="vid-tag"><i aria-hidden="true"></i>视频</span>' : '';
+export const videoTag = id => hasVideo(id) ? `<span class="vid-tag"><i aria-hidden="true"></i>${tr('视频')}</span>` : '';
 
 // 详情里的视频：先显示封面帧，点了才向视频服务器请求，避免翻歌时白白下载。
 export function videoFigureHTML(t) {
   const v = videoOf(t.id); if (!v) return '';
-  const where = `第 ${v.deck} 讲 · 第 ${v.slide} 页`, q = qualityOf(v);
+  const where = tr('第 {d} 讲 · 第 {s} 页', {d: v.deck, s: v.slide}), q = qualityOf(v);
   return `<figure class="vid" data-video="${t.id}" data-state="idle"${q ? ` data-q="${q}"` : ''}>
     <div class="vid-frame">
-      <button class="vid-start" data-vid-play aria-label="播放课件视频：${esc(t.song)}，${where}，时长 ${clock(v.duration)}">
+      <button class="vid-start" data-vid-play aria-label="${tr('播放课件视频：{s}，{w}，时长 {d}', {s: esc(t.song), w: where, d: clock(v.duration)})}">
         <img src="${posterOf(t.id)}" alt="" width="640" height="360" decoding="async">
         <span class="vid-glyph" aria-hidden="true"><i></i></span>
         <span class="vid-len" aria-hidden="true">${q === '1080' ? '<b>1080p</b>' : ''}${clock(v.duration)}</span>
       </button>
     </div>
     <figcaption>
-      <span class="vid-cap"><span class="vid-src"><b>课件视频</b><span>${where}</span></span><span class="vid-kind">${esc(v.kind)}</span></span>
-      <span class="vid-acts">${qualityHTML(v, q)}${v.songAt ? `<button class="vid-jump" data-vid-jump>从音乐开始 <span>${clock(v.songAt)}</span></button>` : ''}</span>
+      <span class="vid-cap"><span class="vid-src"><b>${tr('课件视频')}</b><span>${where}</span></span><span class="vid-kind">${esc(tr(v.kind))}</span></span>
+      <span class="vid-acts">${qualityHTML(v, q)}${v.songAt ? `<button class="vid-jump" data-vid-jump>${tr('从音乐开始')} <span>${clock(v.songAt)}</span></button>` : ''}</span>
     </figcaption>
     <p class="vid-note" role="status"></p>
     <p class="vid-error" role="status"></p>
@@ -92,7 +93,7 @@ export function mountVideo(fig, {at = 0, onPlay} = {}) {
     el.poster = posterOf(id);
     if (v.hd && !fig.dataset.q) fig.dataset.q = qualityOf(v);
     el.src = videoSrc(v, fig.dataset.q) + (at ? `#t=${at}` : '');
-    el.setAttribute('aria-label', `课件视频：第 ${v.deck} 讲第 ${v.slide} 页`);
+    el.setAttribute('aria-label', tr('课件视频') + ': ' + tr('第 {d} 讲 · 第 {s} 页', {d: v.deck, s: v.slide}));
     el.addEventListener('play', () => { fig.dataset.state = 'playing'; onPlay?.(); });
     el.addEventListener('pause', () => { if (fig.dataset.state === 'playing') fig.dataset.state = 'paused'; });
     // 自动画质：1080p 播放中累计卡顿超过 3 秒、一次卡住 4 秒，或点了播放 8 秒还没开始，就换回 720p。
@@ -101,7 +102,7 @@ export function mountVideo(fig, {at = 0, onPlay} = {}) {
       clearTimeout(timer); since = 0;
       if (choice !== 'auto' || fig.dataset.q !== '1080') return;
       slow = true; put(sessionStorage, SLOW, '1'); swap(fig, '720');
-      note(fig, '网速跟不上 1080p，已换成 720p，从同一秒接着放。想看原画可点 1080p。');
+      note(fig, tr('网速跟不上 1080p，已换成 720p，从同一秒接着放。想看原画可点 1080p。'));
     };
     el.addEventListener('waiting', () => {
       fig.dataset.buffering = '1';
@@ -115,7 +116,7 @@ export function mountVideo(fig, {at = 0, onPlay} = {}) {
     el.addEventListener('play', () => { if (!started && fig.dataset.q === '1080') { clearTimeout(timer); timer = setTimeout(() => { if (!started) downgrade(); }, 8000); } });
     el.addEventListener('error', () => {
       fig.dataset.state = 'error';
-      fig.querySelector('.vid-error').innerHTML = '视频暂时无法载入。<button data-vid-retry>重试</button>';
+      fig.querySelector('.vid-error').innerHTML = `${tr('视频暂时无法载入。')}<button data-vid-retry>${tr('重试')}</button>`;
     });
     fig.querySelector('.vid-start')?.replaceWith(el);
     fig.dataset.state = 'loading';

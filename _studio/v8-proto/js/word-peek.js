@@ -1,3 +1,4 @@
+import {t} from './i18n.js';
 // 仅控制临时提示，不写作答或学习记录。
 const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const controllers = new WeakMap();
@@ -13,7 +14,7 @@ export function createWordPeek(root,{duration=1200}={}) {
   const events = new AbortController();
   let current=null,timer=0;
   const masked=b=>!!b.closest('li.typing');
-  const label=b=>b.setAttribute('aria-label',masked(b)?`短暂查看第 ${b.dataset.word} 个词`:b.textContent);
+  const label=b=>b.setAttribute('aria-label',masked(b)?t('短暂查看第 {n} 个词', {n: b.dataset.word}):b.textContent);
   function hide(){clearTimeout(timer);timer=0;if(current){current.classList.remove('peeked');current.setAttribute('aria-pressed','false');label(current);current=null;}}
   function show(b){if(!masked(b))return;hide();current=b;b.classList.add('peeked');b.setAttribute('aria-pressed','true');b.setAttribute('aria-label',b.textContent);timer=setTimeout(hide,duration);}
   function sync(){hide();root.querySelectorAll('.peek-word').forEach(b=>{label(b);b.tabIndex=masked(b)?0:-1;});}

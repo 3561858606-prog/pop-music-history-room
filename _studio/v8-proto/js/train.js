@@ -3,7 +3,7 @@
 import {FIELDS, NOT_HEARD, RandomQueue, buildQuestion, filterTracks, gradeQuestion, summarize} from '../../../v3/core.js';
 import * as M from './model.js';
 import {gradeWritten, checkField} from './names.js';
-import {nameHTML, optionAliasesHTML, storyHTML} from './reading.js';
+import {nameHTML, optionAliasesHTML, trackStoryHTML} from './reading.js';
 import {createAudio} from './audio.js';
 import {flatDisc} from './flat.js';
 import {createWaveform} from './waveform.js';
@@ -63,12 +63,36 @@ export function createTrain(root, ctx) {
     saveError = null; savedAt = ''; setQuestion(); render();
     await enqueue(() => persist(snapshot())).catch(error => { saveError = error; retryAction = saveDraft; saveUI(); });
   }
+  // 预取：答题时在后台先取下一首的波形和歌曲开头（还有这一首的封面），点「下一首」时不用再从头等网络。
+  // 下一首就是题目队列的末尾（RandomQueue 不带 select 时从末尾取），只看不取，不改队列。
+  const spare = new Audio(); spare.preload = 'auto'; spare.muted = true;
+  let warmTimer = 0, warmedId = null;
+  function upcoming() {
+    if (!round) return null;
+    const n = round.phase === 'answer' ? round.done.length + 1 : round.done.length;
+    if (n >= round.size) return null;
+    const ids = new Set(round.pool.map(t => t.id));
+    return queue.remaining.filter(t => ids.has(t.id)).at(-1) || null;
+  }
+  function warmNext(delay = 3000) {
+    clearTimeout(warmTimer);
+    warmTimer = setTimeout(() => {
+      if (!round || navigator.connection?.saveData) return;
+      const cover = M.coverOf(round.question.track); if (cover?.url) new Image().src = cover.url;
+      const t = upcoming(); if (!t || t.id === warmedId) return;
+      warmedId = t.id;
+      fetch(new URL('../assets/waveforms/' + encodeURIComponent(t.id) + '.json', import.meta.url)).catch(() => {});
+      spare.src = M.audioSrc(t);
+    }, delay);
+  }
+  function coolNext() { clearTimeout(warmTimer); warmedId = null; if (spare.getAttribute('src')) { spare.removeAttribute('src'); spare.load(); } }
   function setQuestion() {
     const track = queue.next(round.pool);
     round.question = round.questionType === 'written' ? {track, options: {}} : buildQuestion(track, round.pool, M.catalog.tracks, M.catalog.styles);
     round.question.eventId = M.uid('answer');
     round.answers = {}; round.drafts = {}; round.phase = 'answer'; round.col = 0;
     playback.load(track); playback.play();
+    warmNext();
   }
   async function next() {
     if (!round || operating) return;
@@ -101,7 +125,7 @@ export function createTrain(root, ctx) {
     data.reason = round.done.length >= round.size ? 'completed' : 'early';
     try {
       const saved = await enqueue(() => persist(data));
-      hideSheet(false); playback.stop(); cancelAnimationFrame(raf); round = null;
+      hideSheet(false); playback.stop(); coolNext(); cancelAnimationFrame(raf); round = null;
       if (!saved.entries.length) return ctx.exit();
       ctx.finish(saved);
     } catch (error) { saveError = error; retryAction = finish; }
@@ -116,7 +140,7 @@ export function createTrain(root, ctx) {
       if (!saved) throw Error(tr('未找到这轮记录，请导出备份后重试。'));
       saveError = null;
       if (saved.state === 'active') restore(saved);
-      else { playback.stop(); round = null; ctx.finish(saved); }
+      else { playback.stop(); coolNext(); round = null; ctx.finish(saved); }
     } catch (error) { saveError = error; retryAction = recoverConflict; }
     finally { operating = false; saveUI(); }
   }
@@ -130,7 +154,7 @@ export function createTrain(root, ctx) {
     round = {...saved, pool: filterTracks(M.catalog.tracks, saved.scope), done,
       question: {track: t, options: saved.options || {}, eventId: saved.eventId || M.uid('answer')},
       answers: saved.answers || {}, drafts: saved.drafts || {}, cuts: new Map((saved.cuts || []).map(c => [c.id,c]))};
-    playback.load(t, saved.audioTime || 0); savedAt = new Date(saved.updatedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    playback.load(t, saved.audioTime || 0); warmNext(); savedAt = new Date(saved.updatedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
     saveError = null; render(); return true; // 恢复后由用户点播放，避免自动播放限制。
   }
 
@@ -264,7 +288,7 @@ export function createTrain(root, ctx) {
 
   const optionLabel = (key, value) => value === NOT_HEARD ? tr('没听出') : key === 'style' ? (M.catalog.styles.find(s => s.id === value)?.label || value) : value;
   function feedbackHTML() {
-    const d = round.done[round.done.length - 1], t = d.track, g = M.ringOf.get(t.id), band = M.bands[g.band], cover = M.coverOf(t), story = M.storyOf(t);
+    const d = round.done[round.done.length - 1], t = d.track, g = M.ringOf.get(t.id), band = M.bands[g.band], cover = M.coverOf(t);
     const wrong = d.result.fields.filter(f => !f.isCorrect), mates = M.spokeMates(t).slice(0, 6), last = round.done.length >= round.size;
     const grew = d.cut.after.some((v, i) => v > d.cut.before[i] + .004);
     return `<div class="fb" data-all="${wrong.length ? 0 : 1}">
@@ -277,7 +301,7 @@ export function createTrain(root, ctx) {
             ? `<li data-ok="1"><span class="k">${M.FIELD_NAMES[f.key]}</span><span class="is">${esc(optionLabel(f.key, f.correct))}</span><span class="tick" aria-label="${tr('对')}">✓</span></li>`
             : fixRowHTML(d, f)).join('')}</ul>
           ${wrong.length ? `<p class="fix-rule">${tr('看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，按 Enter 核对。写错要重写；也可以不订正，直接下一首。')}</p>` : ''}
-          ${storyHTML(story, 'fb-story')}
+          ${trackStoryHTML(t, 'fb-story')}
         </div>
         <aside class="fb-side">
           ${cover ? `<img class="fb-cover" data-shape="${cover.shape}" src="${cover.url}" alt="${tr('{s} 的封面', {s: esc(t.song)})}" width="${cover.w}" height="${cover.h}"><p class="fb-cover-caption">${esc(M.coverLabel(cover))}</p>` : ''}
@@ -515,7 +539,7 @@ export function createTrain(root, ctx) {
           const data = snapshot(); data.state = 'finished'; data.reason = 'empty'; data.time = new Date().toISOString();
           try { latest = await persist(data); } catch {}
         }
-        hideSheet(false); round = null; waveView?.destroy(); waveView = null; playback.stop();
+        hideSheet(false); round = null; waveView?.destroy(); waveView = null; playback.stop(); coolNext();
         return latest;
       } finally { operating = false; saveUI(); }
     },

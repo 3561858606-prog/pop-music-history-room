@@ -2,6 +2,7 @@ import * as M from '../js/model.js';
 import {gradeWritten} from '../js/names.js';
 import {nameHTML, optionAliasesHTML, storyHTML} from '../js/reading.js';
 import {createTrain} from '../js/train.js';
+await M.loadStories();   // 长读改成后台载入了，测试前先载入
 const out=document.querySelector('#results'),fixture=document.querySelector('#fixture'),results=[];
 const assert=(value,message)=>{if(!value)throw Error(message);};
 async function test(name,work){try{await work();results.push('PASS '+name);}catch(e){results.push('FAIL '+name+': '+e.message);}out.textContent=results.join('\n');}

@@ -1,7 +1,6 @@
 // 界面语言：中文 / 한국어 / English。
 // 写法：t('中文原文 {n} 首', {n}) —— 中文原文就是键，韩文、英文在 i18n-dict.js 里按原文对照。
 // 没有译文的句子会退回中文（并记在 window.__i18nMissing 里，方便检查）。换语言时整页重新载入。
-import {KO, EN} from './i18n-dict.js';
 
 export const LANGS = [['zh', '中文', '中'], ['ko', '한국어', '한'], ['en', 'English', 'EN']];
 const KEY = 'v8-proto-lang';
@@ -16,7 +15,8 @@ function detect() {
   return 'zh';
 }
 export const LANG = detect();
-const DICT = {ko: KO, en: EN}[LANG] || null;
+// 中文界面不需要对照表，只有选了韩文、英文才去载入（省一次下载）。
+const DICT = LANG === 'zh' ? null : (await import('./i18n-dict.js'))[LANG === 'ko' ? 'KO' : 'EN'];
 const missing = new Set();
 if (typeof window !== 'undefined') window.__i18nMissing = missing;
 

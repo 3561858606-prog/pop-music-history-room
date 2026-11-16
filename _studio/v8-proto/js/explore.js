@@ -3,7 +3,7 @@ import * as M from './model.js';
 import {flatDisc} from './flat.js';
 import {player} from './audio.js';
 import {sleeveLayout} from './sleeve-layout.js';
-import {nameHTML, storyHTML} from './reading.js';
+import {nameHTML, trackStoryHTML} from './reading.js';
 import {t as tr, join} from './i18n.js';
 import {hasVideo, videoFigureHTML, mountVideo, retryVideo, videoOf, setVideoQuality} from './video.js';
 
@@ -528,7 +528,7 @@ export async function initExplore(ctx) {
     const top = panel.scrollTop;
     const sameSong = panel.querySelector('.song')?.dataset.track === view.song;
     const storyOpen = sameSong && panel.querySelector('.story-long')?.open;
-    const band = bands[view.band], t = M.byId.get(view.song), g = M.ringOf.get(view.song), lanes = M.lanesOf(t.id), story = M.storyOf(t), cover = M.coverOf(t);
+    const band = bands[view.band], t = M.byId.get(view.song), g = M.ringOf.get(view.song), lanes = M.lanesOf(t.id), cover = M.coverOf(t);
     const mates = M.spokeMates(t), style = M.styleOf(t);
     panel.innerHTML = `
       <div class="p-close">
@@ -546,7 +546,7 @@ export async function initExplore(ctx) {
           ${videoFigureHTML(t)}
           <button class="needle-btn" aria-pressed="false"><i></i><span>${tr('落针试听')}</span><kbd>${tr('空格')}</kbd></button>
           <dl class="lanes" aria-label="${tr('这一圈的四道刻纹')}">${M.KEYS.map((k, i) => laneRow(k, lanes[i], t.id)).join('')}</dl>
-          ${storyHTML(story)}
+          ${trackStoryHTML(t)}
           ${mates.length ? `<div class="spoke"><h3>${tr('{n} 号辐上还有', {n: t.year % 10})}</h3><p>${mates.map(o => `<button data-song="${o.id}">${o.year} ${esc(M.titleOf(o))}</button>`).join('')}</p></div>` : ''}
         </article>
         <div class="p-head"><span>${band.label} · ${tr('{n} 首', {n: band.ids.length})}</span><span>${tr('←→ 换歌')}</span></div>

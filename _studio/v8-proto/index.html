@@ -16,6 +16,31 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="../../v3/assets/fonts/fonts.css">
 <link rel="stylesheet" href="css/proto.css">
+<!-- 第一屏要用的模块一起开始下载，不用一层层等 import 链（手机网络上省一两秒）。
+     新加/改名第一屏模块时同步这里；说明卡、更新说明、逐曲长读、翻译表是后载的，不放这里。 -->
+<link rel="modulepreload" href="js/app.js">
+<link rel="modulepreload" href="js/model.js">
+<link rel="modulepreload" href="js/train.js">
+<link rel="modulepreload" href="js/explore.js">
+<link rel="modulepreload" href="js/gl.js">
+<link rel="modulepreload" href="js/sleeve-layout.js">
+<link rel="modulepreload" href="js/history.js">
+<link rel="modulepreload" href="js/reading.js">
+<link rel="modulepreload" href="js/video.js">
+<link rel="modulepreload" href="js/i18n.js">
+<link rel="modulepreload" href="js/store.js">
+<link rel="modulepreload" href="js/names.js">
+<link rel="modulepreload" href="js/cover-overrides.js">
+<link rel="modulepreload" href="js/audio.js">
+<link rel="modulepreload" href="js/flat.js">
+<link rel="modulepreload" href="js/waveform.js">
+<link rel="modulepreload" href="js/word-peek.js">
+<link rel="modulepreload" href="../../v3/catalog.js">
+<link rel="modulepreload" href="../../v3/covers.js">
+<link rel="modulepreload" href="../../v3/core.js">
+<link rel="modulepreload" href="../../v3/memory.js">
+<link rel="modulepreload" href="../../v3/track-model.js">
+<link rel="modulepreload" href="../../v3/written.js">
 </head>
 <body>
 <a class="skip" href="#main" data-i18n>跳到主要内容</a>

@@ -16,6 +16,14 @@ export function optionAliasesHTML(field, option) {
   const track = M.tracks.find(t => String(t[field]) === option.value);
   return track ? aliasesHTML(track, field, [option.label]) : '';
 }
+// 按曲目放长读：长读还在后台载入时先占个位，载入后原地补上，不重画整块。
+export function trackStoryHTML(track, className = 'story') {
+  if (M.storiesLoaded()) return storyHTML(M.storyOf(track), className);
+  M.loadStories().then(() => {
+    for (const el of document.querySelectorAll(`.story-slot[data-track="${track.id}"]`)) el.outerHTML = storyHTML(M.storyOf(track), el.dataset.cls);
+  });
+  return `<div class="story-slot" data-track="${track.id}" data-cls="${className}"></div>`;
+}
 export function storyHTML(story, className = 'story') {
   if (!story) return '';
   const sections = story.sections || [];

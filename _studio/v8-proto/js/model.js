@@ -3,7 +3,6 @@
 import {catalog} from '../../../v3/catalog.js';
 import {COVERS} from '../../../v3/covers.js';
 import {PROTO_COVERS} from './cover-overrides.js';
-import {STORIES} from './stories.js';
 import {status, KEYS, emptyMemory, record, migrate} from '../../../v3/memory.js';
 import {appearancesFor} from '../../../v3/track-model.js';
 import {LearningStore, uid} from './store.js';
@@ -92,7 +91,11 @@ export function coverLabel(cover) {
   const kind = t({album:'专辑封面',compilation:'再版合辑',sleeve:'单曲封套',label:'唱片标签',sheet:'乐谱封面',photo:'历史资料图',device:'播放设备',ad:'发行广告'}[cover.kind] || '历史图像');
   return kind + (cover.match === 'context' ? ' · ' + t('作品或历史资料') : cover.match === 'version' ? ' · ' + t('同曲其他录音') : cover.match === 'unverified' ? ' · ' + t('录音版本未确认') : '');
 }
-export const storyOf = t => STORIES[t.id] || null;
+// 逐曲长读（约 180KB）不挡进入：盘面出来后再在后台载入；载入前打开的面板稍后补上。
+let STORIES = null, storiesP = null;
+export const loadStories = () => storiesP ||= import('./stories.js').then(m => { STORIES = m.STORIES; }).catch(() => { storiesP = null; });
+export const storiesLoaded = () => !!STORIES;
+export const storyOf = t => STORIES?.[t.id] || null;
 export const audioSrc = t => site(t.src);
 // 同名的几个版本（如三段 Maple Leaf Rag）在列表里带上版本说明
 const titleCount = new Map(); for (const t of tracks) titleCount.set(t.song, (titleCount.get(t.song) || 0) + 1);

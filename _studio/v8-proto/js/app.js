@@ -4,7 +4,6 @@ import {createTrain, renderResult} from './train.js';
 import {renderHistory} from './history.js';
 import {nameHTML} from './reading.js';
 import {hasVideo, videoTag, videoCount} from './video.js';
-import {createGuide} from './guide.js';
 import {t as tr, join, applyStatic} from './i18n.js';
 applyStatic();
 
@@ -31,8 +30,10 @@ const train = createTrain($('roomTrain'), {
   finish(r) { lastRound = r; justFinished = true; pendingCuts = r.cuts; rememberRound(''); go('result/' + encodeURIComponent(r.id)); }
 });
 
-// 上手指南：只在盘面上主动出现一次；?still（截图、检查画面）时不出现。
-const guide = createGuide({
+// 上手指南、更新说明、语言菜单：不挡进入，盘面出来后再载入（guide.js + changelog.js）。
+// 载入前就点了「?」或语言按钮：先载入，再替它点一次。
+let guide = null, guideP = null;
+const loadGuide = () => guideP ||= import('./guide.js').then(m => guide = m.createGuide({
   focusDisc: () => explore?.focus(),
   dropButton: () => document.getElementById('startRound'),
   onDisc: () => current === 'disc' && roomOf() === 'disc',
@@ -42,7 +43,14 @@ const guide = createGuide({
     if (target === 'catalog-video') { cat.filter = 'video'; cat.q = ''; $('catSearch').value = ''; if (current === 'catalog') renderCatalog(); return go('catalog'); }
     if (target === 'disc') { go('disc'); explore?.focus(); }
   }
-});
+})).catch(error => { guideP = null; throw error; });
+function earlyGuideClick(e) {
+  if (guide) return document.removeEventListener('click', earlyGuideClick, true);
+  const el = e.target.closest('#helpBtn, #langBtn, [data-open-guide]'); if (!el) return;
+  e.preventDefault(); e.stopPropagation();
+  loadGuide().then(() => { document.removeEventListener('click', earlyGuideClick, true); el.click(); }).catch(() => {});
+}
+document.addEventListener('click', earlyGuideClick, true);
 const returning = () => M.history().length > 0 || M.unfinished().length > 0 || M.stats().source === 'proto';
 const ensureExplore = () => exploreP ||= import('./explore.js').then(m => m.initExplore({reduced, startRound, resumeRound})).then(api => { explore = api; if (STILL || new URLSearchParams(location.search).has('debug')) window.__v8 = {explore: api}; return api; });
 
@@ -87,7 +95,7 @@ async function route() {
       const report = M.history().find(r => r.id === id) || lastRound || M.history()[0];
       renderResult($('roomResult'), report, {toDisc: () => go('disc'), again: () => startRound(report?.scope || M.prefs.scope, report?.questionType), history: () => go('history')});
       // 刚做完一轮：底部放一条小设计（一次一条）
-      if (justFinished) { justFinished = false; const tip = guide.tip(); if (tip) $('roomResult').querySelector('.rs-foot')?.insertAdjacentHTML('afterend', tip); }
+      if (justFinished) { justFinished = false; const tip = guide?.tip(); if (tip) $('roomResult').querySelector('.rs-foot')?.insertAdjacentHTML('afterend', tip); }
       swap('result');
       $('roomResult').querySelector('[data-act=disc]')?.focus({preventScroll: true});
     } else if (room === 'history') {
@@ -103,7 +111,7 @@ async function route() {
       if (pendingCuts) { explore.celebrate(pendingCuts); pendingCuts = null; }
       let introPlayed = false;
       if (from === null && !M.prefs.introSeen) { M.prefs.introSeen = true; M.savePrefs(); explore.intro(); introPlayed = true; }
-      if (!STILL) guide.auto({returning: returning(), delay: introPlayed && !reduced() ? 1800 : 500});
+      if (!STILL) { const delay = introPlayed && !reduced() ? 1800 : 500; loadGuide().then(g => g.auto({returning: returning(), delay})).catch(() => {}); }
       if (fromPaper) { await sleep(40); await veilTo(false, 320); }
       if (from !== null) explore.focus();
     }
@@ -173,13 +181,18 @@ $('catSearch').addEventListener('input', e => { cat.q = e.target.value; renderCa
 $('catFilters').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) { cat.filter = b.dataset.f; renderCatalog(); $('catFilters').querySelector(`[data-f="${cat.filter}"]`)?.focus(); } });
 $('catBody').addEventListener('click', async e => { const b = e.target.closest('[data-song]'); if (!b) return; const id = b.dataset.song; go('disc'); await ensureExplore(); await sleep(60); explore.focusSong(id); });
 
+// 第一屏出来以后，空闲时把不急的东西载入：说明卡、逐曲长读。
+function afterFirst() {
+  const idle = window.requestIdleCallback || (f => setTimeout(f, 300));
+  idle(() => { loadGuide().catch(() => {}); M.loadStories(); }, {timeout: 2500});
+}
 M.onChange(what => {
   if (what === 'prefs-error') notice(tr('偏好暂未保存；作答记录不受影响。'));
   if (what === 'storage-error') notice(tr('记录同步暂时失败，请保留页面后重试。'));
   if (current === 'history') renderHistory($('roomHistory'), historyCtx);
 });
 notice(tr('正在载入本地学习记录…'));
-try { await M.ready; lastRound = M.history()[0] || null; notice(''); await route(); }
+try { await M.ready; lastRound = M.history()[0] || null; notice(''); await route(); afterFirst(); }
 catch (error) {
   notice(tr('学习存储暂不可用：{m}。原有记录未改动，请刷新重试。', {m: error.message}));
   const retry = document.createElement('button'); retry.textContent = tr('重新载入'); retry.onclick = () => location.reload(); $('appNotice').append(retry);

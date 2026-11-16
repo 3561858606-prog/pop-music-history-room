@@ -74,16 +74,24 @@ export function createTrain(root, ctx) {
     const ids = new Set(round.pool.map(t => t.id));
     return queue.remaining.filter(t => ids.has(t.id)).at(-1) || null;
   }
-  function warmNext(delay = 3000) {
+  // 等这一首在播放位置之后已经缓冲了 30 秒以上（或整首下完）才预取，不和正在听的这首抢网速。
+  const loadedFully = () => {
+    const d = audio.duration, b = audio.buffered, now = audio.currentTime;
+    for (let i = 0; i < b.length; i++) if (b.start(i) <= now + .5 && b.end(i) >= now) return b.end(i) - now >= 30 || (Number.isFinite(d) && b.end(i) >= d - .5);
+    return false;
+  };
+  function warmNext() {
     clearTimeout(warmTimer);
-    warmTimer = setTimeout(() => {
+    const tick = () => {
       if (!round || navigator.connection?.saveData) return;
+      if (!loadedFully()) { warmTimer = setTimeout(tick, 1500); return; }
       const cover = M.coverOf(round.question.track); if (cover?.url) new Image().src = cover.url;
       const t = upcoming(); if (!t || t.id === warmedId) return;
       warmedId = t.id;
       fetch(new URL('../assets/waveforms/' + encodeURIComponent(t.id) + '.json', import.meta.url)).catch(() => {});
       spare.src = M.audioSrc(t);
-    }, delay);
+    };
+    warmTimer = setTimeout(tick, 1500);
   }
   function coolNext() { clearTimeout(warmTimer); warmedId = null; if (spare.getAttribute('src')) { spare.removeAttribute('src'); spare.load(); } }
   function setQuestion() {

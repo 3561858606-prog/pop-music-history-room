@@ -181,10 +181,10 @@ $('catSearch').addEventListener('input', e => { cat.q = e.target.value; renderCa
 $('catFilters').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) { cat.filter = b.dataset.f; renderCatalog(); $('catFilters').querySelector(`[data-f="${cat.filter}"]`)?.focus(); } });
 $('catBody').addEventListener('click', async e => { const b = e.target.closest('[data-song]'); if (!b) return; const id = b.dataset.song; go('disc'); await ensureExplore(); await sleep(60); explore.focusSong(id); });
 
-// 第一屏出来以后，空闲时把不急的东西载入：说明卡、逐曲长读。
+// 第一屏出来以后，空闲时载入说明卡（很小）。逐曲长读较大，等真要显示时才载入，不和刚开始播放的歌抢网速。
 function afterFirst() {
   const idle = window.requestIdleCallback || (f => setTimeout(f, 300));
-  idle(() => { loadGuide().catch(() => {}); M.loadStories(); }, {timeout: 2500});
+  idle(() => { loadGuide().catch(() => {}); }, {timeout: 2500});
 }
 M.onChange(what => {
   if (what === 'prefs-error') notice(tr('偏好暂未保存；作答记录不受影响。'));

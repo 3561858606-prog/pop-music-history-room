@@ -247,7 +247,9 @@ export function fieldCut(f) {
   if (!f || !f.n) return 0;
   const s = status(f), acc = f.c / f.n;
   if (s === '稳定掌握') return 1;
-  if (s === '明显薄弱') return f.n < 4 ? acc * f.n / 4 * .5 : .12;
+  // 薄弱也要反映答对后的恢复，不能把所有历史都锁在 12%。
+  // 到 60% 正确率时衔接「仍需加强」的 50%；掌握判定仍由 status 决定。
+  if (s === '明显薄弱') return .12 + .38 * Math.min(1, acc / .6);
   if (s === '数据不足') return acc * (f.n / 4) * .5;
   return .5 + .38 * Math.max(0, Math.min(1, (acc - .6) / .4)) * Math.min(1, f.n / 8);
 }

@@ -6,6 +6,7 @@ export function createAudio() {
   const element = new Audio(); element.preload = 'metadata';
   let track = null, state = 'idle', listener = null, token = 0, resumeAt = null;
   let context = null, gain = null, noise = null, silent = false;
+  const failedSources = new Set();
   const messages = Object.fromEntries(Object.entries({idle: '点击播放收听', loading: '音频加载中…', ready: '音频已就绪，点击播放', playing: '正在播放',
     paused: '已暂停', waiting: '正在缓冲…', ended: '播放完毕，可以重听', blocked: '浏览器需要你点击播放', error: '音频加载失败，点击播放重试'}).map(([k, v]) => [k, t(v)]));
   const set = value => { state = value; listener?.(state, track); };
@@ -52,7 +53,7 @@ export function createAudio() {
   // 换源：从同一位置接着放（原来在放 / 正要放就继续放）
   function switchSrc(src) {
     const wanted = lastPlay && ['loading', 'playing', 'waiting'].includes(state);
-    resumeAt = element.currentTime || resumeAt || 0; token++;
+    resumeAt = resumeAt ?? element.currentTime ?? 0; token++;
     silent = true; element.src = src; silent = false;
     if (wanted) api.play({warm: lastPlay.warm}); else set('loading');
   }
@@ -62,13 +63,14 @@ export function createAudio() {
   element.addEventListener('seeking', () => { seekAt = performance.now(); });
   const downgrade = () => {
     clearTimeout(stallTimer);
-    if (!track || !canDowngrade(track, element.currentSrc || element.src) || !['loading', 'waiting'].includes(state)) return;
+    if (!track || !canDowngrade(track, element.currentSrc || element.src) || failedSources.has(audioSrc(track, 'sd')) || !['loading', 'waiting'].includes(state)) return;
     penalize(srcKbps(track, element.currentSrc)); switchSrc(audioSrc(track, 'sd'));
   };
   element.addEventListener('waiting', () => { if (track && !element.paused && performance.now() - seekAt > 1000) { clearTimeout(stallTimer); stallTimer = setTimeout(downgrade, 1500); } });
   element.addEventListener('playing', () => clearTimeout(stallTimer));
   element.addEventListener('error', () => {
     clearTimeout(stallTimer);
+    failedSources.add(element.src);
     // 轻量版 / 流畅版载不了（个别浏览器或文件缺失）：换回原 mp3，从同一位置接着放
     if (track && track.src && /\/audio-(lite|sd)\//.test(element.src)) { switchSrc(audioFallbackSrc(track)); return; }
     stopNoise(); if (track) set('error');
@@ -85,7 +87,7 @@ export function createAudio() {
     // 网速慢时自动用的 64k 流畅档：在状态里标一下
     message: () => (messages[state] || '') + (track && ['playing', 'waiting', 'paused'].includes(state) && srcTier(element.currentSrc || element.src) === 'sd' ? ' · ' + t('流畅音质') : ''),
     tier: () => srcTier(element.currentSrc || element.src),
-    load(t, at = 0) { clearTimeout(stallTimer); token++; stopNoise(); silent = true; element.pause(); track = t; resumeAt = at; element.src = audioSrc(t); silent = false; set('loading'); },
+    load(t, at = 0) { clearTimeout(stallTimer); failedSources.clear(); token++; stopNoise(); silent = true; element.pause(); track = t; resumeAt = at; element.src = audioSrc(t); silent = false; set('loading'); },
     async play({fadeIn = false, warm = false} = {}) {
       if (!track) return false;
       lastPlay = {fadeIn, warm};

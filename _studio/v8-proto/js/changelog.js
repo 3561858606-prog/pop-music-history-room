@@ -7,6 +7,10 @@
 // 老用户打开网站时，左下角会出现一次这条更新的小纸条；新用户只看上手指南，不打扰。
 // 新的小设计加到 DESIGNS 里，since 写这次更新的 v，更新说明里会标「新」。
 export const RELEASES = [
+  {v: '2026-11-17', title: {zh: '答对的进步看得见', ko: '맞힌 만큼 보이는 진도', en: 'Correct answers move progress forward'}, items: [
+    {t: 'fix', text: {zh: '修复薄弱项目的进度条一直停在 12%：年份、歌名、音乐家和风格答对后都会继续增长。原有作答记录与掌握标准保留。', ko: '취약한 항목의 진도가 12%에 멈추던 문제를 고쳤습니다. 연도·곡명·음악가·장르를 맞히면 계속 늘어납니다. 기존 기록과 숙달 기준은 유지됩니다.', en: 'Weak fields no longer get stuck at 12%: correct year, song, artist and style answers keep moving forward. Existing answers and mastery criteria are preserved.'}},
+    {t: 'fix', text: {zh: '音频换源保留最新定位；流畅档加载失败后，不再反复切回同一个失败档位。', ko: '음원 전환 시 가장 최근에 지정한 재생 위치를 유지하고, 절약 음질 로딩 실패 후 같은 파일로 반복 전환하지 않습니다.', en: 'Audio source changes keep your latest seek target and no longer retry the same failed data-saver source in a loop.'}}
+  ]},
   {v: '2026-11-16d', title: {zh: '网慢也不卡：自动画质和音质', ko: '느린 인터넷에서도 끊김 없이: 자동 화질·음질', en: 'Smooth on slow connections: automatic quality'}, items: [
     {t: 'new', text: {zh: '音频和课件视频会按你当前的网速自动选档：网慢时放 64k 流畅音质和 360p / 240p 视频，网快时放原音质和 720p / 1080p。', ko: '지금 인터넷 속도에 맞춰 음악과 강의 영상의 품질을 자동으로 고릅니다. 느릴 때는 64k 절약 음질과 360p/240p 영상, 빠를 때는 원래 음질과 720p/1080p로 재생합니다.', en: 'Audio and lecture videos now pick a quality for your connection: 64k data-saver audio and 360p/240p video when it is slow, original audio and 720p/1080p when it is fast.'}, go: 'catalog-video'},
     {t: 'fix', text: {zh: '播放中一旦卡住，会自动降一档并从同一秒接着放，不用手动重来；视频下方也能自己选画质。', ko: '재생 중 끊기면 자동으로 한 단계 낮춰 같은 지점부터 이어서 재생합니다. 영상 아래에서 화질을 직접 고를 수도 있습니다.', en: 'If playback stalls, it steps down a level and carries on from the same second; you can also pick the video quality yourself.'}},

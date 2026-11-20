@@ -8,6 +8,7 @@ import {COVERS} from '../../../v3/covers.js';
 import {PROTO_COVERS} from './cover-overrides.js';
 import {status, KEYS, emptyMemory, record, migrate} from '../../../v3/memory.js';
 import {appearancesFor} from '../../../v3/track-model.js';
+import {restoreDeckSelection} from '../../../v3/core.js';
 import {LearningStore, uid} from './store.js';
 import {alternateNames} from './names.js';
 import {t, t as tr, LANG} from './i18n.js';
@@ -30,6 +31,7 @@ export const COARSE_UNTIL = 1948;       // 之前是 78 转的粗纹，之后是
 
 export const tracks = [...catalog.tracks].sort((a, b) => a.year - b.year || a.id.localeCompare(b.id));
 export const byId = new Map(tracks.map(t => [t.id, t]));
+export const yearRange = {first: tracks[0].year, last: tracks.at(-1).year};
 const dec = y => Math.floor(y / 10) * 10;
 
 const sameYear = new Map();
@@ -84,7 +86,7 @@ export function bandAtRadius(r) {
 export const lectures = catalog.lectures;
 export const lectureIds = t => appearancesFor(t).map(a => a.deck);
 const LECTURE_EN = {1: 'Concepts and Origins', 2: 'The 1920s (1)', 3: 'The 1920s (2)', 4: 'The Swing Era', 5: 'Popular Music after WWII', 6: 'Rock and Roll', 7: 'The 1960s: Rock and Soul'};
-export const lectureLabel = id => { const l = lectures.find(x => x.id === id); return !l ? '' : LANG === 'ko' ? l.ko || l.label : LANG === 'en' ? LECTURE_EN[id] || l.label : l.label; };
+export const lectureLabel = id => { const l = lectures.find(x => x.id === id); return !l ? '' : LANG === 'ko' ? l.ko || l.label : LANG === 'en' ? l.en || LECTURE_EN[id] || l.label : l.label; };
 export const styleOf = t => catalog.styles.find(s => s.id === t.style) || {label: t.style, sub: '', ko: ''};
 export const aliasesOf = (t, field, exclude = []) => alternateNames(t, field, catalog.styles, tracks, exclude);
 // 页面上用 480px 的轻量封面（img-lite/，scripts/make-cover-lite.mjs 生成）；原图地址留在 full。
@@ -136,15 +138,17 @@ const realMemory = migrate(read(REAL_KEY), oldEntries, catalog.tracks);
 memory = migrate(read(PROTO_KEY), Object.values(realMemory.events), catalog.tracks);
 source = Object.keys(memory.events).length ? 'proto' : 'empty';
 const savedPrefs = read(PREF_KEY);
-export const prefs = Object.assign({demo: 'real', scope: lectures.map(l => l.id), size: 10, custom: 15, introSeen: false, flat: false, questionType: 'choice'},
+const lectureIdsNow = lectures.map(l => l.id);
+export const prefs = Object.assign({demo: 'real', scope: lectureIdsNow.slice(), size: 10, custom: 15, introSeen: false, flat: false, questionType: 'choice'},
   savedPrefs && typeof savedPrefs === 'object' && !Array.isArray(savedPrefs) ? savedPrefs : {});
 prefs.demo = 'real'; // 正常使用始终展示真实记录，旧示意偏好不再生效。
 if (![10, 20, 'all', 'custom'].includes(prefs.size)) prefs.size = 10;
 prefs.questionType = prefs.questionType === 'written' ? 'written' : 'choice';
 prefs.custom = Math.max(1, Math.min(tracks.length, Math.round(+prefs.custom) || 15));
 export const sizeFor = n => prefs.size === 'all' ? n : Math.max(1, Math.min(n, prefs.size === 'custom' ? prefs.custom : prefs.size));
-prefs.scope = Array.isArray(prefs.scope) ? prefs.scope.filter(id => lectures.some(l => l.id === id)) : [];
-if (!prefs.scope.length) prefs.scope = lectures.map(l => l.id);
+prefs.scope = restoreDeckSelection(prefs.scope, lectureIdsNow, savedPrefs?.catalogDeckIds ?? [1, 2, 3, 4, 5, 6, 7]);
+if (!prefs.scope.length) prefs.scope = lectureIdsNow.slice();
+prefs.catalogDeckIds = lectureIdsNow.slice();
 export function savePrefs() { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch { emit('prefs-error'); } }
 
 export const store = new LearningStore(testing ? uid('v8-proto-ui-test') : undefined);
@@ -257,7 +261,8 @@ const hash = s => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.c
 function demoLanes(t, mode) {
   if (mode === 'blank') return [0, 0, 0, 0];
   if (mode === 'full') return [1, 1, 1, 1];
-  const age = (1968 - t.year) / 114, base = hash(t.id) * .9 + age * .45;   // 早的讲次学得久一些
+  const age = (yearRange.last - t.year) / Math.max(1, yearRange.last - yearRange.first);
+  const base = hash(t.id) * .9 + age * .45;   // 早的讲次学得久一些
   return KEYS.map((k, i) => { const v = base + (hash(t.id + k) - .5) * .5 - (k === 'year' ? .18 : 0);
     return v > .95 ? 1 : v > .7 ? .8 : v > .5 ? .55 : v > .36 ? .28 : 0; });
 }

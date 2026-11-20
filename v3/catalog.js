@@ -1,3 +1,5 @@
+import {lecture8, lecture8Styles, lecture8Tracks} from './lecture8.js';
+
 export const catalog = {
   "lectures": [
     {
@@ -48,7 +50,8 @@ export const catalog = {
       "ko": "1960년대 대중음악 (1) · 록과 소울",
       "period": "1960–1968 · 英国入侵 · 迷幻 · Soul",
       "count": 20
-    }
+    },
+    lecture8
   ],
   "styles": [
     {
@@ -230,7 +233,8 @@ export const catalog = {
       "label": "Tin Pan Alley",
       "sub": "锡盘巷歌曲",
       "ko": "틴 팬 앨리"
-    }
+    },
+    ...lecture8Styles
   ],
   "tracks": [
     {
@@ -2018,17 +2022,19 @@ export const catalog = {
       "releaseYearBasis": "本演唱者版本首次发行年；与课件评分年独立存储，非原作或重制年",
       "originalTitle": "보라색 안개 Purple Haze",
       "albumIds": []
-    }
+    },
+    ...lecture8Tracks
   ],
   "audit": {
-    "date": "2026-11-04",
-    "decks": 7,
-    "slides": 105,
-    "audio_objects": 68,
+    "date": "2026-11-20",
+    "decks": 8,
+    "slides": 115,
+    "audio_objects": 82,
     "video_objects": 8,
-    "exported_audio_files": 76,
-    "training_versions": 75,
+    "exported_audio_files": 90,
+    "training_versions": 89,
     "unresolved_audio_labels": 19,
+    "lecture8_year_conflicts": 2,
     "external_links": 0,
     "unreferenced_media": 0
   },

@@ -1,6 +1,7 @@
 import * as M from '../js/model.js';
 import {emptyMemory, record, status} from '../../../v3/memory.js';
 import {createAudio} from '../js/audio.js';
+import {penalize} from '../js/net.js';
 import {createTrain} from '../js/train.js';
 const out = document.querySelector('#results'), results = [];
 const assert = (ok, message) => { if (!ok) throw Error(message); };
@@ -81,6 +82,11 @@ globalThis.setTimeout = (fn, ms) => { const id = ++serial; timers.set(id, {fn, m
 globalThis.clearTimeout = id => timers.delete(id);
 try {
   await test('流畅档载入失败后原档恢复，不反复请求坏档位', async () => {
+    // 运行其他播放用例后浏览器可能已有高速估值；本例主动模拟慢网。
+    const key = 'v8-proto-net', saved = localStorage.getItem(key);
+    penalize(32);
+    if (saved === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, saved);
     const p = createAudio(), track = M.byId.get('t75'); timers.clear(); p.load(track); await p.play();
     assert(p.element.src.includes('/audio-sd/'), '冷启动未使用流畅档');
     p.element.dispatchEvent(new Event('error')); await Promise.resolve();

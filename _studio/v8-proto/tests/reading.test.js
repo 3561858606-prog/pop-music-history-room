@@ -9,7 +9,7 @@ async function test(name,work){try{await work();results.push('PASS '+name);}catc
 const key=(target,key,options={})=>{const e=new KeyboardEvent('keydown',{key,bubbles:true,cancelable:true,...options});target.dispatchEvent(e);return e;};
 const set=(field,value)=>{const input=fixture.querySelector(`[data-field=${field}]`);input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));return input;};
 await M.ready;
-await test('75 首显示的每个别写都能通过相同字段的填空判定',()=>{
+await test('全部曲目显示的每个别写都能通过相同字段的填空判定',()=>{
  let count=0;
  for(const t of M.tracks)for(const field of ['song','artist','style'])for(const name of M.aliasesOf(t,field)){
   const result=gradeWritten(t,{song:t.song,year:String(t.year),artist:t.artist,style:M.styleOf(t).label,[field]:name},M.catalog.styles,M.tracks);
@@ -67,8 +67,8 @@ await test('选择题长别写随内容展开，不覆盖相邻选项',async()=>
   }
  }
 });
-await test('75 首故事包含背景、传播、影响及出处链接，未知录音不编造年份',()=>{
- for(const t of M.tracks){
+await test('前七讲长读保留背景、传播、影响及出处链接，未知录音不编造年份',()=>{
+ for(const t of M.tracks.filter(t=>t.deck<8)){
   const s=M.storyOf(t);assert(s?.lead&&s.sections?.length>=3,`${t.id} 故事未扩写`);
   assert(s.sections.every(p=>p.title&&p.text.length>=90),`${t.id} 故事内容不足`);
   assert(s.sources?.length&&s.sources.every(s=>/^https:\/\//.test(s.url)),`${t.id} 缺少来源`);

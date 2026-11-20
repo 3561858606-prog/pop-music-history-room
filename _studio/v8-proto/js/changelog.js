@@ -7,6 +7,11 @@
 // 老用户打开网站时，左下角会出现一次这条更新的小纸条；新用户只看上手指南，不打扰。
 // 新的小设计加到 DESIGNS 里，since 写这次更新的 v，更新说明里会标「新」。
 export const RELEASES = [
+  {v: '2026-11-20d', title: {zh: '修好字压字和手机上的两处声音问题', ko: '글자 겹침과 휴대폰 소리 문제 두 가지 수정', en: 'Fixed overlapping text and two sound issues on phones'}, items: [
+    {t: 'fix', text: {zh: '贴近一个年代时，左上角的「同年封套」标题不再压在背景音乐的署名上：署名收成一个小开关，移到右上角。', ko: '한 연대로 다가가면 왼쪽 위의 「같은 해 재킷」 제목이 배경음악 표시와 겹치지 않도록, 배경음악은 작은 스위치로 줄여 오른쪽 위로 옮겼습니다.', en: 'When you zoom into a decade, the same-year sleeves title no longer overlaps the background-music credit: the credit shrinks to a small switch in the top right.'}},
+    {t: 'fix', text: {zh: '手机上进入唱片页，背景音乐不再晚一拍、也会照常慢慢淡入。', ko: '휴대폰에서 레코드 화면에 들어가면 배경음악이 늦게 시작하지 않고, 평소처럼 천천히 커집니다.', en: 'On phones, background music on the record page no longer starts late, and fades in as intended.'}},
+    {t: 'fix', text: {zh: '手机上落针时，歌不会先响一下再从头放一遍。', ko: '휴대폰에서 바늘을 내릴 때 노래가 잠깐 나왔다가 처음부터 다시 나오지 않습니다.', en: 'On phones, dropping the needle no longer plays the song briefly and then starts it again.'}}
+  ]},
   {v: '2026-11-20c', title: {zh: '听歌时，星空跟着这首歌回应', ko: '노래를 들으면 별하늘이 반응해요', en: 'The sky now answers the music'}, items: [
     {t: 'new', text: {zh: '落针时，水波从唱针落下的那一点贴着唱片往外荡开，到了盘边再接着荡进星空，伴着一声水滴和慢慢散开的水声。', ko: '바늘을 내리면 바늘이 닿은 곳에서 물결이 레코드 표면을 따라 퍼지고, 가장자리에서 별하늘로 이어집니다. 물방울 소리와 천천히 퍼지는 물소리가 함께 납니다.', en: 'When the needle drops, a ripple spreads across the record from the needle, carries on into the sky at the rim, with a drop and a slowly widening water sound.'}},
     {t: 'new', text: {zh: '听歌时星空有三条效果链：「节奏」听出重拍、镲片和速度；「风格」按作品选烟雾、蓝调之雾、霓虹火花、液体灯光秀等 8 种样子；「年代」按年代选干版照相、默片、电台暖光、霓虹电视、立体声彩色 5 种底片。三条叠在一起，每首歌都不一样。', ko: '노래를 들을 때 별하늘에 세 가지 이펙트가 걸립니다. 「리듬」은 강박, 심벌, 빠르기를 듣고, 「장르」는 연기, 블루스의 안개, 네온 불꽃, 리퀴드 라이트 쇼 등 8가지 모습을, 「연대」는 건판 사진, 무성영화, 라디오의 따뜻한 빛, 네온 텔레비전, 스테레오 컬러 5가지 필름을 고릅니다. 셋이 겹쳐 노래마다 다르게 보입니다.', en: 'While a song plays the sky runs three effect chains: Rhythm hears strong beats, cymbals and tempo; Style picks one of 8 looks (Smoke & Brass, Blue Haze, Neon Sparks, Liquid Light Show…); Era picks one of 5 films (Dry Plate, Silent Film, Radio Glow, Neon TV, Stereo Colour). Stacked together, every song looks different.'}},

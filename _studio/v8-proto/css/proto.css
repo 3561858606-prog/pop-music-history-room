@@ -159,6 +159,11 @@ html[data-side=paper] .tabs a[aria-current]{border-bottom-color:var(--ink)}
 .bgm-chip[data-mode=off] .bgm-btn .bgm-wave{display:none}
 .bgm-chip[data-mode=off] .bgm-btn .bgm-x{display:inline}
 .stage[data-intro="1"] .bgm-chip,.stage[data-mode=dive] .bgm-chip{opacity:0;pointer-events:none}
+/* 贴近一个年代时，左上角是「同年封套」的标题：署名收成一个小开关，挪到右上角，不和标题叠在一起 */
+.stage[data-mode=close] .bgm-chip{left:auto;right:calc(var(--panel) + 56px);max-width:none;align-items:center}
+.stage[data-mode=close] .bgm-text{display:none}
+.stage[data-mode=close] .spread-head{padding-right:132px}
+@media(max-width:860px){.stage[data-mode=close] .bgm-chip{right:16px}.stage[data-mode=close] .spread-head{right:20px;padding-right:100px}}
 @media(max-width:860px){.bgm-chip{left:16px;top:8px;max-width:calc(100% - 32px)}.bgm-k,.bgm-meta{display:none}.bgm-title{font-size:13px}}
 #gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:default}
 #gl.grabbing{cursor:grabbing!important}

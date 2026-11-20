@@ -97,7 +97,8 @@ export function createAudio() {
       if (fadeIn || warm) {
         try { graph(); } catch { set('error'); return false; }
         if (gain) { gain.gain.cancelScheduledValues(context.currentTime); gain.gain.setValueAtTime(0, context.currentTime); }
-        else element.muted = warm;
+        // 预热时一定静音：手机上音频上下文还没跑起来时，音量节点管不住，歌会先响一下，等正式落针又从头放
+        element.muted = warm;
       } else if (gain) { gain.gain.cancelScheduledValues(context.currentTime); gain.gain.setValueAtTime(1, context.currentTime); }
       set('loading');
       if (!warm) { clearTimeout(stallTimer); stallTimer = setTimeout(downgrade, 5000); }

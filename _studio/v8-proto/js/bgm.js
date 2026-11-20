@@ -17,7 +17,12 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
   const release = new Map();
 
   const goal = () => (enabled() && room && !busy.size && !hidden) ? volume : 0;
-  function apply() { if (gain) gain.gain.value = level; else a.volume = Math.min(1, level); }
+  // 声音真的出得来：在放，并且（接了 Web Audio 时）上下文已经跑起来。手机上上下文常常晚一拍才跑起来
+  const audible = () => !a.paused && (!ctx || ctx.state === 'running');
+  function apply() {
+    if (gain) { a.muted = ctx.state !== 'running'; gain.gain.value = level; }   // 上下文没跑起来之前静音，免得绕过音量直接响
+    else a.volume = Math.min(1, level);
+  }
   function play() {
     const p = a.play();
     if (p) p.then(() => { if (!raf) loop(); }).catch(() => armUnlock());
@@ -26,7 +31,7 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
     raf = 0;
     const dt = Math.min(.1, last ? (now - last) / 1000 : 1 / 60); last = now;
     const g = goal();
-    if (level < g) level = Math.min(g, level + volume / FADE_IN * dt);
+    if (level < g) { if (audible()) level = Math.min(g, level + volume / FADE_IN * dt); }   // 真的出声了才开始淡入
     else if (level > g) level = Math.max(g, level - volume / FADE_OUT * dt);
     apply();
     if (level <= 0 && g <= 0) { if (!a.paused) a.pause(); last = 0; return; }   // 暂停时记着播放位置，下次从这里接着放
@@ -39,7 +44,7 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
   }
 
   // 浏览器拦下了自动播放：第一次点按 / 按键时接上 Web Audio，再开始
-  let unlockArmed = false;
+  let unlockArmed = false, primed = false;
   function unlock() {
     // iOS：经过 Web Audio 的声音默认会被侧面的静音开关压掉。声明成「播放」类（Safari 17+），和唱片一样不受静音开关影响；
     // 更老的 iOS 没有这个开关，就不接 Web Audio，直接用 <audio> 放（那里不能淡入淡出，只能直接开停）
@@ -49,6 +54,8 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
       if (AC) try { ctx = new AC(); const s = ctx.createMediaElementSource(a); gain = ctx.createGain(); gain.gain.value = level; s.connect(gain).connect(ctx.destination); a.volume = 1; } catch { ctx = null; gain = null; }
     }
     ctx?.resume?.();
+    // 在这一下点按里先「试放」一下再停：手机只允许点按里开始的播放，之后进唱片页（不在点按里）才能直接放
+    if (a.paused && goal() <= 0 && !primed) { primed = true; const m = a.muted; a.muted = true; a.play().then(() => { if (goal() <= 0) a.pause(); a.muted = m; }).catch(() => { a.muted = m; }); }
     for (const n of UNLOCK) removeEventListener(n, unlock, true);
     unlockArmed = false;
     update();

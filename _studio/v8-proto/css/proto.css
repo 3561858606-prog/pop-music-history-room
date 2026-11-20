@@ -88,6 +88,7 @@ html[data-side=paper] .tabs a[aria-current]{border-bottom-color:var(--ink)}
 @keyframes digitPing{0%{color:#ffd79a;text-shadow:0 0 14px rgba(231,163,60,.95)}100%{}}
 @keyframes digitKey{0%{color:#ffe2b0;text-shadow:0 0 22px rgba(231,163,60,1);transform-origin:center}100%{}}
 .stage[data-intro="1"] .sky-ui,.stage[data-mode=dive] .sky-ui,.stage[data-mode=dive] .sky-card{opacity:0;pointer-events:none}
+.stage[data-mode=close] .sky-era{display:none}   /* 贴近时左上角是同年封套的标题和年份按钮，天文事件的说明不出来 */
 @media (prefers-reduced-motion:reduce){.sky-card.in,.hud-digit.ping,.hud-digit.key{animation:none}}
 @media(max-width:860px){.sky-cons{display:none}.sky-era{font-size:11px;max-width:210px}.sky-era b{font-size:11px}}
 /* 星空效果器：三块像吉他效果器的踏板（节奏 → 风格 → 年代），每块有指示灯开关和旋钮（滑块） */

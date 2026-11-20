@@ -583,7 +583,8 @@ export function createCosmos(canvas, opts = {}) {
   let frameSkipDpr = 1;
   function resize() {
     const w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return false;
-    V.dpr = Math.min(window.devicePixelRatio || 1, CFG.dprCap) / frameSkipDpr;
+    // 手机上（窄屏、触摸）像素比再低一点：星空本来就柔，省下的显存让 iPhone 不容易把 WebGL 收回去
+    V.dpr = Math.min(window.devicePixelRatio || 1, matchMedia('(max-width:860px) and (pointer:coarse)').matches ? 1.25 : CFG.dprCap) / frameSkipDpr;
     const pw = Math.round(w * V.dpr), ph = Math.round(h * V.dpr);
     const changed = V.W !== w || V.H !== h;
     V.W = w; V.H = h; if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
@@ -1126,7 +1127,7 @@ export function createCosmos(canvas, opts = {}) {
   const leaveStill = () => { if (!still) return; still = false; T = Math.max(T, STILL_T); travel = Math.max(travel, CFG.speed * T); revealT0 = performance.now() - 1e5; expo = expoGoal; };
   const onVis = () => { if (!document.hidden) start(); };
   document.addEventListener('visibilitychange', onVis);
-  canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); if (dead) return; api.destroy(); canvas.hidden = true; });   // 自己 destroy() 时释放的不算
+  canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); if (dead) return; api.destroy(); canvas.hidden = true; opts.onLost?.(); });   // 真丢了：告诉界面，等系统还回来再重建   // 自己 destroy() 时释放的不算
   // 避让：点击、滚轮、按键，以及指针或焦点在曲目表里，都算「在操作」。睡着时：一碰就醒，碰的地方泛起一道波
   const onInput = e => {
     prevBusy = lastBusy; lastBusy = performance.now();

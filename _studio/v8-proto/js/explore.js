@@ -124,6 +124,7 @@ export async function initExplore(ctx) {
         if (!disc || cosmos) return;
         cosmos = createCosmos(cv, {reduced: ctx.reduced, pool: cosmosPool, layout: cosmosLayoutNow,
           listener, fx: () => fxSettings,               // 听歌时的三条效果链：节奏、风格、年代
+          onLost: () => { cosmos = null; renderCosmosToggle(); },   // WebGL 被系统收回：等它还回来（下面的 webglcontextrestored）再重建
           avoid: () => disc?.state.sleeveSet, paused: () => !!M.prefs.cosmosPaused, onReady: () => disc?.setSpace(1),
           camRate: () => disc?.state.camRate,   // 压暗、亮回和盘镜头用同一个速率
           camDist: () => disc?.state.cam ? Math.hypot(...disc.state.cam.eye) : null,   // 推近：盘镜头离盘心多远
@@ -202,8 +203,14 @@ export async function initExplore(ctx) {
     } else { skyTag.classList.remove('on'); tagId = null; }
     if (a.era && a.era.a > .02) {
       if (skyEra.dataset.id !== a.era.id) { skyEra.dataset.id = a.era.id; const [y, ...rest] = tr(a.era.label).split(' · '); skyEra.innerHTML = `<b>${esc(y)}</b>${esc(rest.join(' · '))}`; }
-      const w = skyEra.offsetWidth, x = clamp(a.era.x - w / 2, 16, W - w - 16), y = clamp(a.era.y, 64, H - skyEra.offsetHeight - 44);
-      skyEra.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`; skyEra.style.opacity = Math.min(1, a.era.a * 1.4).toFixed(3);
+      // 不压在任何文字上：盘边数字、年代标签、署名、底部那一条、悬停说明、同年封套的标题。往上下挪着找空位，找不到就不显示
+      const w = skyEra.offsetWidth, h = skyEra.offsetHeight, x = clamp(a.era.x - w / 2, 16, W - w - 16), y0 = clamp(a.era.y, 64, H - h - 44);
+      const sb = stage.getBoundingClientRect(), busy = [...stage.querySelectorAll('.hud-digit,.hud-dec,.hud-tag,.bgm-chip,.legend,.sky-tag.on,.spread-head,.sky-cons span')]
+        .filter(el => el.getClientRects().length && getComputedStyle(el).opacity !== '0' && el.style.opacity !== '0')
+        .map(el => { const r = el.getBoundingClientRect(); return [r.left - sb.left - 6, r.top - sb.top - 6, r.right - sb.left + 6, r.bottom - sb.top + 6]; });
+      const free = y => y >= 60 && y + h <= H - 40 && !busy.some(r => x < r[2] && x + w > r[0] && y < r[3] && y + h > r[1]);
+      let y = null; for (const d of [0, 30, -30, 60, -60, 90, -90, 130, -130, 180, -180]) if (free(y0 + d)) { y = y0 + d; break; }
+      skyEra.style.transform = `translate3d(${x.toFixed(1)}px,${(y ?? y0).toFixed(1)}px,0)`; skyEra.style.opacity = y == null ? '0' : Math.min(1, a.era.a * 1.4).toFixed(3);
     } else if (skyEra.dataset.id) { skyEra.style.opacity = 0; skyEra.dataset.id = ''; }
     const labels = a.labels || [];
     if (skyCons.childElementCount !== labels.length) skyCons.innerHTML = labels.map(() => '<span></span>').join('');
@@ -401,6 +408,9 @@ export async function initExplore(ctx) {
 
   /* ---------- 盘：立体或平面 ---------- */
   let glLost = false;
+  // 手机切到后台、显存紧张时，系统会收回 WebGL；还回来时重建成立体的盘和星空，不留在平面盘上
+  canvas.addEventListener('webglcontextrestored', () => { if (glLost) { glLost = false; mount(); } });
+  $('cosmos')?.addEventListener('webglcontextrestored', () => { if (!cosmos && disc && !view.flat) mountCosmos(); });
   if (M.prefs.flat && !M.prefs.flatTest) { delete M.prefs.flat; M.savePrefs(); }   // 以前 WebGL 丢失一次就永久换成平面盘；清掉这个旧值
   async function mount() {
     disc?.destroy(); disc = null; flat = null; flatHost.replaceChildren(); hud.replaceChildren(); hudBuilt = false;
@@ -467,6 +477,10 @@ export async function initExplore(ctx) {
       if (n.textContent !== String(e.y)) n.textContent = e.y;
       n.classList.toggle('on', e.on); place(n, [e.x / e.n, e.top - 12]); });
     for (let d = 0; d < 10; d++) { const r = H.digits[d].style.transform.match(/translate3d\(([-\d.]+)px/); if (r && +r[1] > edge) H.digits[d].style.opacity = 0; }
+    // 贴近时：落在「同年封套」标题和年份按钮上的数字不显示，不和按钮叠在一起
+    const head = close && !spread.hidden ? spread.querySelector('.spread-head') : null;
+    if (head) { const hb = head.getBoundingClientRect(), sb = stage.getBoundingClientRect(), box = [hb.left - sb.left - 14, hb.top - sb.top - 14, hb.right - sb.left + 14, hb.bottom - sb.top + 14];
+      for (let d = 0; d < 10; d++) { const m = H.digits[d].style.transform.match(/translate3d\(([-\d.]+)px,\s*([-\d.]+)px/); if (m && +m[1] > box[0] && +m[1] < box[2] && +m[2] > box[1] && +m[2] < box[3]) H.digits[d].style.opacity = 0; } }
     if (chipAt && !hide) { H.chip.style.opacity = 1; H.chip.style.transform = `translate3d(${chipAt.x + 14}px,${chipAt.y - 30}px,0)`; } else H.chip.style.opacity = 0;
   }
   const panelEdge = () => innerWidth > 860 ? panel.getBoundingClientRect().left - 8 : 1e9;

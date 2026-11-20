@@ -7,6 +7,10 @@
 // 老用户打开网站时，左下角会出现一次这条更新的小纸条；新用户只看上手指南，不打扰。
 // 新的小设计加到 DESIGNS 里，since 写这次更新的 v，更新说明里会标「新」。
 export const RELEASES = [
+  {v: '2026-11-20e', title: {zh: '不再字压字；手机上不再变成平面盘', ko: '글자가 겹치지 않고, 휴대폰에서 평면 디스크로 바뀌지 않아요', en: 'No more overlapping text; phones stay on the 3D disc'}, items: [
+    {t: 'fix', text: {zh: '天文事件的说明会避开盘边数字、年代标签、背景音乐署名和底部那一条，找不到空位就不显示；贴近一个年代时不显示。贴近时盘边数字也不再压在年份按钮上。', ko: '천문 사건 설명이 디스크 숫자, 연대 표시, 배경음악 표시, 아래 줄을 피해 나타나고, 자리가 없으면 나타나지 않습니다. 한 연대로 다가갔을 때는 나타나지 않고, 디스크 숫자도 연도 버튼과 겹치지 않습니다.', en: 'Astronomy captions now avoid the rim digits, decade labels, music credit and bottom strip, and stay hidden when there is no room or when you zoom into a decade. Rim digits no longer sit on the year buttons.'}},
+    {t: 'fix', text: {zh: '手机把 WebGL 收回（切到后台、显存紧张）时，等它还回来就重新变成立体的唱片和星空，不再一直停在平面盘；手机上星空用的显存也少了一些。', ko: '휴대폰이 WebGL을 회수하면(백그라운드, 메모리 부족) 돌려받는 즉시 입체 디스크와 별하늘로 돌아오고, 평면 디스크에 머무르지 않습니다. 휴대폰에서 별하늘이 쓰는 메모리도 줄였습니다.', en: 'When a phone takes WebGL away (backgrounding, low memory), the 3D disc and sky come back as soon as it is returned instead of staying flat; the sky also uses less memory on phones.'}}
+  ]},
   {v: '2026-11-20d', title: {zh: '修好字压字和手机上的两处声音问题', ko: '글자 겹침과 휴대폰 소리 문제 두 가지 수정', en: 'Fixed overlapping text and two sound issues on phones'}, items: [
     {t: 'fix', text: {zh: '贴近一个年代时，左上角的「同年封套」标题不再压在背景音乐的署名上：署名收成一个小开关，移到右上角。', ko: '한 연대로 다가가면 왼쪽 위의 「같은 해 재킷」 제목이 배경음악 표시와 겹치지 않도록, 배경음악은 작은 스위치로 줄여 오른쪽 위로 옮겼습니다.', en: 'When you zoom into a decade, the same-year sleeves title no longer overlaps the background-music credit: the credit shrinks to a small switch in the top right.'}},
     {t: 'fix', text: {zh: '手机上进入唱片页，背景音乐不再晚一拍、也会照常慢慢淡入。', ko: '휴대폰에서 레코드 화면에 들어가면 배경음악이 늦게 시작하지 않고, 평소처럼 천천히 커집니다.', en: 'On phones, background music on the record page no longer starts late, and fades in as intended.'}},

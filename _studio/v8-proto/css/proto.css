@@ -124,7 +124,9 @@ html[data-side=paper] .fd-digit{fill:rgba(22,19,15,.45)} html[data-side=paper] .
 
 .hud{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:1;transition:opacity .25s}
 .hud>*{position:absolute;left:0;top:0;white-space:nowrap;will-change:transform;transition:opacity .2s}
-.hud-digit{font:800 24px/1 var(--num);color:rgba(238,232,218,.5)}
+.hud-digit{font:800 24px/1 var(--num);color:rgba(238,232,218,.5);pointer-events:auto;cursor:pointer;padding:10px 12px}   /* 点数字 = 按数字键 */
+.hud-digit:hover{color:rgba(238,232,218,.8)}
+.hud-digit[style*="opacity: 0"],.stage[data-mode=dive] .hud-digit,.stage[data-intro="1"] .hud-digit,.stage[data-flat="1"] .hud-digit{pointer-events:none}
 .hud-digit.near{font-size:16px;color:rgba(238,232,218,.42)}
 .hud-digit.on{color:var(--amber)}
 .hud-dec{font:600 12px/1 var(--num);letter-spacing:.05em;color:var(--dim);background:rgba(15,13,12,.74);padding:3px 5px 2px;border-radius:2px}
@@ -345,7 +347,10 @@ html[data-side=paper] .fd-digit{fill:rgba(22,19,15,.45)} html[data-side=paper] .
 @media (max-width:860px){
   .top{padding:0 16px;gap:16px} .tabs{gap:16px}
   .room-disc{position:static;overflow:visible}
-  .stage{position:relative;height:min(96vw,58svh);margin-top:var(--top)}
+  /* 手机：舞台几乎占满一屏，盘上下都留出星空；底下露出一截曲目表，提示往下还有 */
+  .stage{position:relative;height:clamp(420px,calc(100svh - var(--top) - 104px),172vw);margin-top:var(--top)}
+  /* 竖着划交给页面滚动，横着划、点、按住留给盘和星空 */
+  #gl{touch-action:pan-y}
   .stage::after{background:linear-gradient(180deg,rgba(15,13,12,0) 78%,var(--lacquer) 100%)}
   .flat-host{inset:0}
   .stage-hint{display:none} .legend{left:16px;bottom:8px;gap:12px;font-size:11px} .lg-src{display:none}

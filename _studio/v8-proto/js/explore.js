@@ -333,7 +333,9 @@ export async function initExplore(ctx) {
   function buildHud() {
     hud.replaceChildren(); H.digits = []; H.decs = []; H.tags = [];
     for (let d = 0; d < 10; d++) { const n = document.createElement('span'); n.className = 'hud-digit'; n.textContent = d; hud.appendChild(n); H.digits.push(n);
-      n.addEventListener('animationend', () => n.classList.remove('ping', 'key')); }
+      n.addEventListener('animationend', () => n.classList.remove('ping', 'key'));
+      // 点盘缘的数字：和按数字键一样（手机上没有键盘，也没有指针悬停）
+      n.title = tr('年份个位是 {d} 的歌', {d}); n.addEventListener('click', e => { e.stopPropagation(); if (disc && cosmos && !view.flat && !view.intro) summonDigit(d); }); }
     for (const b of bands) { const n = document.createElement('span'); n.className = 'hud-dec'; n.textContent = b.label; hud.appendChild(n); H.decs.push(n); }
     for (let i = 0; i < 22; i++) { const n = document.createElement('span'); n.className = 'hud-tag'; hud.appendChild(n); H.tags.push(n); }
     H.chip = document.createElement('span'); H.chip.className = 'hud-chip'; hud.appendChild(H.chip);

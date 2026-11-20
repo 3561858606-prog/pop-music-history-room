@@ -4,6 +4,10 @@
 // 音量用 Web Audio 的增益来淡入淡出（iOS 不让网页改 <audio> 的音量）；在第一次点按之前用元素自己的音量。
 
 const FADE_IN = 3, FADE_OUT = .6, RELEASE_MS = 1500;
+// iPhone / iPad（iPadOS 会自称 Mac）
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+// 浏览器认作「用户操作」、允许出声的事件。iOS 上按下（pointerdown）不算，抬起才算
+const UNLOCK = ['pointerup', 'touchend', 'click', 'keydown'];
 
 export function createBgm({src, volume = .32, enabled = () => true, onChange = () => {}}) {
   const a = new Audio(); a.loop = true; a.preload = 'none'; a.src = src;
@@ -37,18 +41,21 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
   // 浏览器拦下了自动播放：第一次点按 / 按键时接上 Web Audio，再开始
   let unlockArmed = false;
   function unlock() {
-    if (!ctx) {
+    // iOS：经过 Web Audio 的声音默认会被侧面的静音开关压掉。声明成「播放」类（Safari 17+），和唱片一样不受静音开关影响；
+    // 更老的 iOS 没有这个开关，就不接 Web Audio，直接用 <audio> 放（那里不能淡入淡出，只能直接开停）
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
+    if (!ctx && !(IOS && !navigator.audioSession)) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (AC) try { ctx = new AC(); const s = ctx.createMediaElementSource(a); gain = ctx.createGain(); gain.gain.value = level; s.connect(gain).connect(ctx.destination); a.volume = 1; } catch { ctx = null; gain = null; }
     }
     ctx?.resume?.();
-    for (const n of ['pointerdown', 'keydown', 'touchend']) removeEventListener(n, unlock, true);
+    for (const n of UNLOCK) removeEventListener(n, unlock, true);
     unlockArmed = false;
     update();
   }
   function armUnlock() {
     if (unlockArmed) return; unlockArmed = true;
-    for (const n of ['pointerdown', 'keydown', 'touchend']) addEventListener(n, unlock, {capture: true, passive: true});
+    for (const n of UNLOCK) addEventListener(n, unlock, {capture: true, passive: true});
   }
   armUnlock();   // 第一次点按时总要接上 Web Audio，之后淡入淡出在 iOS 上也有效
 

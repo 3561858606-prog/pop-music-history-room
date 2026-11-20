@@ -7,6 +7,11 @@
 // 老用户打开网站时，左下角会出现一次这条更新的小纸条；新用户只看上手指南，不打扰。
 // 新的小设计加到 DESIGNS 里，since 写这次更新的 v，更新说明里会标「新」。
 export const RELEASES = [
+  {v: '2026-11-20b', title: {zh: '手机上的星空更大了', ko: '휴대폰에서 더 넓어진 별하늘', en: 'A bigger sky on phones'}, items: [
+    {t: 'tweak', text: {zh: '手机上唱片页的舞台几乎占满一屏，盘的上下都有星空可以点、按住和划动；竖着划照常滚动页面。', ko: '휴대폰에서 레코드 화면이 거의 한 화면을 채우고, 디스크 위아래에 누르고 끌 수 있는 별하늘이 생겼습니다. 세로로 밀면 평소처럼 페이지가 스크롤됩니다.', en: 'On phones the record stage now fills almost the whole screen, with sky above and below the disc to tap, hold and swipe; vertical swipes still scroll the page.'}},
+    {t: 'new', text: {zh: '点盘边的数字 0–9，年份个位是这个数字的歌会从天上浮出来（和电脑上按数字键一样）。', ko: '디스크 가장자리의 숫자 0–9를 누르면 연도 끝자리가 그 숫자인 노래가 하늘에 떠오릅니다(컴퓨터의 숫자 키와 같아요).', en: 'Tap a rim digit 0–9 and songs whose year ends in that digit rise into the sky (same as the number keys on a computer).'}},
+    {t: 'fix', text: {zh: '修复 iPhone 上背景音乐不响：打开静音开关时也能听到，第一次点屏幕就开始。', ko: 'iPhone에서 배경음악이 들리지 않던 문제를 고쳤습니다. 무음 스위치가 켜져 있어도 들리고, 화면을 처음 누르면 시작합니다.', en: 'Fixed background music not playing on iPhone: it now plays even with the silent switch on and starts on your first tap.'}}
+  ]},
   {v: '2026-11-20', title: {zh: '会回应的天空', ko: '반응하는 하늘', en: 'A sky that answers back'}, items: [
     {t: 'new', text: {zh: '点天上的空白处会泛起水波，推开附近的星；按住一会儿，星绕着手指聚拢，松手时炸开一道大波；在天上拖动，身后留下一道尾流。用力甩唱片，整片天也跟着转。', ko: '하늘의 빈 곳을 누르면 물결이 퍼지며 주변 별을 밀어냅니다. 잠시 누르고 있으면 별이 손가락 주위로 모였다가 손을 떼면 큰 물결로 퍼지고, 하늘을 끌면 뒤로 물살이 남습니다. 레코드를 세게 돌리면 하늘 전체도 함께 돕니다.', en: 'Tap an empty patch of sky and a ripple spreads, pushing nearby stars aside. Hold for a moment and the stars swirl in around your finger, then burst into a big wave when you let go; drag across the sky to leave a wake. Spin the record hard and the whole sky turns with it.'}},
     {t: 'new', text: {zh: '指针停在天上的封面上，它会停下来并写出歌名和年份；点它翻成一张卡片，可以在盘上找到这首歌，或直接落针。按数字键 0–9，年份个位是这个数字的歌会从天上浮出来。', ko: '하늘의 앨범 표지 위에 포인터를 올리면 멈춰서 곡명과 연도를 보여 줍니다. 누르면 카드로 뒤집혀 디스크에서 그 곡을 찾거나 바로 바늘을 내릴 수 있습니다. 숫자 키 0–9를 누르면 연도 끝자리가 그 숫자인 노래가 하늘에 떠오릅니다.', en: 'Rest the pointer on a cover in the sky and it stops and shows its title and year; click it and it flips into a card that can find the song on the disc or drop the needle. Press 0–9 and songs whose year ends in that digit rise into the sky.'}},

@@ -4,6 +4,8 @@ import {flatDisc} from './flat.js';
 import {player} from './audio.js';
 import {createBgm} from './bgm.js';
 import {createSfx} from './sfx.js';
+import {createListener} from './listen.js';
+import {FAMILIES, ERA_LOOKS, familyOf, eraOf, normalizeFx, DEFAULT_FX} from './react.js';
 import {sleeveLayout} from './sleeve-layout.js';
 import {nameHTML, trackStoryHTML} from './reading.js';
 import {t as tr, join} from './i18n.js';
@@ -121,6 +123,7 @@ export async function initExplore(ctx) {
         const {createCosmos} = await import('./cosmos.js');
         if (!disc || cosmos) return;
         cosmos = createCosmos(cv, {reduced: ctx.reduced, pool: cosmosPool, layout: cosmosLayoutNow,
+          listener, fx: () => fxSettings,               // 听歌时的三条效果链：节奏、风格、年代
           avoid: () => disc?.state.sleeveSet, paused: () => !!M.prefs.cosmosPaused, onReady: () => disc?.setSpace(1),
           camRate: () => disc?.state.camRate,   // 压暗、亮回和盘镜头用同一个速率
           camDist: () => disc?.state.cam ? Math.hypot(...disc.state.cam.eye) : null,   // 推近：盘镜头离盘心多远
@@ -145,6 +148,7 @@ export async function initExplore(ctx) {
   function renderCosmosToggle() {
     if (!cosmosToggle) return;
     cosmosToggle.hidden = !cosmos || ctx.reduced();
+    const fo = $('fxOpen'); if (fo) fo.hidden = !cosmos;
     cosmosToggle.textContent = tr(M.prefs.cosmosPaused ? '星空 · 继续' : '星空 · 暂停');
   }
   cosmosToggle?.addEventListener('click', () => {
@@ -175,7 +179,8 @@ export async function initExplore(ctx) {
 
   /* ---------- 会回应的天空：手势、悬停说明、捞起来的卡片、天文年表的说明、你的星空 ----------
      点 = 一滴水（水波）；按住 = 漩涡蓄力，松手炸开；拖 = 划水的尾流。只在天空的空白处，点盘、曲目表、按钮都照旧 */
-  const sfx = createSfx({enabled: () => bgm.mode === 'on', context: () => bgm.ctx});   // 天上的声音跟着背景音乐的开关走
+  // 天上的声音：有音高的跟着背景音乐（背景音乐在放才响）；落针的水声只看「音效」开关
+  const sfx = createSfx({enabled: () => bgm.mode === 'on', allowed: () => !M.prefs.sfxOff, context: () => bgm.ctx});
   const skyUi = document.createElement('div'); skyUi.className = 'sky-ui'; skyUi.setAttribute('aria-hidden', 'true');
   skyUi.innerHTML = '<span class="sky-tag"></span><p class="sky-era"></p><div class="sky-cons"></div>';
   stage.appendChild(skyUi);
@@ -272,10 +277,14 @@ export async function initExplore(ctx) {
     const names = list.slice(0, 3).map(c => { const t = M.byId.get(c.id); return `${t.year} ${M.titleOf(t)}`; });
     say(tr('年份个位是 {d} 的歌：{list}', {d, list: join(names)}));
   }
-  // 落针：唱针落下的那一点泛起一道水波
+  // 落针：唱针落下的那一点泛起水波，贴着唱片往外扩散（gl.js 的 drip）；环走到盘边时，天上从盘边那一点接着荡开
   function needleRipple() {
-    if (!disc || !cosmos) return; const tip = disc.armSegment()?.[1], p = tip && disc.project(tip); if (!p) return;
-    const b = canvas.getBoundingClientRect(); cosmos.ripple(b.left + p[0], b.top + p[1], .85, 'needle');
+    if (!disc) return; const tip = disc.drip(1); if (!tip) return;
+    const b = canvas.getBoundingClientRect(), tp = disc.project([tip[0], 0, tip[1]]);
+    if (tp) sfx.play('needle', {x: tp[0], y: tp[1], W: b.width, H: b.height});
+    if (!cosmos) return;
+    const r = Math.hypot(tip[0], tip[1]), dir = r > 1e-3 ? [tip[0] / r, tip[1] / r] : [0, 1], rim = disc.project([dir[0] * 1.02, 0, dir[1] * 1.02]);
+    if (rim) setTimeout(() => { const bb = canvas.getBoundingClientRect(); cosmos?.ripple(bb.left + rim[0], bb.top + rim[1], .8, 'needle'); }, Math.max(0, (1.02 - r) / .62) * 1000);
   }
   // 你的星空：刻纹平均过半的歌是一颗恒星；亮度 = 掌握程度；到了复习间隔就慢慢变暗。同一讲都刻到 3/4 以上，连成星座
   const hash01 = s => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return ((h >>> 0) % 10000) / 10000; };
@@ -294,20 +303,113 @@ export async function initExplore(ctx) {
       .filter(x => x.ids.length && x.ids.every(id => ok.has(id))).map(x => ({id: 'A' + x.l.id, label: `A${x.l.id} ${M.lectureLabel(x.l.id)}`, ids: x.ids}));
     return {list, cons, all: M.stats().full === rings.length};
   }
+  /* ---------- 听歌时的星空：三条效果链和效果器面板（js/listen.js、js/react.js） ----------
+     节奏（什么时候、多重）→ 风格（长什么样、怎么动）→ 年代（用哪个年代的底片拍）。每条都能开关、调强度；
+     风格和年代可以跟着歌自动选，也可以手动指定；手动指定的在没放歌时也会跟着背景音乐轻轻动 */
+  let fxSettings = normalizeFx(M.prefs.fx), fxTrackShown = null;
+  const listener = createListener(() => ['playing', 'buffering'].includes(view.needle) ? player.taps?.() : bgm.mode === 'on' ? bgm.taps?.() : null);
+  const saveFx = () => { M.prefs.fx = fxSettings; M.savePrefs(); };
+  // 一首歌开始放：告诉星空这是哪一首；年代链开着、跟着歌时，天上出现这个年代的天文事件
+  function startFx(t) {
+    cosmos?.setTrack({id: t.id, style: t.style, year: t.year});
+    if (fxTrackShown === t.id) return; fxTrackShown = t.id; listener.reset();
+    if (fxSettings.on && fxSettings.era.on && fxSettings.era.pick === 'auto') setTimeout(() => cosmos?.showEra(Math.floor(t.year / 10) * 10), 1200);
+  }
+  const fxBoard = document.createElement('section'); fxBoard.className = 'fx-board'; fxBoard.hidden = true;
+  fxBoard.setAttribute('role', 'dialog'); fxBoard.setAttribute('aria-labelledby', 'fxTitle'); stage.appendChild(fxBoard);
+  const pctOf = v => Math.round(v * 100);
+  function fxNowText() {
+    const cur = player.current(), playing = ['playing', 'buffering', 'paused'].includes(view.needle) && cur;
+    const fam = fxSettings.style.pick !== 'auto' ? fxSettings.style.pick : playing ? familyOf(cur.style) : null;
+    const era = fxSettings.era.pick !== 'auto' ? fxSettings.era.pick : playing ? eraOf(cur.year) : null;
+    const who = playing ? `${cur.year} ${M.titleOf(cur)}` : tr('现在没在放歌');
+    return `${esc(who)}${fam ? ' · ' + tr(FAMILIES[fam].name) : ''}${era ? ' · ' + tr(ERA_LOOKS[era].name) : ''}`;
+  }
+  function renderFx() {
+    const S = fxSettings, sel = (chain, list, cur) => `<select data-pick="${chain}" aria-label="${tr(chain === 'style' ? '风格' : '年代')}"><option value="auto"${cur === 'auto' ? ' selected' : ''}>${tr('跟着歌')}</option>${Object.entries(list).map(([k, v]) => `<option value="${k}"${cur === k ? ' selected' : ''}>${tr(v.name)}${v.span ? ' · ' + tr(v.span) : ''}</option>`).join('')}</select>`;
+    const hintOf = (chain) => { if (chain === 'style') { const k = S.style.pick !== 'auto' ? S.style.pick : null; return k ? tr(FAMILIES[k].hint) : tr('按这首歌的风格选：爵士是烟雾与铜管，摇滚是霓虹火花，蓝调是蓝调之雾……'); }
+      const k = S.era.pick !== 'auto' ? S.era.pick : null; return k ? tr(ERA_LOOKS[k].hint) : tr('按这首歌的年代选底片：1920 年代是默片，1950 年代是霓虹电视……'); };
+    const range = (chain, key, label, v) => `<label class="fx-knob"><span>${tr(label)}</span><input type="range" min="0" max="100" step="1" value="${pctOf(v)}" data-chain="${chain}" data-key="${key}" aria-label="${tr(label)}"><em>${pctOf(v)}</em></label>`;
+    const led = (chain, on) => `<button class="fx-led" type="button" data-led="${chain}" aria-pressed="${on}"><i></i>${tr(on ? '开' : '关')}</button>`;
+    fxBoard.dataset.on = S.on ? '1' : '0';
+    fxBoard.innerHTML = `<header class="fx-head"><div><h3 id="fxTitle">${tr('星空效果器')}</h3><p class="fx-now">${fxNowText()}</p></div>
+        <button class="fx-led fx-master" type="button" data-led="all" aria-pressed="${S.on}"><i></i>${tr(S.on ? '总开关 · 开' : '总开关 · 关')}</button>
+        <button class="fx-x" type="button" aria-label="${tr('关闭')}">×</button></header>
+      <div class="fx-pedals">
+        <div class="fx-pedal" data-chain="rhythm" data-on="${S.rhythm.on}"><div class="fx-top"><b>${tr('节奏')}</b>${led('rhythm', S.rhythm.on)}</div>
+          <p class="fx-hint">${tr('重拍时星一起亮、从盘边荡开水波，镲片让一小撮星闪，星流跟着速度快慢；点天空时水波会对到拍子上')}</p>
+          ${range('rhythm', 'amt', '强度', S.rhythm.amt)}${range('rhythm', 'sens', '灵敏度', S.rhythm.sens)}<p class="fx-read" data-read="rhythm"></p></div>
+        <div class="fx-pedal" data-chain="style" data-on="${S.style.on}"><div class="fx-top"><b>${tr('风格')}</b>${led('style', S.style.on)}</div>
+          ${sel('style', FAMILIES, S.style.pick)}<p class="fx-hint">${hintOf('style')}</p>${range('style', 'amt', '强度', S.style.amt)}</div>
+        <div class="fx-pedal" data-chain="era" data-on="${S.era.on}"><div class="fx-top"><b>${tr('年代')}</b>${led('era', S.era.on)}</div>
+          ${sel('era', ERA_LOOKS, S.era.pick)}<p class="fx-hint">${hintOf('era')}</p>${range('era', 'amt', '强度', S.era.amt)}</div>
+      </div>
+      <footer class="fx-foot">${range('all', 'master', '总量', S.master)}
+        <button class="fx-led" type="button" data-led="sfx" aria-pressed="${!M.prefs.sfxOff}"><i></i>${tr('音效')}</button>
+        <button class="fx-reset" type="button">${tr('恢复默认')}</button>
+        ${ctx.reduced() ? `<p class="fx-note">${tr('系统设置了减少动态：星空是静止的，这些效果不会动。')}</p>` : ''}</footer>`;
+    readFx();
+  }
+  // 面板开着时，每 0.25 s 读一次：听到的速度、电平
+  let fxTimer = 0;
+  function readFx() {
+    const el = fxBoard.querySelector('[data-read="rhythm"]'); if (!el) return;
+    const n = cosmos?.fxNow; if (!n) { el.textContent = ''; return; }
+    el.innerHTML = n.live ? `<span class="fx-meter" style="--v:${n.level}"></span>${n.bpm ? tr('约 {n} BPM', {n: n.bpm}) : tr('在听拍子…')}` : tr('有声音时，这里显示听到的速度');
+    const now = fxBoard.querySelector('.fx-now'); if (now) now.innerHTML = fxNowText();
+  }
+  function openFx(from) {
+    fxBoard.hidden = false; renderFx(); fxBoard.dataset.from = from || '';
+    clearInterval(fxTimer); fxTimer = setInterval(readFx, 250);
+    fxBoard.querySelector('.fx-x')?.focus({preventScroll: true});
+  }
+  function closeFx(focusBack = true) { if (fxBoard.hidden) return; fxBoard.hidden = true; clearInterval(fxTimer); if (focusBack) $(fxBoard.dataset.from === 'np' ? 'npFx' : 'fxOpen')?.focus?.({preventScroll: true}); }
+  fxBoard.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.classList.contains('fx-x')) return closeFx();
+    if (b.classList.contains('fx-reset')) { fxSettings = normalizeFx(structuredClone(DEFAULT_FX)); M.prefs.sfxOff = false; saveFx(); renderFx(); return; }
+    const k = b.dataset.led; if (!k) return;
+    if (k === 'all') fxSettings.on = !fxSettings.on;
+    else if (k === 'sfx') { M.prefs.sfxOff = !M.prefs.sfxOff; M.savePrefs(); }
+    else fxSettings[k].on = !fxSettings[k].on;
+    saveFx(); renderFx(); fxBoard.querySelector(`[data-led="${k}"]`)?.focus({preventScroll: true});
+  });
+  fxBoard.addEventListener('input', e => {
+    const r = e.target.closest('input[type=range]'); if (!r) return;
+    const v = +r.value / 100; if (r.dataset.chain === 'all') fxSettings.master = v; else fxSettings[r.dataset.chain][r.dataset.key] = v;
+    r.nextElementSibling.textContent = r.value; saveFx();
+  });
+  fxBoard.addEventListener('change', e => {
+    const sl = e.target.closest('select[data-pick]'); if (!sl) return;
+    fxSettings[sl.dataset.pick].pick = sl.value; if (!fxSettings[sl.dataset.pick].on) fxSettings[sl.dataset.pick].on = true;
+    saveFx(); renderFx(); fxBoard.querySelector(`select[data-pick="${sl.dataset.pick}"]`)?.focus({preventScroll: true});
+  });
+  fxBoard.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); closeFx(); } });
+  $('fxOpen')?.addEventListener('click', () => fxBoard.hidden ? openFx('legend') : closeFx());
+
   function updateSky() {
     if (!cosmos) return;
     const s = skyData(); skyInfo.clear(); for (const x of s.list) skyInfo.set(x.id, x);
     cosmos.setSky(s.list, s.cons); cosmos.setFinale(s.all);
   }
 
+  // 手机：舞台底部的「曲目表」按钮，往下翻到曲目表
+  $('toPanel')?.addEventListener('click', () => panel.scrollIntoView({behavior: ctx.reduced() ? 'auto' : 'smooth', block: 'start'}));
+  // 长按不弹系统的选字框和菜单（iOS 的放大镜、安卓的长按菜单）
+  stage.addEventListener('contextmenu', e => { if (!e.target.closest('a,input,textarea')) e.preventDefault(); });
+  stage.addEventListener('selectstart', e => { if (!e.target.closest('input,textarea')) e.preventDefault(); });
+
   /* ---------- 盘：立体或平面 ---------- */
+  let glLost = false;
+  if (M.prefs.flat && !M.prefs.flatTest) { delete M.prefs.flat; M.savePrefs(); }   // 以前 WebGL 丢失一次就永久换成平面盘；清掉这个旧值
   async function mount() {
     disc?.destroy(); disc = null; flat = null; flatHost.replaceChildren(); hud.replaceChildren(); hudBuilt = false;
-    view.flat = M.prefs.flat;
+    // 平面盘：测试页可以指定；WebGL 丢失（手机切到后台久了常见）只在这一次打开里换成平面的，不写进偏好，下次打开照旧是立体的
+    view.flat = M.prefs.flat === true && !!M.prefs.flatTest || glLost;
     if (!view.flat) {
       try {
         const {createDisc} = await import('./gl.js');
-        disc = createDisc(canvas, {reducedMotion: ctx.reduced, onFrame: updateHud, panelFrac: () => innerWidth > 860 ? panel.offsetWidth / stage.clientWidth : 0, onLost: () => { M.prefs.flat = true; mount(); }});
+        disc = createDisc(canvas, {reducedMotion: ctx.reduced, onFrame: updateHud, panelFrac: () => innerWidth > 860 ? panel.offsetWidth / stage.clientWidth : 0, onLost: () => { glLost = true; mount(); }});
       } catch (e) { console.warn('WebGL 不可用，改用平面的盘：', e.message); view.flat = true; }
     }
     canvas.hidden = view.flat; flatHost.hidden = !view.flat; stage.dataset.flat = view.flat ? '1' : '0';
@@ -629,6 +731,7 @@ export async function initExplore(ctx) {
         <button data-np="next" aria-label="${tr('下一首')}" title="${tr('下一首')}">${ICON.next}</button>
       </div>
       <button data-np="mode" class="np-mode"></button>
+      <button data-np="fx" class="np-fx" id="npFx" title="${tr('星空效果器')}" aria-label="${tr('星空效果器')}"><svg viewBox="0 0 24 24" aria-hidden="true" class="ln"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="2.6"/></svg><span>${tr('星空')}</span></button>
       <button data-np="stop" class="np-x" aria-label="${tr('停止播放')}" title="${tr('停止播放')}">×</button>
     </div>
     <div class="np-prog"><span class="np-t">0:00</span><input type="range" min="0" max="1000" value="0" step="1" aria-label="${tr('播放进度')}"><span class="np-d">0:00</span></div>`;
@@ -639,6 +742,7 @@ export async function initExplore(ctx) {
     const t = player.current();
     bar.hidden = !t; $('roomDisc').dataset.np = t ? '1' : '0';
     const mode = M.prefs.playMode, mb = bar.querySelector('.np-mode');
+    bar.querySelector('.np-fx').hidden = !cosmos;
     mb.innerHTML = `${ICON[mode]}<span>${tr(MODE_LABEL[mode])}</span>`;
     mb.setAttribute('aria-label', tr('播放模式：{m}（点一下切换）', {m: tr(MODE_LABEL[mode])})); mb.title = mb.getAttribute('aria-label'); mb.dataset.mode = mode;
     if (!t) { mediaSession(null); return; }
@@ -680,6 +784,7 @@ export async function initExplore(ctx) {
     if (act === 'prev') return skip(-1);
     if (act === 'next') return skip(1);
     if (act === 'mode') return setMode(MODES[(MODES.indexOf(M.prefs.playMode) + 1) % MODES.length]);
+    if (act === 'fx') return fxBoard.hidden ? openFx('np') : closeFx();
     if (act === 'stop') return liftNeedle();
     if (act === 'show' && cur) { const g = M.ringOf.get(cur); if (view.mode !== 'close' || view.song !== cur) enterBand(bands[g.band], g); }
   });
@@ -725,6 +830,7 @@ export async function initExplore(ctx) {
     else { view.needle = 'idle'; disc?.arm(null, false); disc?.setPlay(-1, false); if (state === 'error' || state === 'blocked') say(tr('这段音频现在放不出来')); }
     if (state === 'playing' && disc) disc.setPlay(M.ringOf.get(t.id)?.i ?? -1, true);
     cosmos?.setPlaying(state === 'playing');
+    if (state === 'playing' && t) startFx(t); else if (['stopped', 'idle', 'error', 'ended'].includes(state)) { cosmos?.setTrack(null); fxTrackShown = null; }
     bgm.hold('needle', state === 'playing' || state === 'loading' || state === 'waiting');   // 落针就让开
     renderNeedle(); renderBar();
   });
@@ -903,11 +1009,13 @@ export async function initExplore(ctx) {
       cosmos?.recall(cands, (500 + todo.length * 260 + 1500) / 1000);
     },
     focusSong(id) { const g = M.ringOf.get(id); if (g) enterBand(bands[g.band], g); },
-    pause(opts = {}) { liftNeedle(); pauseVideo(); bgm.setRoom(false); closeCard(); if (!opts.keepCosmos) cosmos?.pause(); },
+    pause(opts = {}) { liftNeedle(); pauseVideo(); bgm.setRoom(false); closeCard(); closeFx(false); if (!opts.keepCosmos) cosmos?.pause(); },
     pauseCosmos() { cosmos?.pause(); },
     get cosmos() { return cosmos; },
     get bgm() { return bgm; },
     get sfx() { return sfx; },
+    get listener() { return listener; },
+    openFx, closeFx,
     updateSky,
     get disc() { return disc; },
     focus: focusDisc

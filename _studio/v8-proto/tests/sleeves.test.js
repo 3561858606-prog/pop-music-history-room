@@ -6,7 +6,7 @@ const assert=(value,message)=>{if(!value)throw Error(message);};
 const until=async fn=>{for(let i=0;i<150;i++){if(fn())return;await new Promise(r=>setTimeout(r,40));}throw Error('等待超时');};
 async function test(name,work){try{await work();results.push('PASS '+name);}catch(e){results.push('FAIL '+name+': '+e.message);}out.textContent=results.join('\n');}
 await M.ready;
-M.prefs.flat=new URLSearchParams(location.search).has('flat');
+M.prefs.flat=new URLSearchParams(location.search).has('flat');M.prefs.flatTest=M.prefs.flat;
 const api=await initExplore({reduced:()=>true,startRound:()=>{},resumeRound:()=>{}});
 const overlap=(a,b)=>a.x<b.x+b.width-1&&a.x+a.width>b.x+1&&a.y<b.y+b.height-1&&a.y+a.height>b.y+1;
 await test('1967 六首在桌面和窄屏布局均不重叠',()=>{

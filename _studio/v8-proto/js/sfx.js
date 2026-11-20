@@ -5,7 +5,8 @@ const PENTA = [0, 2, 4, 7, 9];
 const hz = i => 261.63 * 2 ** ((Math.floor(i / 5) * 12 + PENTA[((i % 5) + 5) % 5]) / 12);   // i = 0 是中央 C（C4）
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 
-export function createSfx({enabled = () => true, context = () => null}) {
+// enabled：有音高的那些音（点击、和声……）能不能响——只在背景音乐正在放时；allowed：音效总开关（落针的水声只看它）
+export function createSfx({enabled = () => true, allowed = () => true, context = () => null}) {
   let ctx = null, out = null, wet = null, noise = null, pad = null, hiss = null;
   const recent = [];   // 最近响过的时刻：每秒最多 8 个音，连锁再多也不会吵
 
@@ -20,7 +21,7 @@ export function createSfx({enabled = () => true, context = () => null}) {
     noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const nd = noise.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
     return true;
   }
-  const ready = () => enabled() && init() && ctx.state === 'running';
+  const ready = (tonal = true) => allowed() && (!tonal || enabled()) && init() && ctx.state === 'running';
   function room() { const t = ctx.currentTime; while (recent.length && t - recent[0] > 1) recent.shift(); if (recent.length >= 8) return false; recent.push(t); return true; }
   const panOf = (x, W) => W ? clamp((x / W) * 2 - 1, -1, 1) * .7 : 0;
   function chain(pan, dry = .7, w = .6) {
@@ -58,10 +59,27 @@ export function createSfx({enabled = () => true, context = () => null}) {
     const o = ctx.createOscillator(); o.frequency.value = f; o.connect(env); o.start(t); o.stop(t + decay + .1);
   }
 
+  // 落针：一滴水落进液面。先是「嘀」的一声（正弦快速下滑），跟着一个小气泡，再是几圈越来越轻的水声慢慢荡开
+  function splash(pan) {
+    const t = ctx.currentTime, g = chain(pan, .7, .9);
+    const drop = (at, f0, f1, vol, dur) => { const o = ctx.createOscillator(), e = ctx.createGain(); o.frequency.setValueAtTime(f0, t + at); o.frequency.exponentialRampToValueAtTime(f1, t + at + dur * .35);
+      e.gain.setValueAtTime(0, t + at); e.gain.linearRampToValueAtTime(vol, t + at + .004); e.gain.exponentialRampToValueAtTime(.0001, t + at + dur); o.connect(e); e.connect(g); o.start(t + at); o.stop(t + at + dur + .05); };
+    drop(0, 1700, 430, .05, .2);                       // 落点
+    const b = ctx.createOscillator(), be = ctx.createGain(); b.frequency.setValueAtTime(240, t + .035); b.frequency.exponentialRampToValueAtTime(760, t + .1);   // 气泡：往上滑
+    be.gain.setValueAtTime(0, t + .035); be.gain.linearRampToValueAtTime(.022, t + .045); be.gain.exponentialRampToValueAtTime(.0001, t + .16); b.connect(be); be.connect(g); b.start(t + .035); b.stop(t + .2);
+    [[.24, 1250, .016], [.47, 1050, .011], [.74, 1380, .008], [1.05, 980, .005]].forEach(([at, f, v]) => drop(at, f, f * .62, v, .16));   // 一圈圈荡开
+    const src = ctx.createBufferSource(); src.buffer = noise; src.loop = true;   // 水面的沙沙声，按 5 Hz 起伏
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1100; bp.Q.value = 3;
+    const env = ctx.createGain(); env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(.014, t + .15); env.gain.exponentialRampToValueAtTime(.0001, t + 2.2);
+    const am = ctx.createGain(); am.gain.value = .5; const lfo = ctx.createOscillator(), ld = ctx.createGain(); lfo.frequency.value = 5.2; ld.gain.value = .5; lfo.connect(ld); ld.connect(am.gain);
+    src.connect(bp); bp.connect(am); am.connect(env); env.connect(g); src.start(t, Math.random()); src.stop(t + 2.3); lfo.start(t); lfo.stop(t + 2.3);
+  }
+
   const api = {
     // kind 见 cosmos.js 的 cue(...)；info 里有 x, y, W, H 等
     play(kind, info = {}) {
       if (kind === 'vortexEnd' && pad) api.stopPad();
+      if (kind === 'needle') { if (ready(false)) splash(panOf(info.x, info.W)); return; }   // 落针的水声：唱片放的时候也响（它没有音高，不会和歌打架）
       if (!ready()) return;
       const pan = panOf(info.x, info.W), hi = info.H ? clamp(1 - info.y / info.H, 0, 1) : .5;
       const dec = d => clamp(Math.round(((d || 1900) - 1850) / 10), 0, 11);
@@ -72,7 +90,6 @@ export function createSfx({enabled = () => true, context = () => null}) {
         case 'star': bell(9 + Math.round(hi * 2), {pan, vol: .016, bright: .5, decay: 1.6}); break;
         case 'meet': bell(5, {pan, vol: .026, decay: 3}); bell(8, {pan, vol: .02, decay: 3, at: .03}); break;   // 相遇：一个五度
         case 'digit': bell(5 + (info.digit ?? 0) * .5 | 0, {pan, vol: .03}); break;
-        case 'needle': break;
         case 'wakeUp': bell(2, {pan, vol: .03, decay: 3}); bell(4, {pan, vol: .025, decay: 3, at: .12}); break;
         case 'wakeStart': noiseBurst({vol: .018, dur: .7, f0: 1800, f1: 500, pan}); break;   // 划水：一声轻轻的「唰」
         case 'spinEnd': low(65.41, {vol: clamp(.015 * info.v, .01, .045), decay: 4.5}); low(98, {vol: clamp(.008 * info.v, .005, .025), decay: 4, at: .05}); break;   // 余音

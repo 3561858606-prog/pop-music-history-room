@@ -12,7 +12,7 @@ const UNLOCK = ['pointerup', 'touchend', 'click', 'keydown'];
 export function createBgm({src, volume = .32, enabled = () => true, onChange = () => {}}) {
   const a = new Audio(); a.loop = true; a.preload = 'none'; a.src = src;
   a.addEventListener('play', () => onChange()); a.addEventListener('pause', () => onChange());
-  let room = false, hidden = document.hidden, level = 0, raf = 0, last = 0, ctx = null, gain = null;
+  let room = false, hidden = document.hidden, level = 0, raf = 0, last = 0, ctx = null, gain = null, tapsObj = null;
   const busy = new Set();   // 谁在占用声音：'needle'（唱片）、'media'（课件视频等）
   const release = new Map();
 
@@ -80,6 +80,13 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
     refresh() { update(); },
     // 天上的音效和背景音乐共用一个 AudioContext（第一次点按之后才有）
     get ctx() { return ctx; },
+    // 给星空听的分析器（没有唱片在放、而效果器手动选了风格或年代时，星空跟着背景音乐轻轻动）
+    taps() {
+      if (!ctx || !gain) return null;
+      if (!tapsObj) { const sink = ctx.createGain(); sink.gain.value = 0; sink.connect(ctx.destination);
+        const an = ctx.createAnalyser(); an.fftSize = 2048; an.smoothingTimeConstant = 0; gain.connect(an); an.connect(sink); tapsObj = {an, aL: null, aR: null, ctx}; }
+      return tapsObj;
+    },
     get state() { return {room, hidden, busy: [...busy], level: +level.toFixed(3), paused: a.paused, time: +a.currentTime.toFixed(2), webAudio: !!gain, enabled: enabled(), waiting: unlockArmed && a.paused && goal() > 0}; },
     // 给界面用：'on' 在放 · 'yield' 让给唱片 / 视频 · 'off' 关掉了 · 'wait' 浏览器不让自动出声，等点一下
     get mode() { if (!enabled()) return 'off'; if (busy.size) return 'yield'; if (a.paused && unlockArmed && goal() > 0) return 'wait'; return 'on'; },

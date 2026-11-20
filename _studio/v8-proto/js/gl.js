@@ -64,7 +64,21 @@ in vec2 vLocal; in vec3 vWorld;
 uniform vec3 uEye; uniform sampler2D uLut, uRing, uLabel;
 uniform float uHover, uFocus, uPlay, uBand, uCut, uLight, uSweep, uTime;
 uniform vec4 uGeo;
+// 落针的水波：贴着唱片表面从唱针那一点往外扩散。xy = 落点（世界坐标的 x、z），z = 年龄（s，<0 = 空），w = 强度
+uniform vec4 uDrip[3];
 out vec4 o;
+// 返回 xy：水面的斜率（让盘面的反光一起起伏），z：环上的亮光
+vec3 drip(vec2 w){
+  vec3 g = vec3(0.);
+  for (int i = 0; i < 3; i++) { vec4 d = uDrip[i]; if (d.z < 0.) continue;
+    vec2 q = w - d.xy; float L = length(q), a = d.z, rho = .62*a, sg = .016 + .018*a;
+    float env = d.w*exp(-a/1.6)*smoothstep(0., .04, a);
+    if (abs(L - rho) > 6.*sg + .2) { g.z += d.w*exp(-a/.16)*exp(-L*L/.0016); continue; }
+    float sl = 0., lit = 0.;
+    for (int k = 0; k < 3; k++) { float s = (L - rho + float(k)*.075)/sg, wk = k == 0 ? 1. : k == 1 ? .6 : .35; sl += wk*s*exp(-.5*s*s); lit += wk*exp(-.5*s*s); }
+    g.xy += q/max(L, 1e-4)*sl*env; g.z += lit*env + d.w*exp(-a/.16)*exp(-L*L/.0016);   // 落点一闪
+  }
+  return g; }
 float h1(float x){ return fract(sin(x*127.1)*43758.5453); }
 float n1(float x){ float i=floor(x), f=fract(x); f=f*f*(3.-2.*f); return mix(h1(i),h1(i+1.),f); }
 float cover(float v, float fw, float lo, float hi){ return clamp((min(v+fw*.5,hi)-max(v-fw*.5,lo))/max(fw,1e-4),0.,1.); }
@@ -81,7 +95,8 @@ void main(){
   if (r > 1.+fp) discard;
   float RL=uGeo.x, R1=uGeo.y, R2=uGeo.z, unit=uGeo.w;
   float phi = atan(p.x,-p.y); if (phi < 0.) phi += TAU;
-  vec3 V = normalize(uEye - vWorld), N = vec3(0.,1.,0.);
+  vec3 dr = drip(vWorld.xz);
+  vec3 V = normalize(uEye - vWorld), N = normalize(vec3(dr.x*.32, 1., dr.y*.32));   // 水波让盘面的法线起伏，反光跟着荡
   vec2 rw = normalize(vWorld.xz + 1e-6);
   vec3 Rad = vec3(rw.x,0.,rw.y), T = vec3(-rw.y,0.,rw.x);
   vec3 L1 = lightA(uSweep);
@@ -148,6 +163,7 @@ void main(){
     lab = mix(vec3(.003), lab, smoothstep(.0150,.0150+fp+.0006,r));
     col = mix(lab, col, smoothstep(RL-fp,RL+fp,r));
   }
+  col += vec3(1.,.9,.76)*dr.z*.035;   // 环上一道很淡的亮光
   col *= uLight;
   o = vec4(toDisplay(col), 1.-smoothstep(1.-fp,1.,r));
 }`;
@@ -378,6 +394,7 @@ export function createDisc(canvas, opts = {}) {
     sleeveSet: new Set(), sleeveScale: 1, W: 1, H: 1, aspect: 1.6, vp: null, inv: null, eye: [0, 2, 2.7], time: 0};
   let dead = false, raf = 0, last = 0, wake = 0;
   const cuts = [];   // 正在进行的刻纹动画
+  const drips = [];  // 落针的水波：{x, z, t0, s}
 
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2), w = canvas.clientWidth, h = canvas.clientHeight;
@@ -525,6 +542,9 @@ export function createDisc(canvas, opts = {}) {
       uploadRings(); moving = true;
     }
     if (S.play >= 0) moving = moving || !instant;
+    // 落针的水波：活着的时候一直画
+    for (let i = drips.length - 1; i >= 0; i--) if (performance.now() / 1000 - drips[i].t0 > 6) drips.splice(i, 1);
+    if (drips.length && !instant) moving = true;
     return moving;
   }
 
@@ -553,6 +573,9 @@ export function createDisc(canvas, opts = {}) {
     gl.uniform1f(u.uHover, S.hover); gl.uniform1f(u.uFocus, S.focus); gl.uniform1f(u.uPlay, S.play); gl.uniform1f(u.uBand, S.mode === 'close' ? S.band : -1);
     gl.uniform1f(u.uCut, S.cut); gl.uniform1f(u.uLight, S.light); gl.uniform1f(u.uSweep, S.sweep); gl.uniform1f(u.uTime, S.time);
     gl.uniform4f(u.uGeo, GEO.RL, GEO.R1, GEO.R2, GEO.unit);
+    const nowS = performance.now() / 1000, dripU = new Float32Array(12);
+    for (let i = 0; i < 3; i++) { const d = drips[i]; dripU.set(d ? [d.x, d.z, nowS - d.t0, d.s] : [0, 0, -1, 0], i * 4); }
+    gl.uniform4fv(u['uDrip[0]'], dripU);
     gl.bindVertexArray(vaoDisc); gl.drawArrays(gl.TRIANGLES, 0, 6);
     const fan = new Map(), L = fanLayout();
     if (L) for (const id of L.items.keys()) fan.set(id, fanWorld(L, id));
@@ -632,7 +655,8 @@ export function createDisc(canvas, opts = {}) {
   const ro = new ResizeObserver(resize); ro.observe(canvas);
   const onVis = () => { if (!document.hidden) { last = 0; request(); } };
   document.addEventListener('visibilitychange', onVis);
-  canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); dead = true; cancelAnimationFrame(raf); opts.onLost?.(); });
+  // 真的丢了（显卡重置、手机切到后台久了）才算；自己 destroy() 时主动释放的不算，否则一重建就被当成崩溃
+  canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); if (dead) return; dead = true; cancelAnimationFrame(raf); opts.onLost?.(); });
 
   const api = {
     state: S, project, pick, pickSleeve, worldOf, request, bands, rings,
@@ -673,8 +697,11 @@ export function createDisc(canvas, opts = {}) {
     refreshLanes() { for (const g of rings) if (!cuts.some(q => q.id === g.id)) laneNow.set(g.id, lanesOf(g.id)); uploadRings(); request(); },
     // 把一圈从旧的刻纹过渡到新的
     cut(id, from, to, ms = 1400, done) { const g = rings.find(g => g.id === id); if (!g) return; laneNow.set(id, from); cuts.push({id, i: g.i, from, to, t0: performance.now(), ms, done}); S.cut = g.i; request(); },
+    // 落针：从唱针那一点（或指定的世界坐标）泛起一道贴着盘面的水波。返回落点 [x, z]
+    drip(s = 1, at = null) { if (reduced()) return null; const p = at || armYaw(S.arm.rho).tip; drips.push({x: p[0], z: p[2] ?? p[1], t0: performance.now() / 1000, s}); if (drips.length > 3) drips.shift(); request(); return [p[0], p[2] ?? p[1]]; },
     keepAwake(ms) { wake = performance.now() + ms; request(); },
-    destroy() { dead = true; cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis); gl.getExtension('WEBGL_lose_context')?.loseContext(); }
+    // 不主动 loseContext：同一张 canvas 之后还会再建一次盘，丢掉的上下文拿回来是死的
+    destroy() { dead = true; cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis); }
   };
   resize();
   return api;

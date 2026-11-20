@@ -5,7 +5,7 @@ import {t} from './i18n.js';
 export function createAudio() {
   const element = new Audio(); element.preload = 'metadata';
   let track = null, state = 'idle', listener = null, token = 0, resumeAt = null;
-  let context = null, gain = null, noise = null, silent = false;
+  let context = null, gain = null, noise = null, silent = false, taps = null;
   const failedSources = new Set();
   const messages = Object.fromEntries(Object.entries({idle: '点击播放收听', loading: '音频加载中…', ready: '音频已就绪，点击播放', playing: '正在播放',
     paused: '已暂停', waiting: '正在缓冲…', ended: '播放完毕，可以重听', blocked: '浏览器需要你点击播放', error: '音频加载失败，点击播放重试'}).map(([k, v]) => [k, t(v)]));
@@ -126,6 +126,19 @@ export function createAudio() {
       if (Number.isFinite(element.duration) && element.readyState !== 0) applyPendingSeek();
       return true; // 元数据尚未返回时记住用户点的位置。
     },
+    // 给星空听的分析器：从音量节点后面接出来（不改变听到的声音）。总的一个，左右声道各一个（算立体声宽度）
+    taps() {
+      if (!context || !gain) return null;
+      if (!taps) {
+        const sink = context.createGain(); sink.gain.value = 0; sink.connect(context.destination);   // Safari 里分析器要接到输出上才会工作
+        const an = context.createAnalyser(); an.fftSize = 2048; an.smoothingTimeConstant = 0; gain.connect(an); an.connect(sink);
+        let aL = null, aR = null;
+        try { const sp = context.createChannelSplitter(2); gain.connect(sp); aL = context.createAnalyser(); aR = context.createAnalyser(); aL.fftSize = aR.fftSize = 1024;
+          sp.connect(aL, 0); sp.connect(aR, 1); aL.connect(sink); aR.connect(sink); } catch { aL = aR = null; }
+        taps = {an, aL, aR, ctx: context};
+      }
+      return taps;
+    },
     pause() { token++; stopNoise(); element.pause(); },
     stop() { token++; stopNoise(); silent = true; element.pause(); track = null; silent = false; set('idle'); }
   };
@@ -144,5 +157,6 @@ export const player = {
   pause() { if (started && needle.current()) needle.pause(); },
   resume() { if (started && needle.current()) needle.play(); },
   seek(seconds) { return needle.seekTo(seconds); },
+  taps: () => needle.taps(),
   element: needle.element
 };

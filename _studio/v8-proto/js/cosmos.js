@@ -5,6 +5,7 @@
 import {CFG, KINDS, STAR_STRIDE, makeStars, starCounts, extentOf, createScheduler, simulate, coverVis, coverDev, coverOut,
   coverScale, coverLife, camAt, rng, smoother, hits} from './cosmos-plan.js';
 import {ERAS, FINALE, erasOf, eraById} from './sky-events.js';
+import {createReact} from './react.js';
 
 const STAR_SEED = 1854;   // 每次打开都是同一片星空
 const Q = new URLSearchParams(location.search);
@@ -136,8 +137,30 @@ void main(){
 }`;
 
 // uFx：x 天边的「雪花」（1932 年的射电噪声），y 满天极细的颗粒（1965 年的宇宙微波背景），z 时间
-const SKY_FS = COMMON + `
+const SKY_FS = COMMON + NOISE + `
 in vec2 vUv; uniform sampler2D uNeb; uniform vec3 uNebI; uniform float uSeed; uniform vec3 uFx; out vec4 o;
+// 听歌时「风格」链的那一层：x 模式（1 雾 · 2 烟 · 3 中心暖光 · 4 油彩 · 5 地平线 · 6 霓虹边 · 7 漩涡），y 量，z 时间，w 拍子
+uniform vec4 uMood; uniform vec3 uMoodA, uMoodB; uniform vec2 uFoeS;
+// 「乐谱」：五条谱线。x 量，y 线距，z 中间那条线的 y，w 时间
+uniform vec4 uStaff;
+vec3 mood(vec2 pp){
+  vec2 uv = pp/uView.y; float t = uMood.z, bt = uMood.w, md = uMood.x; vec3 add = vec3(0.);
+  if (md < 1.5) { float hgt = smoothstep(1.05, .15, pp.y/uView.y), v = fbm(uv*2.2 + vec2(t*.015, -t*.05));
+    add = mix(uMoodB, uMoodA, v)*smoothstep(.35, .8, v)*hgt*(.8 + .4*bt); }
+  else if (md < 2.5) { vec2 q = vec2(fbm(uv*1.7 + vec2(t*.025, 0.)), fbm(uv*1.7 + vec2(5.2, -t*.02)));
+    float v = fbm(uv*2.3 + q*2.4 + vec2(0., -t*.035)); add = mix(uMoodB, uMoodA, smoothstep(.45, .85, v))*smoothstep(.5, .82, v)*(.85 + .3*bt); }
+  else if (md < 3.5) { float r = length((pp - uFoeS)/uView.y); add = mix(uMoodA, uMoodB, .5 + .5*sin(t*.35 + r*5.))*exp(-r*r/.16)*(.35 + .9*bt); }
+  else if (md < 4.5) { vec2 w = vec2(fbm(uv*1.3 + t*.045), fbm(uv*1.3 - t*.04 + 3.1)); float v = fbm(uv*1.5 + w*1.9);
+    vec3 hue = .5 + .5*cos(6.2831853*(v*1.4 + t*.05 + vec3(0., .28, .58))); hue = mix(vec3(dot(hue, vec3(.33))), hue, .75);   // 油彩：颜色流动，但不刺眼
+    add = hue*smoothstep(.32, .74, v)*(.75 + .55*bt); }
+  else if (md < 5.5) { float hgt = exp(-(1. - pp.y/uView.y)*4.5); add = mix(uMoodB, uMoodA, hgt)*hgt*(.8 + .5*bt); }
+  else if (md < 6.5) { float e = min(min(pp.x, uView.x - pp.x), min(pp.y, uView.y - pp.y)); add = mix(uMoodA, uMoodB, .5 + .5*sin(t*.9 + pp.y*.012))*exp(-e/80.)*(.2 + .9*bt); }
+  else { vec2 q = (pp - uFoeS)/uView.y; float r = length(q), a = atan(q.y, q.x), s = .5 + .5*sin(a*3. + log(r + .05)*5. - t*1.3);
+    add = mix(uMoodA, uMoodB, s)*s*s*s*smoothstep(.12, .45, r)*exp(-r*1.4)*(.7 + .7*bt); }
+  return add*uMood.y*.4; }
+float staff(vec2 pp){ float b = 0.;
+  for (int k = -2; k <= 2; k++) { float ly = uStaff.z + float(k)*uStaff.y + 2.5*sin(pp.x*.0035 + uStaff.w*.35 + float(k)*.7), d = pp.y - ly; b += exp(-d*d/.9); }
+  return b*smoothstep(0., 120., pp.x)*smoothstep(0., 120., uView.x - pp.x); }
 const vec3 BASE = vec3(15.,13.,12.)/255.;
 const vec3 WARM = vec3(1.,.80,.55), COOL = vec3(.42,.55,.86);   // 盘面主光 CA 与补光 CB 的色相
 float hs(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
@@ -153,6 +176,8 @@ void main(){
   if (uFx.x > 0.) { float e = 1. - smoothstep(0., 150., min(min(pp.x, uView.x - pp.x), min(pp.y, uView.y - pp.y)));
     float g = hs(floor(pp/1.5) + floor(uFx.z*30.)*vec2(7.1, 3.3)); c += vec3(.8, .84, .92)*step(.975, g)*e*uFx.x*70./255.; }
   if (uFx.y > 0.) { float g = hs(floor(pp/2.) + floor(uFx.z*12.)*vec2(5.7, 1.9)) - .5; c += vec3(1., .93, .86)*g*uFx.y*13./255.*maskAt(pp)/max(uMask.w, .01); }
+  if (uMood.y > .002) c += mood(pp)*maskAt(pp);
+  if (uStaff.x > .002) c += vec3(1., .9, .72)*staff(pp)*uStaff.x*.17*maskAt(pp);
   float d = hs(gl_FragCoord.xy + uSeed) - .5;
   o = vec4(c + d/255., 1.);
 }`;
@@ -180,6 +205,7 @@ void main(){
 const STAR_VS = COMMON + `
 in vec4 a0; in vec4 a1; in vec4 a2;
 uniform float uC, uT, uDpr, uStill, uCool, uRot, uCalm, uDef; uniform vec2 uZ, uFoe, uE, uCam, uV; uniform vec3 uK, uN, uTrail; uniform int uTrailN;
+uniform vec4 uReact, uStaffS;   // 听歌：x 拍子让星亮一下，y 镲片让一部分星闪，z 闪的种子，w 推弦（星光上下弯）；谱线：x 量，y 线距，z 中线 y
 out vec3 vCol; out float vA, vDef, vTrail;
 float hh(float x){ return fract(sin(x*91.345)*47453.5453); }
 void main(){
@@ -195,6 +221,9 @@ void main(){
   vec2 xi = fract(a0.xy + vec2(hh(cyc + a0.x*13.), hh(cyc*1.7 + a0.y*7.))) * 2. - 1.;
   vec2 rel = rot2(ang)*((xi*uE*uZ.y - uCam)/z), p = uFoe + rel;
   float hit = ripRing(p); p += allDisp(p);   // 水波、漩涡、尾流、透镜：被推开、被折射，波前经过时亮一下
+  if (uReact.w > 0.) p.y += uReact.w*8.*sin(p.x*.011 + uT*1.6)*(.6 + .4*sin(uT*.7 + p.x*.003));   // 蓝调：像推弦一样弯
+  if (uStaffS.x > 0.) { float rel = (p.y - uStaffS.z)/uStaffS.y, li = clamp(floor(rel + .5), -2., 2.);   // 乐谱：谱线附近的星落到线上
+    float inBand = 1. - smoothstep(2.6, 3.4, abs(rel)); p.y = mix(p.y, uStaffS.z + li*uStaffS.y, uStaffS.x*.8*inBand); }
   float fade = smoothstep(1., .8, zr) * smoothstep(0., uN.z, zr);
   // 屏幕上的速度（像素/秒）：超过上限就在几帧里淡掉
   float v = length(rel)*uV.x/z; fade *= 1. - smoothstep(uV.y, uV.y*1.3, v);
@@ -212,6 +241,8 @@ void main(){
   float a = a0.w * tw * (1. + (a2.z-1.)*fl) * fade * uK.z * maskAt(p) * mix(1., uN.y, near) * occ * ta;
   a *= 1. + hit*(uK.x > 1.5 ? 1.6 : uK.x > .5 ? 1.1 : .5);
   if (uVort.z > 0.) { vec2 q = p - uVort.xy; a *= 1. + uVort.z*1.2*exp(-dot(q,q)/${f1((VX.R * .5) ** 2)}); }   // 聚到指尖的星更亮
+  a *= 1. + uReact.x*(uK.x > .5 ? 1.3 : .35);   // 重拍：星一起亮一下
+  if (uReact.y > .01 && fract(sin((a0.x + a0.y*7.)*913.1 + uReact.z*17.3)*43758.5) < .07) a *= 1. + uReact.y*3.;   // 镲片：一小撮星闪
   float px = size*uDpr, sf = uK.x > 1.5 ? 4. : 2.2;
   if (vTrail > .5) {
     // 星轨：细线；弧上的点挨得比点本身还密时按间距降亮度，叠起来才是一条匀的线
@@ -351,6 +382,43 @@ void main(){
   o = vec4(c*m*uA, al*uA);
 }`;
 
+// 听歌时的粒子：音符、金光、微尘、火星、纸屑、火花、光斑。aSA：大小、透明度；aSh：0 圆点 · 1 光斑 · 2 四芒
+const PART_VS = COMMON + `
+in vec2 aP; in vec2 aSA; in vec3 aC; in float aSh; uniform float uDpr; out vec3 vC; out float vA, vSh;
+void main(){ vC = aC; vSh = aSh; vA = aSA.y*maskAt(aP); gl_PointSize = aSA.x*uDpr*(aSh > 1.5 ? 2.4 : aSh > .5 ? 1. : 3.); gl_Position = clip(aP + ripDisp(aP)*.5); }`;
+const PART_FS = `#version 300 es
+precision highp float; in vec3 vC; in float vA, vSh; out vec4 o;
+void main(){ vec2 q = gl_PointCoord*2. - 1.; float r2 = dot(q, q), k;
+  if (vSh > 1.5) k = exp(-abs(q.x)*16.)*exp(-q.y*q.y*3.) + exp(-abs(q.y)*16.)*exp(-q.x*q.x*3.) + exp(-r2*30.);
+  else if (vSh > .5) k = smoothstep(1., .82, sqrt(r2))*(.75 + .25*r2);
+  else k = exp(-r2*9.) + .12*exp(-r2*2.5);
+  o = vec4(vC*vA*k, 0.); }`;
+// 「年代」链：把整张天当成一张底片再冲洗一遍。G1 单色、棕褐、暖、饱和度；G2 颗粒、闪、划痕、暗角；G3 扫描线、色边、光晕、色相转动
+const POST_FS = `#version 300 es
+precision highp float; in vec2 vUv; uniform sampler2D uScene; uniform vec2 uRes; uniform float uT, uWarp; uniform vec4 uG1, uG2, uG3; out vec4 o;
+float hs(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
+void main(){
+  vec2 tc = vec2(vUv.x, 1. - vUv.y);
+  if (uWarp > 0.) tc += uWarp*.0055*vec2(sin(tc.y*11. + uT*.9) + .5*sin(tc.y*23. - uT*1.3), cos(tc.x*9. - uT*.7));   // 油彩投影：整片天轻轻扭动
+  vec2 q = tc - .5, dc = q*uG3.y*.007;
+  vec3 c = vec3(texture(uScene, tc + dc).r, texture(uScene, tc).g, texture(uScene, tc - dc).b);
+  if (uG3.z > 0.) { vec3 hb = vec3(0.); for (int i = 0; i < 6; i++) { float a = float(i)*1.0472; hb += max(texture(uScene, tc + vec2(cos(a), sin(a))*7.5/uRes).rgb - .1, 0.); }
+    c += hb/6.*uG3.z*vec3(1., .72, .45); }   // 光晕：亮处晕开一圈暖光
+  if (uG3.w > 0.) { float ang = uT*.35*uG3.w; float Y = dot(c, vec3(.299, .587, .114)), I = dot(c, vec3(.596, -.274, -.322)), Q = dot(c, vec3(.211, -.523, .312));
+    float cs = cos(ang), sn = sin(ang); vec2 iq = vec2(I*cs - Q*sn, I*sn + Q*cs);
+    c = mix(c, vec3(Y + .956*iq.x + .621*iq.y, Y - .272*iq.x - .647*iq.y, Y - 1.106*iq.x + 1.703*iq.y), min(1., uG3.w)); }
+  float l = dot(c, vec3(.299, .587, .114));
+  c = mix(vec3(l), c, uG1.w);
+  c = mix(c, l*vec3(.94, .96, 1.03)*1.1, uG1.x);
+  c = mix(c, l*vec3(1.14, .95, .70)*1.05, uG1.y);
+  c *= vec3(1. + .12*uG1.z, 1. + .02*uG1.z, 1. - .14*uG1.z);
+  c *= 1. - uG2.w*.6*smoothstep(.3, .95, length(q*vec2(uRes.x/uRes.y, 1.))*1.1);
+  c *= 1. + uG2.y*(hs(vec2(floor(uT*12.), 3.)) - .5)*.07;   // 胶片的闪：±3.5% 以内的小起伏，不是闪光
+  if (uG2.z > 0.) { float f = floor(uT*5.); if (hs(vec2(f, 7.)) > .55) { float d = gl_FragCoord.x - hs(vec2(f, 11.))*uRes.x; c += vec3(.9, .85, .7)*exp(-d*d/1.5)*.06*uG2.z; } }
+  c += (hs(gl_FragCoord.xy + floor(uT*24.)*vec2(3.1, 7.7)) - .5)*uG2.x*.05;
+  if (uG3.x > 0.) c *= 1. - uG3.x*.18*(.5 + .5*sin(gl_FragCoord.y*1.5708));
+  o = vec4(c, 1.); }`;
+
 function program(gl, vs, fs) {
   const p = gl.createProgram();
   for (const [t, src] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) {
@@ -388,7 +456,7 @@ export function createCosmos(canvas, opts = {}) {
   if (!gl) throw new Error('no webgl2');
   const P = {neb: program(gl, TRI_VS, NEBULA_FS), bake: program(gl, TRI_VS, CLOUD_BAKE_FS), sky: program(gl, TRI_VS, SKY_FS),
     cloud: program(gl, QUAD_VS, CLOUD_FS), star: program(gl, STAR_VS, STAR_FS), cover: program(gl, QUAD_VS, COVER_FS), ember: program(gl, EMBER_VS, EMBER_FS),
-    fix: program(gl, FIX_VS, FIX_FS), event: program(gl, QUAD_VS, EVENT_FS)};
+    fix: program(gl, FIX_VS, FIX_FS), event: program(gl, QUAD_VS, EVENT_FS), part: program(gl, PART_VS, PART_FS), post: program(gl, TRI_VS, POST_FS)};
   const reduced = () => opts.reduced?.() ?? false;
   const saveData = !!navigator.connection?.saveData;
 
@@ -407,7 +475,20 @@ export function createCosmos(canvas, opts = {}) {
   const vaoFix = gl.createVertexArray(); gl.bindVertexArray(vaoFix);
   const fixBuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, fixBuf);
   ['b0', 'b1', 'b2'].forEach((name, i) => { const l = gl.getAttribLocation(P.fix.p, name); if (l >= 0) { gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, 4, gl.FLOAT, false, 48, i * 16); } });
+  // 听歌时的粒子：每帧整块更新，每颗 8 个数
+  const vaoPart = gl.createVertexArray(); gl.bindVertexArray(vaoPart);
+  const partBuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, partBuf); gl.bufferData(gl.ARRAY_BUFFER, 280 * 32, gl.DYNAMIC_DRAW);
+  for (const [name, n, off] of [['aP', 2, 0], ['aSA', 2, 8], ['aC', 3, 16], ['aSh', 1, 28]]) { const l = gl.getAttribLocation(P.part.p, name); if (l >= 0) { gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, n, gl.FLOAT, false, 32, off); } }
   const vaoTri = gl.createVertexArray(); gl.bindVertexArray(null);
+  // 「年代」链要先画到一张纹理上，再冲洗到屏幕上；不用时不建
+  let postTex = null, postFbo = null, postW = 0, postH = 0;
+  function postTarget() {
+    if (postTex && postW === canvas.width && postH === canvas.height) return postFbo;
+    postW = canvas.width; postH = canvas.height; postTex ||= gl.createTexture(); postFbo ||= gl.createFramebuffer();
+    gl.bindTexture(gl.TEXTURE_2D, postTex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, postW, postH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null); texParams();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, postFbo); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, postTex, 0); gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return postFbo;
+  }
 
   const texParams = (min = gl.LINEAR) => { for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, min], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v); };
   /* 星云纹理 */
@@ -467,6 +548,10 @@ export function createCosmos(canvas, opts = {}) {
   let T = 0, mode = 'over', expo = 0, expoGoal = 1, revealT0 = null, running = false, raf = 0, last = 0, lastTick = -1, dead = false;
   // RT：真实时钟（秒）。水波、尾流、漩涡、天文事件用它；天睡着时宇宙时钟 T 走得慢（pace < 1）
   let RT = 0, pace = 1, lastTouch = 0, halfSkip = 0;
+  // 星流走过的路程：平时 = 速度 × 时间；听歌时「节奏」「风格」会让它快一点或慢一点（积分，不会跳）
+  let travel = 0;
+  // 听歌时的三条效果链（react.js）。listener：listen.js；fx()：设置
+  const react = createReact(); let look = react.look, F0 = null;
   // active：唱片页在前台；still：合成的静帧（减少动态，或一打开就是暂停）；frozen：运行中按了暂停，停在当前这一帧
   let still = false, frozen = false, active = false, userPaused = false, playing = false, playOff = 0, frameN = 0, slowAcc = 0, slowN = 0;
   // 镜头：push 推近量（世界单位），focus 失焦（0 整张盘 · 1 贴近 · 2 钻进），rot 天空绕消失点转过的角度
@@ -654,8 +739,8 @@ export function createCosmos(canvas, opts = {}) {
     const rt = revealT0 === null ? 0 : (still ? 99 : (performance.now() - revealT0) / 1000);
     const rv = k => { const [a, b] = CFG.reveal[k]; return Math.min(1, Math.max(0, (rt - a) / (b - a))); };
     const S = CFG.sleep, sleepDim = 1 - (1 - S.dim) * Math.max(0, (1 - pace) / (1 - S.pace));
-    const mask = [L.headerBottom ?? 56, L.panelLeft ?? V.W + 200, .22, expo * sleepDim];
-    const cam = camAt(T, DRIFT && !still), camZ = CFG.speed * T + push;
+    const lk = still ? null : look, mask = [L.headerBottom ?? 56, L.panelLeft ?? V.W + 200, .22, expo * sleepDim * (lk?.pump || 1)];
+    const cam = camAt(T, DRIFT && !still), camZ = travel + push;
     // 暗云
     const ac = still ? null : activeCloud(T, foe, cam, push, rot);
     if (ac && cloudBaked !== ac.i) { bakeTo(cloudTex, 256, 256, P.bake, u => gl.uniform1f(u.uSeed, ac.c.seed)); cloudBaked = ac.i; }
@@ -684,12 +769,16 @@ export function createCosmos(canvas, opts = {}) {
       if (u.uLens) gl.uniform4f(u.uLens, ...fx.lens);
       if (u.uCloud) { gl.uniform4f(u.uCloud, ...cl); gl.uniform2f(u.uCloudA, occl, CFG.cloud.rim); gl.uniform1i(u.uCloudTex, 1); } };
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, cloudTex); gl.activeTexture(gl.TEXTURE0);
+    const pp = lk?.post, usePost = !!pp && !skip.has('post') && (Object.values(pp).some(v => v > .01) || Math.abs(lk.sat - 1) > .01);
+    if (usePost) gl.bindFramebuffer(gl.FRAMEBUFFER, postTarget());
     gl.viewport(0, 0, canvas.width, canvas.height);
     // 天
     gl.disable(gl.BLEND); gl.useProgram(P.sky.p); setCommon(P.sky.u);
     const N = CFG.nebula, br = i => 1 + (still ? 0 : N.amp * Math.sin(6.2831853 * T / N.breathe[i] + i * 2.1));
     gl.uniform3f(P.sky.u.uNebI, N.warm * br(0), N.cool * br(1), rv('nebula'));
     gl.uniform1f(P.sky.u.uSeed, frameSeed()); gl.uniform3f(P.sky.u.uFx, fx.static, fx.cmb, RT);
+    { const u = P.sky.u; gl.uniform4f(u.uMood, lk?.moodMode || 0, lk?.moodAmt || 0, RT, lk?.beat || 0); gl.uniform3f(u.uMoodA, ...(lk?.A || [1, 1, 1])); gl.uniform3f(u.uMoodB, ...(lk?.B || [1, 1, 1]));
+      gl.uniform2f(u.uFoeS, ...foe); gl.uniform4f(u.uStaff, lk?.staff || 0, lk?.staffGap || 12, lk?.staffY || 100, RT); }
     gl.bindTexture(gl.TEXTURE_2D, nebTex); gl.uniform1i(P.sky.u.uNeb, 0);
     gl.bindVertexArray(vaoTri); gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.enable(gl.BLEND);
@@ -702,8 +791,10 @@ export function createCosmos(canvas, opts = {}) {
     gl.blendFunc(gl.ONE, gl.ONE);
     gl.useProgram(P.star.p); const us = P.star.u; setCommon(us);
     gl.uniform1f(us.uC, camZ); gl.uniform1f(us.uT, T); gl.uniform1f(us.uDpr, V.dpr); gl.uniform1f(us.uStill, still ? 1 : 0);
-    gl.uniform2f(us.uFoe, ...foe); gl.uniform2f(us.uE, ...V.E); gl.uniform2f(us.uCam, ...cam); gl.uniform2f(us.uV, CFG.speed * pace, CFG.maxPxPerSec);
+    gl.uniform2f(us.uFoe, ...foe); gl.uniform2f(us.uE, ...V.E); gl.uniform2f(us.uCam, ...cam); gl.uniform2f(us.uV, CFG.speed * pace * (lk?.flowMul || 1), CFG.maxPxPerSec);
     gl.uniform1f(us.uRot, rot); gl.uniform1f(us.uCalm, calmVis);
+    gl.uniform4f(us.uReact, lk?.starPulse || 0, lk?.twinkle || 0, lk?.twinkleSeed || 0, lk?.bend || 0);
+    gl.uniform4f(us.uStaffS, lk?.staff || 0, lk?.staffGap || 12, lk?.staffY || 100, 0);
     const F = CFG.focus, fClose = Math.min(1, focus), fDive = Math.max(0, focus - 1);
     const drawKind = (kind, trailN = 0) => { const k = CFG.stars[kind];
       gl.uniform2f(us.uZ, ...k.z); gl.uniform3f(us.uK, KINDS.indexOf(kind), k.size, rv(kind));
@@ -743,6 +834,12 @@ export function createCosmos(canvas, opts = {}) {
     for (const {f, k} of eraFrames) for (const p of f.points || []) {
       gl.uniform2f(ue.uP, ...p.p); gl.uniform1f(ue.uPx, p.px * 4 * V.dpr); gl.uniform3f(ue.uCol, ...p.col); gl.uniform1f(ue.uA, p.a * k * expo); gl.drawArrays(gl.POINTS, 0, 1);
     }
+    // 听歌时的粒子
+    if (lk?.count && !skip.has('particles')) {
+      gl.useProgram(P.part.p); setCommon(P.part.u); gl.uniform1f(P.part.u.uDpr, V.dpr);
+      gl.bindBuffer(gl.ARRAY_BUFFER, partBuf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, lk.particles.subarray(0, lk.count * 8));
+      gl.bindVertexArray(vaoPart); gl.drawArrays(gl.POINTS, 0, lk.count);
+    }
     // 天文事件：彗星、极光、星系、天体
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     if (eraFrames.some(x => x.f.quads?.length) && !skip.has('era')) {
@@ -779,7 +876,15 @@ export function createCosmos(canvas, opts = {}) {
       gl.uniform1f(uc.uGlow, s.glow); gl.uniform3f(uc.uGlowC, ...e.glow); gl.uniform1f(uc.uOcc, zNow > cl[3] ? 1 : 0);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
-    gl.disable(gl.BLEND); gl.bindVertexArray(null);
+    gl.disable(gl.BLEND);
+    if (usePost) {   // 「年代」：冲洗到屏幕上
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, canvas.width, canvas.height);
+      const u = P.post.u; gl.useProgram(P.post.p); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, postTex); gl.uniform1i(u.uScene, 0);
+      gl.uniform2f(u.uRes, canvas.width, canvas.height); gl.uniform1f(u.uT, RT); gl.uniform1f(u.uWarp, pp.warp);
+      gl.uniform4f(u.uG1, pp.mono, pp.sepia, pp.warm, lk.sat); gl.uniform4f(u.uG2, pp.grain, reduced() ? 0 : pp.flicker, pp.scratch, pp.vignette); gl.uniform4f(u.uG3, pp.scan, pp.chroma, pp.halation, pp.hue);
+      gl.bindVertexArray(vaoTri); gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+    gl.bindVertexArray(null);
     if (!still) chain(slots, eraFrames);
     anchors(slots, eraFrames);
     frameN++;
@@ -942,6 +1047,20 @@ export function createCosmos(canvas, opts = {}) {
     const SL = CFG.sleep, sleepy = RT - lastTouch > SL.after && !playing && mode === 'over' && !vort.on;
     const pg = sleepy ? SL.pace : 1; pace += (pg - pace) * (1 - Math.exp(-dt * 3 / (pg < pace ? SL.into : SL.wake)));
     const dT = dt * pace; T += dT;
+    // 听歌：先听，再按三条效果链算出这一帧的样子
+    const fxS = opts.fx?.();
+    if (fxS && !still) {
+      F0 = opts.listener?.update(dt, RT, fxS.rhythm.sens) || null;
+      const L = V.layout || {}, foe = V.foe || V.foeGoal, [rx, ry] = discRadii(), top = (L.headerBottom ?? 56) + 8, right = L.narrow ? V.W : (L.panelLeft ?? V.W) - 30;
+      const room = Math.max(0, foe[1] - ry - top), below = Math.max(0, V.H - foe[1] - ry - 30);
+      const up = room >= below || room > 110, span = up ? room : below, staffGap = Math.max(7, Math.min(20, span / 7.5)), staffY = up ? top + room * .5 : foe[1] + ry + 20 + below * .5;
+      look = react.update(dt, RT, F0, fxS, {W: V.W, H: V.H, foe, rx, ry, top, right, staffY, staffGap,
+        rimAt: a => [foe[0] + Math.sin(a) * rx * 1.04, foe[1] - Math.cos(a) * ry * 1.04]}, playing);
+      look.staffY = staffY; look.staffGap = staffGap;
+      for (const r of look.ripples) addRipple(r.x, r.y, r.s, 1, 'beat');
+      if (look.swirl > .01) rot += dt * look.swirl * (.03 + .3 * look.beat);   // 舞池：重拍时整片天转得快一点
+    }
+    travel += CFG.speed * dT * (look.flowMul || 1);
     // 时间为它停住：指针停着的、卡片打开着的封面，年龄不长
     for (const s of sch.state.slots) if (s.item.id === hoverId || holdIds.has(s.item.id)) { s.t0 += dT; if (s.killAt != null) s.killAt += dT; s.shook ??= T; }
     for (const s of sch.state.slots) { const want = s.item.id === hoverId || holdIds.has(s.item.id) ? 1 : 0; s.lift = (s.lift || 0) + (want - (s.lift || 0)) * (1 - Math.exp(-dt * 7)); }
@@ -992,7 +1111,7 @@ export function createCosmos(canvas, opts = {}) {
   // 静止：减少动态、暂停、?still。一张画，只在尺寸变化时重画
   async function renderStill() {
     if (!resize()) return;
-    V.foe = [...V.foeGoal]; expo = expoGoal; T = Math.max(T, STILL_T);
+    V.foe = [...V.foeGoal]; expo = expoGoal; T = Math.max(T, STILL_T); travel = Math.max(travel, CFG.speed * T);
     const slots = sch.still(T, {...envAt(), suppress: false, kill: false, ready: () => true});
     await Promise.all(slots.map(s => loadTex(s.item.id)));
     if (!dead && still) draw(slots, []);
@@ -1004,10 +1123,10 @@ export function createCosmos(canvas, opts = {}) {
   const io = new IntersectionObserver(es => { offscreen = !es[0].isIntersecting; if (!offscreen) start(); }); io.observe(canvas);
   const ro = new ResizeObserver(() => { if (!resize()) return; if (still) renderStill(); else if (frozen) draw(sch.state.slots, sch.state.past); }); ro.observe(canvas);
   // 从合成的静帧接着动：时钟接在静帧之后，暗适应视为已经完成，不会先黑一下
-  const leaveStill = () => { if (!still) return; still = false; T = Math.max(T, STILL_T); revealT0 = performance.now() - 1e5; expo = expoGoal; };
+  const leaveStill = () => { if (!still) return; still = false; T = Math.max(T, STILL_T); travel = Math.max(travel, CFG.speed * T); revealT0 = performance.now() - 1e5; expo = expoGoal; };
   const onVis = () => { if (!document.hidden) start(); };
   document.addEventListener('visibilitychange', onVis);
-  canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); api.destroy(); canvas.hidden = true; });
+  canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); if (dead) return; api.destroy(); canvas.hidden = true; });   // 自己 destroy() 时释放的不算
   // 避让：点击、滚轮、按键，以及指针或焦点在曲目表里，都算「在操作」。睡着时：一碰就醒，碰的地方泛起一道波
   const onInput = e => {
     prevBusy = lastBusy; lastBusy = performance.now();
@@ -1069,7 +1188,10 @@ export function createCosmos(canvas, opts = {}) {
       const [x, y] = toLocal(clientX, clientY);
       if (x < 0 || y < 0 || x > V.W || y > V.H) return false;
       const s = strength * Math.max(.55, Math.min(1, Math.min(V.W, V.H) / 700));   // 小屏幕上小一点
-      addRipple(x, y, s, 0, kind);
+      // 听歌时（节奏链开着）：点下去的水波对到下一拍上（半秒以内）
+      const nb = kind === 'tap' && playing && opts.fx?.()?.rhythm.on && opts.fx().on ? opts.listener?.nextBeat(RT) : null;
+      if (nb != null && nb - RT < .5) timers.push({at: nb, fn: () => addRipple(x, y, s * 1.1, 0, kind)});
+      else addRipple(x, y, s, 0, kind);
       return true;
     },
     // 这次按下是在天上（不是在盘上）：不算「在操作」，天上照样出新东西
@@ -1154,6 +1276,10 @@ export function createCosmos(canvas, opts = {}) {
     },
     // 75 首全部刻满：终章
     setFinale(on) { era.finWant = !!on; },
+    // 听歌：现在放的是哪一首（{id, style, year}），停了传 null。三条效果链据此「跟着歌」选风格和年代
+    setTrack(t) { react.setTrack(t || null); },
+    // 给效果器面板看：现在实际用着的风格、年代，听到的速度
+    get fxNow() { return {family: look.family, era: look.era, bpm: F0?.bpm ? Math.round(F0.bpm) : 0, live: !!F0?.live, level: +(F0?.level || 0).toFixed(2), beats: F0?.beats || 0, count: look.count}; },
     // 调试：立刻放一件（id 见 sky-events.js）
     debugEra(id) { const def = eraById(id); if (!def) return false; if (def === FINALE) { era.finWant = true; era.fin = null; era.finShown = startEra(FINALE, 'fin'); return true; } if (era.cur) { era.cur = null; } return startEra(def); },
     // 调试：让天马上睡着 / 醒来
@@ -1162,7 +1288,7 @@ export function createCosmos(canvas, opts = {}) {
     step(dt = 1 / 30, n = 1) { running = false; cancelAnimationFrame(raf); raf = 0; resize(); for (let i = 0; i < n; i++) advance(dt); draw(sch.state.slots, sch.state.past); },
     // 调试：按固定种子画出时钟 t 的那一帧（可复现；不含操作避让和星轨）
     async renderAt(t, seed = 7) {
-      running = false; cancelAnimationFrame(raf); raf = 0; resize(); V.foe = [...V.foeGoal]; expo = expoGoal = goalFor(mode); revealT0 = performance.now() - 1e5; T = t;
+      running = false; cancelAnimationFrame(raf); raf = 0; resize(); V.foe = [...V.foeGoal]; expo = expoGoal = goalFor(mode); revealT0 = performance.now() - 1e5; T = t; travel = CFG.speed * t;
       calm = calmVis = 1; push = pushV = pushGoal = 0; focus = mode === 'close' ? 1 : mode === 'dive' ? 2 : 0; rot = 0; trail.start = null; recall = null;
       clouds = cloudPlan(seed + 11); cloudBaked = -1;
       const env = envAt(), sim = simulate(opts.pool || [], seed, t, () => ({...env, suppress: mode !== 'over', kill: false, avoid: null, lastEvent: null, ready: () => true}));
@@ -1194,7 +1320,7 @@ export function createCosmos(canvas, opts = {}) {
       document.removeEventListener('visibilitychange', onVis); document.removeEventListener('focusin', onFocus); document.removeEventListener('focusout', onFocus);
       for (const [n, f] of evs) removeEventListener(n, f, {capture: true});
       pnl?.removeEventListener('pointerenter', onEnter); pnl?.removeEventListener('pointerleave', onLeave);
-      gl.getExtension('WEBGL_lose_context')?.loseContext();
+      // 不主动 loseContext：同一张 canvas 之后还会再建一次星空，丢掉的上下文拿回来是死的
     }
   };
   resize(); V.foe = [...V.foeGoal];

@@ -43,7 +43,73 @@ html[data-side=paper] .tabs a[aria-current]{border-bottom-color:var(--ink)}
 .room-disc{position:fixed;inset:0;overflow:hidden}
 .stage{position:absolute;inset:0}
 .room-disc{--panel:min(420px,36vw)}
-.stage::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;background:linear-gradient(90deg,rgba(15,13,12,0) calc(100% - var(--panel) - 130px),rgba(15,13,12,.97) calc(100% - var(--panel) - 14px))}
+.stage::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;background:linear-gradient(90deg,rgba(15,13,12,0) calc(100% - var(--panel) - 130px),rgba(15,13,12,.90) calc(100% - var(--panel) - 14px))}
+/* 深空：盘下面的宇宙，只是背景 */
+#cosmos{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.stage[data-flat="1"] #cosmos{display:none}
+/* 星空的暂停开关：和图例同一种小字，只有它接收指针 */
+.lg-cosmos{pointer-events:auto;color:var(--dim);text-decoration:underline;text-decoration-color:var(--faint);text-underline-offset:3px}
+.lg-cosmos:hover{color:var(--fg);text-decoration-color:currentColor}
+.lg-cosmos:focus-visible{outline:1px solid rgba(231,163,60,.75);outline-offset:3px}
+.stage[data-intro="1"] .lg-cosmos,.stage[data-mode=dive] .lg-cosmos{pointer-events:none}
+/* 会回应的天空：悬停说明、天文年表的说明、星座的名字、捞起来的卡片 */
+.sky-ui{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden}
+.sky-ui>*{position:absolute;left:0;top:0;will-change:transform}
+.sky-tag{font-size:12px;line-height:1;color:var(--paper);background:rgba(15,13,12,.8);padding:5px 9px 4px 7px;border-radius:2px;white-space:nowrap;opacity:0;transition:opacity .18s;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.sky-tag.on{opacity:1}
+.sky-tag b{font:800 13px/1 var(--num);font-stretch:78%;margin-right:7px;color:var(--amber)}
+.sky-tag em{font-style:normal;margin-left:8px;padding-left:8px;border-left:1px solid rgba(238,232,218,.25);color:var(--amber)}
+.sky-era{margin:0;max-width:300px;font-size:12px;line-height:1.5;color:rgba(238,232,218,.78);opacity:0;text-shadow:0 1px 8px #0f0d0c,0 0 2px #0f0d0c}
+.sky-era b{display:block;font:700 12px/1.2 var(--num);letter-spacing:.08em;color:rgba(231,163,60,.9);margin-bottom:2px}
+.sky-cons span{position:absolute;left:0;top:0;white-space:nowrap;font-size:11px;letter-spacing:.06em;color:rgba(238,232,218,.66);text-shadow:0 1px 6px #0f0d0c}
+.sky-card{position:absolute;z-index:6;width:min(300px,calc(100% - 32px));display:grid;grid-template-columns:76px 1fr;gap:12px;padding:14px 14px 12px;background:var(--paper);color:var(--ink);border-radius:3px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.sky-card.in{animation:skyCard .5s cubic-bezier(.2,.75,.2,1) both}
+@keyframes skyCard{from{opacity:0;transform:perspective(700px) rotateY(78deg) scale(.55)}to{opacity:1;transform:none}}
+.sky-card .sc-art{width:76px;height:76px;object-fit:cover;border-radius:2px;background:rgba(22,19,15,.08)}
+.sky-card .sc-art[data-shape=round]{border-radius:50%}
+.sky-card .sc-year{font:800 22px/1 var(--num);font-stretch:75%}
+.sky-card h3{margin:4px 0 4px;font-size:15px;line-height:1.3;padding-right:14px}
+.sky-card p{margin:0 0 3px;font-size:12px;line-height:1.45;color:rgba(22,19,15,.7)}
+.sky-card .sc-star{margin-top:6px;color:rgba(22,19,15,.82)}
+.sky-card .sc-star.due{color:#8a5a12}
+.sky-card .sc-act{grid-column:1/-1;display:flex;gap:8px;margin-top:10px}
+.sky-card .sc-act button{flex:1;font-size:13px;padding:8px 10px;border-radius:2px;border:1px solid rgba(22,19,15,.3);color:var(--ink)}
+.sky-card .sc-act .sc-find{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.sky-card .sc-act button:hover{border-color:var(--ink)}
+.sky-card .sc-act button:focus-visible,.sky-card .sc-x:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.sky-card .sc-x{position:absolute;right:6px;top:4px;width:28px;height:28px;font-size:18px;line-height:1;color:rgba(22,19,15,.55)}
+.sky-card .sc-x:hover{color:var(--ink)}
+#gl.holding{cursor:none}
+/* 水波碰到盘缘的数字：依次一闪；按数字键：那个数字亮得更久 */
+.hud-digit.ping{animation:digitPing .9s ease-out}
+.hud-digit.key{animation:digitKey 1.8s ease-out}
+@keyframes digitPing{0%{color:#ffd79a;text-shadow:0 0 14px rgba(231,163,60,.95)}100%{}}
+@keyframes digitKey{0%{color:#ffe2b0;text-shadow:0 0 22px rgba(231,163,60,1);transform-origin:center}100%{}}
+.stage[data-intro="1"] .sky-ui,.stage[data-mode=dive] .sky-ui,.stage[data-mode=dive] .sky-card{opacity:0;pointer-events:none}
+@media (prefers-reduced-motion:reduce){.sky-card.in,.hud-digit.ping,.hud-digit.key{animation:none}}
+@media(max-width:860px){.sky-cons{display:none}.sky-era{font-size:11px;max-width:210px}.sky-era b{font-size:11px}}
+/* 背景音乐署名：舞台左上角，照曲目的写法（歌名 · 音乐家 · 年份 · 风格）；开关是明确的按钮 */
+.bgm-chip{position:absolute;left:28px;top:calc(var(--top) + 18px);z-index:4;display:flex;align-items:flex-start;gap:10px;max-width:min(420px,calc(100% - var(--panel) - 80px));transition:opacity .45s}
+.bgm-eq{display:flex;align-items:flex-end;gap:2px;height:14px;margin-top:3px;flex:none}
+.bgm-eq i{width:2px;height:4px;background:var(--dim);border-radius:1px}
+.bgm-chip[data-mode=on] .bgm-eq i{animation:bgmEq 1.6s ease-in-out infinite;background:var(--fg)}
+.bgm-chip[data-mode=on] .bgm-eq i:nth-child(2){animation-delay:-.5s;animation-duration:1.9s}
+.bgm-chip[data-mode=on] .bgm-eq i:nth-child(3){animation-delay:-1.1s;animation-duration:1.3s}
+.bgm-chip[data-mode=on] .bgm-eq i:nth-child(4){animation-delay:-.2s;animation-duration:2.2s}
+@keyframes bgmEq{0%,100%{height:3px}50%{height:13px}}
+@media (prefers-reduced-motion:reduce){.bgm-chip[data-mode=on] .bgm-eq i{animation:none;height:9px}}
+.bgm-text{display:grid;min-width:0;line-height:1.35}
+.bgm-k{font-size:11px;letter-spacing:.06em;color:var(--dim)}
+.bgm-title{font:600 14px/1.35 var(--num);letter-spacing:.01em;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bgm-meta{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bgm-chip[data-mode=off] .bgm-title,.bgm-chip[data-mode=off] .bgm-meta{opacity:.55}
+.bgm-btn{flex:none;display:inline-flex;align-items:center;gap:5px;margin-left:6px;padding:4px 10px 4px 8px;border:1px solid var(--faint);border-radius:999px;font-size:12px;color:var(--dim);transition:color .2s,border-color .2s}
+.bgm-btn:hover{color:var(--fg);border-color:var(--dim)}
+.bgm-btn .bgm-x{display:none}
+.bgm-chip[data-mode=off] .bgm-btn .bgm-wave{display:none}
+.bgm-chip[data-mode=off] .bgm-btn .bgm-x{display:inline}
+.stage[data-intro="1"] .bgm-chip,.stage[data-mode=dive] .bgm-chip{opacity:0;pointer-events:none}
+@media(max-width:860px){.bgm-chip{left:16px;top:8px;max-width:calc(100% - 32px)}.bgm-k,.bgm-meta{display:none}.bgm-title{font-size:13px}}
 #gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:default}
 #gl.grabbing{cursor:grabbing!important}
 #gl:focus-visible{outline:none}

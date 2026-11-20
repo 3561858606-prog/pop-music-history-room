@@ -64,15 +64,26 @@
   <!-- 唱片：漆面 -->
   <section class="room room-disc" id="roomDisc" data-room="disc" hidden>
     <div class="stage" id="stage">
+      <canvas id="cosmos" aria-hidden="true"></canvas>
       <canvas id="gl" tabindex="0" role="application" aria-describedby="discHelp"
         aria-label="母盘：外圈 1854 年，内圈 1968 年。方向键移动，回车进入，空格落针。" data-i18n-attr="aria-label"></canvas>
       <div class="flat-host" id="flatHost" tabindex="0" role="application" aria-label="平面母盘" aria-describedby="discHelp" data-i18n-attr="aria-label" hidden></div>
       <div class="hud" id="hud" aria-hidden="true"></div>
       <p class="stage-hint" id="discHelp"></p>
-      <div class="legend" aria-hidden="true">
-        <span><i class="lg-cut"></i><span data-i18n>刻过：记住了</span></span>
-        <span><i class="lg-blank"></i><span data-i18n>漆面：还没记住</span></span>
-        <span class="lg-src" id="legendSrc"></span>
+      <section class="bgm-chip" id="bgmChip" aria-label="背景音乐" data-i18n-attr="aria-label" hidden>
+        <span class="bgm-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="bgm-text">
+          <span class="bgm-k"><span data-i18n>背景音乐</span> · <span class="bgm-state"></span></span>
+          <b class="bgm-title"></b>
+          <small class="bgm-meta"></small>
+        </span>
+        <button class="bgm-btn" id="bgmToggle" type="button" aria-pressed="true"><svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"><path d="M3 8h3l4-3.5v11L6 12H3z" fill="currentColor"/><path class="bgm-wave" d="M13 7.2a4 4 0 0 1 0 5.6M15.2 5a7 7 0 0 1 0 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path class="bgm-x" d="M13.2 7.6l4.4 4.8M17.6 7.6l-4.4 4.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span></span></button>
+      </section>
+      <div class="legend">
+        <span aria-hidden="true"><i class="lg-cut"></i><span data-i18n>刻过：记住了</span></span>
+        <span aria-hidden="true"><i class="lg-blank"></i><span data-i18n>漆面：还没记住</span></span>
+        <span class="lg-src" id="legendSrc" aria-hidden="true"></span>
+        <button class="lg-cosmos" id="cosmosToggle" type="button" hidden></button>
       </div>
     </div>
     <aside class="panel" id="panel" aria-label="曲目表" data-i18n-attr="aria-label"></aside>

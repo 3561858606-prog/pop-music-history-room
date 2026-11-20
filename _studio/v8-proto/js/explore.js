@@ -2,6 +2,8 @@
 import * as M from './model.js';
 import {flatDisc} from './flat.js';
 import {player} from './audio.js';
+import {createBgm} from './bgm.js';
+import {createSfx} from './sfx.js';
 import {sleeveLayout} from './sleeve-layout.js';
 import {nameHTML, trackStoryHTML} from './reading.js';
 import {t as tr, join} from './i18n.js';
@@ -80,6 +82,224 @@ export async function initExplore(ctx) {
   });
   addEventListener('resize', () => positionSpread());
 
+
+  /* ---------- 深空：盘下面的宇宙（js/cosmos.js） ---------- */
+  // 入池的只是封面：唱片标签、封套、专辑、合辑、乐谱。照片、设备、广告、宣传单不是封面
+  const COSMOS_KINDS = new Set(['label', 'sleeve', 'album', 'compilation', 'sheet']);
+  const cosmosPool = M.tracks.map(t => [t, M.coverOf(t)]).filter(([, c]) => c && COSMOS_KINDS.has(c.kind))
+    .map(([t, c]) => ({id: t.id, decade: Math.floor(t.year / 10) * 10, url: c.url, w: c.w, h: c.h, shape: c.shape}));
+  let cosmos = null, cosmosLayout = null;
+  // 消失点和禁区：只在整张盘、镜头静止时重算；其余时候沿用上一次（贴近时消失点不跟着镜头跑）
+  function cosmosLayoutNow() {
+    if (!disc) return cosmosLayout;
+    const S = disc.state, settled = S.cam && Math.hypot(...S.cam.eye.map((v, i) => v - S.goal.eye[i])) < .01;
+    if (cosmosLayout && (S.mode !== 'over' || view.intro || !settled)) return cosmosLayout;
+    const foe = disc.project([0, 0, 0]); if (!foe) return cosmosLayout;
+    const sb = stage.getBoundingClientRect(), W = stage.clientWidth, H = stage.clientHeight;
+    const rel = r => [r.left - sb.left, r.top - sb.top, r.right - sb.left, r.bottom - sb.top];
+    const rim = []; for (let i = 0; i < 32; i++) { const a = i / 32 * TAU, p = disc.project([1.16 * Math.sin(a), 0, -1.16 * Math.cos(a)]); if (p) rim.push([p[0], p[1]]); }
+    const keepOut = [{poly: rim, behind: true}], arm = disc.armSegment().map(p => disc.project(p));
+    if (arm[0] && arm[1]) keepOut.push({seg: [arm[0][0], arm[0][1], arm[1][0], arm[1][1]], r: 34});
+    const narrow = innerWidth <= 860, panelLeft = narrow ? W + 400 : rel(panel.getBoundingClientRect())[0];
+    if (!narrow) keepOut.push({rect: [panelLeft - 40, -1e3, W + 1e3, H + 1e3]});
+    const headerBottom = Math.max(0, $('top').getBoundingClientRect().bottom - sb.top);
+    keepOut.push({rect: [-1e3, -1e3, W + 1e3, headerBottom + 16]});
+    for (const el of [stage.querySelector('.legend'), $('discHelp'), $('introSkip'), document.querySelector('.np'), $('bgmChip')]) {
+      if (!el || el.hidden || !el.getClientRects().length) continue;
+      const r = rel(el.getBoundingClientRect()); if (r[2] - r[0] < 1) continue;
+      keepOut.push({rect: [r[0] - 16, r[1] - 16, r[2] + 16, r[3] + 16]});
+    }
+    return cosmosLayout = {foe: [foe[0], foe[1]], keepOut, headerBottom, panelLeft, narrow};
+  }
+  function mountCosmos() {
+    cosmos?.destroy(); cosmos = null; cosmosLayout = null;
+    const cv = $('cosmos'); if (!cv) return;
+    cv.hidden = view.flat || !disc; renderCosmosToggle(); if (cv.hidden) return;
+    const go = async () => {
+      if (!disc || view.flat || cosmos) return;
+      try {
+        const {createCosmos} = await import('./cosmos.js');
+        if (!disc || cosmos) return;
+        cosmos = createCosmos(cv, {reduced: ctx.reduced, pool: cosmosPool, layout: cosmosLayoutNow,
+          avoid: () => disc?.state.sleeveSet, paused: () => !!M.prefs.cosmosPaused, onReady: () => disc?.setSpace(1),
+          camRate: () => disc?.state.camRate,   // 压暗、亮回和盘镜头用同一个速率
+          camDist: () => disc?.state.cam ? Math.hypot(...disc.state.cam.eye) : null,   // 推近：盘镜头离盘心多远
+          panel,                                   // 指针或焦点在曲目表里 = 正在读，天上不开始新的事
+          unheard: () => cosmosPool.filter(p => !M.hasRecord(p.id)).map(p => p.id),   // 冲开暗云时露出一首还没听过的
+          onRipple: r => { pingDigits(r); if (r.kind === 'tap') sfx.play('tap', {x: r.x, y: r.y, W: stage.clientWidth, H: stage.clientHeight}); },
+          onCue: (kind, info) => sfx.play(kind === 'era' ? 'era' : kind, info),
+          onAnchors: a => placeSkyUi(a)});
+        updateSky();
+        cosmos.setPlaying(view.needle === 'playing');
+        renderCosmosToggle();
+        cosmos.setState(view.intro ? 'intro' : stage.dataset.mode === 'dive' ? 'dive' : view.mode);
+        if (!$('roomDisc').hidden) { cosmos.resume(); if (!view.intro) cosmos.reveal(); }
+      } catch (e) { console.warn('深空不可用：', e.message); cosmos = null; cv.hidden = true; renderCosmosToggle(); }
+    };
+    // 盘面第一帧画完、浏览器空闲之后才载入，不和首屏抢
+    requestAnimationFrame(() => (window.requestIdleCallback || (f => setTimeout(f, 600)))(go, {timeout: 2500}));
+  }
+  addEventListener('resize', () => { cosmosLayout = null; });
+  // 暂停开关（WCAG 2.2.2）：放在图例那一行末尾。暂停 = 冻结这一帧；系统「减少动态」时本来就是静止的，不显示
+  const cosmosToggle = $('cosmosToggle');
+  function renderCosmosToggle() {
+    if (!cosmosToggle) return;
+    cosmosToggle.hidden = !cosmos || ctx.reduced();
+    cosmosToggle.textContent = tr(M.prefs.cosmosPaused ? '星空 · 继续' : '星空 · 暂停');
+  }
+  cosmosToggle?.addEventListener('click', () => {
+    M.prefs.cosmosPaused = !M.prefs.cosmosPaused; M.savePrefs();
+    cosmos?.setPaused(M.prefs.cosmosPaused); renderCosmosToggle();
+  });
+  /* ---------- 背景音乐（js/bgm.js）：只在唱片页；落针时让开，停下后从原来的位置淡入 ---------- */
+  // 署名照曲目的写法：歌名 · 音乐家 · 年份 · 风格
+  const BGM = {title: 'Vast Warm Pads', artist: 'linbingbo', year: 2026, style: '氛围音乐 · 太空音乐'};
+  const bgmChip = $('bgmChip'), bgmToggle = $('bgmToggle');
+  const BGM_STATE = {on: '正在播放', yield: '让给唱片中', off: '已关掉', wait: '点一下页面就开始'};
+  function renderBgmToggle() {
+    if (!bgmChip) return;
+    const mode = bgm.mode; bgmChip.dataset.mode = mode;
+    bgmChip.querySelector('.bgm-state').textContent = tr(BGM_STATE[mode]);
+    bgmToggle.querySelector('span').textContent = tr(mode === 'off' ? '开启' : '关掉');
+    bgmToggle.setAttribute('aria-pressed', String(mode !== 'off'));
+    bgmToggle.setAttribute('aria-label', tr(mode === 'off' ? '开启背景音乐' : '关掉背景音乐'));
+  }
+  const bgm = createBgm({src: M.site('audio-bgm/vast-warm-pads.m4a'), enabled: () => !M.prefs.bgmOff, onChange: () => renderBgmToggle()});
+  if (bgmChip) {
+    bgmChip.querySelector('.bgm-title').textContent = BGM.title;
+    bgmChip.querySelector('.bgm-meta').textContent = `${BGM.artist} · ${BGM.year} · ${tr(BGM.style)}`;
+    bgmChip.hidden = false;
+  }
+  bgmToggle?.addEventListener('click', () => { M.prefs.bgmOff = !M.prefs.bgmOff; M.savePrefs(); bgm.refresh(); renderBgmToggle(); });
+  renderBgmToggle();
+
+  /* ---------- 会回应的天空：手势、悬停说明、捞起来的卡片、天文年表的说明、你的星空 ----------
+     点 = 一滴水（水波）；按住 = 漩涡蓄力，松手炸开；拖 = 划水的尾流。只在天空的空白处，点盘、曲目表、按钮都照旧 */
+  const sfx = createSfx({enabled: () => bgm.mode === 'on', context: () => bgm.ctx});   // 天上的声音跟着背景音乐的开关走
+  const skyUi = document.createElement('div'); skyUi.className = 'sky-ui'; skyUi.setAttribute('aria-hidden', 'true');
+  skyUi.innerHTML = '<span class="sky-tag"></span><p class="sky-era"></p><div class="sky-cons"></div>';
+  stage.appendChild(skyUi);
+  const skyTag = skyUi.querySelector('.sky-tag'), skyEra = skyUi.querySelector('.sky-era'), skyCons = skyUi.querySelector('.sky-cons');
+  const card = document.createElement('section'); card.className = 'sky-card'; card.hidden = true;
+  card.setAttribute('role', 'dialog'); card.setAttribute('aria-labelledby', 'skyCardTitle'); stage.appendChild(card);
+  let cardId = null, tagId = null, skyG = null, holdTimer = 0, eraTimer = 0;
+  const skyInfo = new Map();   // id → 你的星空里的那颗星（亮度、该复习的程度）
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  // cosmos 每帧报一次：指针停着的东西、天文事件、星座的名字在屏幕上的位置
+  function placeSkyUi(a) {
+    const W = Math.min(panelEdge(), stage.clientWidth), H = stage.clientHeight;
+    const h = a.hover && a.hover.id !== cardId ? a.hover : null;
+    if (h) {
+      if (tagId !== h.id) { tagId = h.id; const t = M.byId.get(h.id), info = skyInfo.get(h.id);
+        skyTag.innerHTML = `<b>${t.year}</b>${esc(M.titleOf(t))}${info?.due > .05 ? `<em>${tr('该复习了')}</em>` : ''}`; }
+      const w = skyTag.offsetWidth, x = clamp(h.x - w / 2, 8, W - w - 8), y = h.bottom + 34 < H ? h.bottom + 8 : h.top - 30;
+      skyTag.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`; skyTag.classList.add('on');
+    } else { skyTag.classList.remove('on'); tagId = null; }
+    if (a.era && a.era.a > .02) {
+      if (skyEra.dataset.id !== a.era.id) { skyEra.dataset.id = a.era.id; const [y, ...rest] = tr(a.era.label).split(' · '); skyEra.innerHTML = `<b>${esc(y)}</b>${esc(rest.join(' · '))}`; }
+      const w = skyEra.offsetWidth, x = clamp(a.era.x - w / 2, 16, W - w - 16), y = clamp(a.era.y, 64, H - skyEra.offsetHeight - 44);
+      skyEra.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`; skyEra.style.opacity = Math.min(1, a.era.a * 1.4).toFixed(3);
+    } else if (skyEra.dataset.id) { skyEra.style.opacity = 0; skyEra.dataset.id = ''; }
+    const labels = a.labels || [];
+    if (skyCons.childElementCount !== labels.length) skyCons.innerHTML = labels.map(() => '<span></span>').join('');
+    // 星座名：不出舞台、彼此不压（按高低排，压到上一个就往下挪）
+    const boxes = [];
+    labels.map((l, i) => ({l, i})).sort((p, q) => p.l.y - q.l.y).forEach(({l, i}) => {
+      const n = skyCons.children[i]; if (n.dataset.id !== l.id) { n.dataset.id = l.id; n.textContent = l.text; }
+      const w = n.offsetWidth, h = n.offsetHeight || 14; let x = clamp(l.x - w / 2, 8, W - w - 8), y = clamp(l.y - h, 62, H - h - 8);
+      for (const b of boxes) if (x < b[2] + 6 && x + w > b[0] - 6 && y < b[3] + 2 && y + h > b[1] - 2) y = b[3] + 3;
+      boxes.push([x, y, x + w, y + h]);
+      n.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`; n.style.opacity = (l.a * .85).toFixed(3); });
+  }
+  // 点一张封面 / 一颗星：捞起来，翻成一张卡片
+  function openCard(p) {
+    const t = M.byId.get(p.id); if (!t) return;
+    if (cardId) cosmos?.hold(cardId, false);
+    cardId = p.id; cosmos?.hold(p.id, true); skyTag.classList.remove('on');
+    const c = M.coverOf(t), info = skyInfo.get(p.id), last = M.lastSeen(p.id), due = info?.due > .05;
+    const days = last ? Math.max(0, Math.floor((Date.now() - Date.parse(last)) / 864e5)) : null;
+    const note = info ? (due ? tr('该复习了') + (days != null ? ' · ' + tr('上次是 {n} 天前', {n: days}) : '') : info.full ? tr('天上这颗星是你记住的歌：四项都刻满了') : tr('天上这颗星是你记住的歌')) : '';
+    card.innerHTML = `<button class="sc-x" type="button" aria-label="${tr('关闭')}">×</button>
+      ${c ? `<img class="sc-art" src="${c.url}" alt="" data-shape="${c.shape}">` : '<span class="sc-art"></span>'}
+      <div class="sc-body"><div class="sc-year">${t.year}</div><h3 id="skyCardTitle">${esc(M.titleOf(t))}</h3>
+        <p class="sc-meta">${esc(t.artist)} · ${esc(M.styleOf(t).label)}</p>
+        <p class="sc-lec">${M.lectureIds(t).map(id => tr('第 {l} 讲', {l: id}) + ' ' + esc(M.lectureLabel(id))).join(' · ')}</p>
+        ${note ? `<p class="sc-star${due ? ' due' : ''}">${note}</p>` : ''}
+        <div class="sc-act"><button class="sc-find" type="button">${tr('在盘上找到它')}</button><button class="sc-play" type="button">${tr(due ? '再听一次' : '落针试听')}</button></div></div>`;
+    card.hidden = false; card.classList.remove('in'); void card.offsetWidth; card.classList.add('in');
+    const W = Math.min(panelEdge(), stage.clientWidth), H = stage.clientHeight, cw = card.offsetWidth, ch = card.offsetHeight;
+    let x = p.x + 36; if (x + cw > W - 16) x = p.x - 36 - cw;
+    x = clamp(x, 16, W - cw - 16); const y = clamp(p.y - ch / 2, 64, H - ch - 16);
+    card.style.left = x + 'px'; card.style.top = y + 'px'; card.style.transformOrigin = `${(p.x - x).toFixed(0)}px ${(p.y - y).toFixed(0)}px`;
+    card.querySelector('.sc-find').focus({preventScroll: true});
+    say(`${t.year}, ${M.titleOf(t)}, ${t.artist}`);
+  }
+  function closeCard() { if (!cardId) return; cosmos?.hold(cardId, false); cardId = null; card.hidden = true; }
+  card.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const id = cardId, g = M.ringOf.get(id);
+    if (b.classList.contains('sc-x')) { closeCard(); focusDisc(); return; }
+    closeCard(); if (!g) return;
+    enterBand(bands[g.band], g);                                  // 在盘上找到它：盘转到那一圈并贴近
+    if (b.classList.contains('sc-play')) dropNeedle(id);          // 再听一次 / 落针试听
+  });
+  card.addEventListener('keydown', e => { if (e.key === 'Escape') { closeCard(); focusDisc(); e.stopPropagation(); e.preventDefault(); } });
+  // 水波碰到盘缘的数字：顺着波传过去的方向依次一闪；第一下响一个音
+  function pingDigits(r) {
+    if (!hudBuilt || r.gen > 1 || r.s < .3) return;
+    let first = null;
+    H.digits.forEach((n, d) => {
+      if (n.style.opacity === '0') return; const m = n.style.transform.match(/translate3d\(([-\d.]+)px,\s*([-\d.]+)px/); if (!m) return;
+      const x = +m[1], y = +m[2], dist = Math.hypot(x - r.x, y - r.y); if (dist > 720 * Math.min(1.6, r.s)) return;
+      const ms = dist / 260 * 1000; if (!first || ms < first.ms) first = {ms, d, x, y};
+      setTimeout(() => { n.classList.remove('ping'); void n.offsetWidth; n.classList.add('ping'); }, ms);
+    });
+    if (first && r.gen === 0) setTimeout(() => sfx.play('digit', {digit: first.d, x: first.x, y: first.y, W: stage.clientWidth, H: stage.clientHeight}), first.ms);
+  }
+  // 从盘心朝数字 d 的方向（盘转过多少就跟着转多少）
+  function spokeDir(d) {
+    const o = disc?.project([0, 0, 0]), a = d / 10 * TAU + (disc?.state.rot || 0), p = disc?.project([1.16 * Math.sin(a), 0, -1.16 * Math.cos(a)]);
+    if (!o || !p) return null; const v = [p[0] - o[0], p[1] - o[1]], l = Math.hypot(...v) || 1; return [v[0] / l, v[1] / l];
+  }
+  // 数字键 0–9：盘缘那个数字亮起，一道波从那里推进天空，年份个位是这个数字的两三首浮出来
+  function summonDigit(d) {
+    const n = H.digits[d]; if (n) { n.classList.remove('key'); void n.offsetWidth; n.classList.add('key'); }
+    const a = d / 10 * TAU + disc.state.rot, p = disc.project([1.1 * Math.sin(a), 0, -1.1 * Math.cos(a)]), b = canvas.getBoundingClientRect();
+    if (p) cosmos?.ripple(b.left + p[0], b.top + p[1], 1.1, 'digit');
+    const list = cosmosPool.filter(c => M.byId.get(c.id).year % 10 === d);
+    for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
+    cosmos?.summon(list.map(c => ({id: c.id, dir: () => spokeDir(d), mid: () => [spokeDir(d + .5), spokeDir(d - .5)]})), 3, d);
+    const names = list.slice(0, 3).map(c => { const t = M.byId.get(c.id); return `${t.year} ${M.titleOf(t)}`; });
+    say(tr('年份个位是 {d} 的歌：{list}', {d, list: join(names)}));
+  }
+  // 落针：唱针落下的那一点泛起一道水波
+  function needleRipple() {
+    if (!disc || !cosmos) return; const tip = disc.armSegment()?.[1], p = tip && disc.project(tip); if (!p) return;
+    const b = canvas.getBoundingClientRect(); cosmos.ripple(b.left + p[0], b.top + p[1], .85, 'needle');
+  }
+  // 你的星空：刻纹平均过半的歌是一颗恒星；亮度 = 掌握程度；到了复习间隔就慢慢变暗。同一讲都刻到 3/4 以上，连成星座
+  const hash01 = s => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return ((h >>> 0) % 10000) / 10000; };
+  function skyData() {
+    const now = Date.now(), list = [], demo = M.prefs.demo !== 'real';
+    for (const g of rings) {
+      const l = M.lanesOf(g.id), cut = l.reduce((a, b) => a + b, 0) / 4; if (cut < .5) continue;
+      const full = l.every(v => v >= 1), interval = full ? 21 : cut >= .75 ? 9 : 4, last = M.lastSeen(g.id);
+      let due = 0;
+      if (last) { const days = (now - Date.parse(last)) / 864e5; due = clamp((days - interval) / interval, 0, 1); }
+      else if (demo) due = hash01(g.id) > .8 ? .45 + .55 * hash01(g.id + 'd') : 0;   // 示意数据：随便挑几颗当作该复习了
+      list.push({id: g.id, digit: g.t.year % 10, decade: Math.floor(g.t.year / 10) * 10, mag: .45 + .55 * Math.min(1, (cut - .5) / .5), full, due, url: M.coverOf(g.t)?.url});
+    }
+    const ok = new Set(list.filter(s => M.avgCut(s.id) >= .75).map(s => s.id));
+    const cons = M.lectures.map(l => ({l, ids: M.tracks.filter(t => M.lectureIds(t).includes(l.id)).map(t => t.id)}))
+      .filter(x => x.ids.length && x.ids.every(id => ok.has(id))).map(x => ({id: 'A' + x.l.id, label: `A${x.l.id} ${M.lectureLabel(x.l.id)}`, ids: x.ids}));
+    return {list, cons, all: M.stats().full === rings.length};
+  }
+  function updateSky() {
+    if (!cosmos) return;
+    const s = skyData(); skyInfo.clear(); for (const x of s.list) skyInfo.set(x.id, x);
+    cosmos.setSky(s.list, s.cons); cosmos.setFinale(s.all);
+  }
+
   /* ---------- 盘：立体或平面 ---------- */
   async function mount() {
     disc?.destroy(); disc = null; flat = null; flatHost.replaceChildren(); hud.replaceChildren(); hudBuilt = false;
@@ -92,6 +312,7 @@ export async function initExplore(ctx) {
     }
     canvas.hidden = view.flat; flatHost.hidden = !view.flat; stage.dataset.flat = view.flat ? '1' : '0';
     if (view.flat) mountFlat();
+    mountCosmos();
     $('discHelp').textContent = tr(view.flat ? '平面盘 · ↑↓ 换年代 · ←→ 换歌 · 空格落针或抬针'
       : matchMedia('(pointer:coarse)').matches ? '拖动转盘 · 点一条年代带贴近' : '拖动转盘 · 点一条年代带贴近 · ↑↓ 换年代 ←→ 换歌 · 空格落针或抬针');
     applyView(true);
@@ -111,7 +332,8 @@ export async function initExplore(ctx) {
   let hudBuilt = false; const H = {digits: [], decs: [], tags: [], chip: null};
   function buildHud() {
     hud.replaceChildren(); H.digits = []; H.decs = []; H.tags = [];
-    for (let d = 0; d < 10; d++) { const n = document.createElement('span'); n.className = 'hud-digit'; n.textContent = d; hud.appendChild(n); H.digits.push(n); }
+    for (let d = 0; d < 10; d++) { const n = document.createElement('span'); n.className = 'hud-digit'; n.textContent = d; hud.appendChild(n); H.digits.push(n);
+      n.addEventListener('animationend', () => n.classList.remove('ping', 'key')); }
     for (const b of bands) { const n = document.createElement('span'); n.className = 'hud-dec'; n.textContent = b.label; hud.appendChild(n); H.decs.push(n); }
     for (let i = 0; i < 22; i++) { const n = document.createElement('span'); n.className = 'hud-tag'; hud.appendChild(n); H.tags.push(n); }
     H.chip = document.createElement('span'); H.chip.className = 'hud-chip'; hud.appendChild(H.chip);
@@ -154,7 +376,7 @@ export async function initExplore(ctx) {
   /* ---------- 视图状态 ---------- */
   const say = text => { live.textContent = text; };
   function applyView(snap = false) {
-    stage.dataset.mode = view.mode;
+    stage.dataset.mode = view.mode; cosmos?.setState(view.mode);
     const g = view.song ? M.ringOf.get(view.song) : null;
     if (disc) {
       if (view.mode === 'close') { disc.setMode('close', view.band); disc.setSleeves(yearItems().map(t => t.id), 1); if (g) disc.rotateTo(disc.frontPhi(g.id)); }
@@ -215,44 +437,67 @@ export async function initExplore(ctx) {
   canvas.addEventListener('pointermove', e => {
     if (!disc || view.intro) return;
     const [x, y] = local(e);
+    if (skyG) {   // 在天上按着：拖动是划水，按住是漩涡
+      if (skyG.mode === 'tap' && Math.hypot(x - skyG.x0, y - skyG.y0) > 6) { clearTimeout(holdTimer); skyG.mode = 'wake'; cosmos?.hover(null); cosmos?.wake(skyG.cx, skyG.cy); }
+      if (skyG.mode === 'wake') cosmos?.wake(e.clientX, e.clientY); else if (skyG.mode === 'hold') cosmos?.vortexMove(e.clientX, e.clientY);
+      return;
+    }
     if (drag) {
       const h = disc.pick(x, y), now = performance.now();
       if (!drag.moved && Math.hypot(x - drag.x0, y - drag.y0) > 5) { drag.moved = true; disc.setDragging(true); setChip(null); canvas.classList.add('grabbing'); }
       if (drag.moved) {
         let d = h && drag.last !== null && h.r > .05 && h.r < 2.2 ? ((h.world - drag.last + Math.PI) % TAU + TAU) % TAU - Math.PI : (x - drag.px) * -.004;
         if (Math.abs(d) > .5) d = 0;
-        disc.rotateBy(d); const dt = Math.max(1, now - drag.t) / 1000; drag.v = drag.v * .6 + (d / dt) * .4; drag.t = now;
+        disc.rotateBy(d); cosmos?.spin(d); const dt = Math.max(1, now - drag.t) / 1000; drag.v = drag.v * .6 + (d / dt) * .4; drag.t = now;
         drag.last = h ? h.world : null;
       } else if (h) drag.last = h.world;
       drag.px = x; return;
     }
     const t = hit(x, y), g = t?.g || null;
-    canvas.style.cursor = t?.g || t?.label ? 'pointer' : t?.rim ? 'grab' : '';
+    const sp = !t && cosmos ? cosmos.pick(e.clientX, e.clientY) : null;   // 天上的封面、恒星、余光星
+    cosmos?.hover(sp ? sp.id : null);
+    canvas.style.cursor = t?.g || t?.label || sp ? 'pointer' : t?.rim ? 'grab' : '';
     disc.setHover(g ? g.i : -1);
     setChip(g, x, y);
-    if (view.mode === 'over') { const hb = t?.band ? t.band.i : -1; if (hb !== hoverBand) { hoverBand = hb; disc.setSleeves(hb >= 0 ? bands[hb].ids : [], .62); } }
+    if (view.mode === 'over') { const hb = t?.band ? t.band.i : -1; if (hb !== hoverBand) { hoverBand = hb; disc.setSleeves(hb >= 0 ? bands[hb].ids : [], .62);
+      // 指针在一个年代上停一会儿：天上出现那个年代的一件天文事件
+      clearTimeout(eraTimer); if (hb >= 0) eraTimer = setTimeout(() => { if (hoverBand === hb) cosmos?.showEra(bands[hb].decade); }, 700); } }
   });
   canvas.addEventListener('pointerdown', e => {
     canvas.classList.remove('kb');
     if (!disc || e.button !== 0) return;
     if (view.intro) return endIntro();
+    if (cardId) closeCard();
     const [x, y] = local(e), h = disc.pick(x, y);
+    if (!hit(x, y) && cosmos) {   // 按在天上（不是盘上）
+      cosmos.skyTouch();
+      skyG = {x0: x, y0: y, cx: e.clientX, cy: e.clientY, mode: 'tap', pick: cosmos.pick(e.clientX, e.clientY)};
+      try { canvas.setPointerCapture(e.pointerId); } catch {} clearTimeout(holdTimer);
+      if (!skyG.pick) holdTimer = setTimeout(() => { if (skyG?.mode === 'tap' && cosmos?.vortexStart(skyG.cx, skyG.cy)) { skyG.mode = 'hold'; cosmos.hover(null); canvas.classList.add('holding'); } }, 300);
+      return;
+    }
     drag = {x0: x, y0: y, px: x, moved: false, last: h ? h.world : null, v: 0, t: performance.now()};
     canvas.setPointerCapture(e.pointerId);
   });
   const release = e => {
+    if (skyG) {
+      const s = skyG; skyG = null; clearTimeout(holdTimer); canvas.classList.remove('holding');
+      if (s.mode === 'hold') cosmos?.vortexEnd(); else if (s.mode === 'wake') cosmos?.wakeEnd();
+      else if (e.type !== 'pointercancel') { if (s.pick) openCard(s.pick); else cosmos?.ripple(e.clientX, e.clientY); }
+      return;
+    }
     if (!drag) return; const d = drag; drag = null; canvas.classList.remove('grabbing');
-    if (d.moved) { disc.setDragging(false, performance.now() - d.t < 80 ? Math.max(-6, Math.min(6, d.v)) : 0); if (view.mode === 'close' && view.song) { clearTimeout(springBack); springBack = setTimeout(() => { if (drag || view.mode !== 'close' || !view.song) return;
+    if (d.moved) { const fv = performance.now() - d.t < 80 ? Math.max(-6, Math.min(6, d.v)) : 0; disc.setDragging(false, fv); cosmos?.fling(fv); if (view.mode === 'close' && view.song) { clearTimeout(springBack); springBack = setTimeout(() => { if (drag || view.mode !== 'close' || !view.song) return;
       const near = disc.fanMode() === 'arc' ? disc.nearestSleeve() : null;   // 弧形转盘：转到哪张就选哪张
       if (near && near !== view.song) select(M.ringOf.get(near)); else disc.rotateTo(disc.frontPhi(view.song)); }, ctx.reduced() ? 0 : 520); } return; }
     if (e.type === 'pointercancel') return;
     const [x, y] = local(e), t = hit(x, y);
-    if (!t) return;
+    if (!t) { cosmos?.ripple(e.clientX, e.clientY); return; }   // 点到天空的空白处：泛起水波
     if (t.label) return view.mode === 'close' ? backOver() : null;
     if (t.g) { if (view.mode === 'close' && t.g.band === view.band) select(t.g); else enterBand(t.band, t.g); }
   };
   canvas.addEventListener('pointerup', release); canvas.addEventListener('pointercancel', release);
-  canvas.addEventListener('pointerleave', () => { if (drag) return; disc?.setHover(-1); setChip(null); if (view.mode === 'over' && hoverBand >= 0) { hoverBand = -1; disc?.setSleeves([], .62); } });
+  canvas.addEventListener('pointerleave', () => { if (drag || skyG) return; disc?.setHover(-1); setChip(null); cosmos?.hover(null); clearTimeout(eraTimer); if (view.mode === 'over' && hoverBand >= 0) { hoverBand = -1; disc?.setSleeves([], .62); } });
   canvas.addEventListener('wheel', e => { if (!disc || view.intro) return; e.preventDefault(); disc.rotateBy((Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * .0016); }, {passive: false});
   canvas.addEventListener('dblclick', e => { if (!disc) return; const [x, y] = local(e), t = hit(x, y); if (t?.g && view.song === t.g.id) toggleNeedle(); });
 
@@ -268,6 +513,7 @@ export async function initExplore(ctx) {
     const songButton = button?.matches('[data-song],[data-cover],.needle-btn');
     if (k === ' ' && button && !songButton) return;
     if (k === 'Enter' && button) return;
+    if (/^[0-9]$/.test(k) && disc && cosmos && !view.flat) { e.preventDefault(); if (view.intro) endIntro(); summonDigit(+k); return; }
     if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter','Escape',' '].includes(k)) return;
     if (k === 'Escape' && view.mode !== 'close') return;
     e.preventDefault();
@@ -299,7 +545,7 @@ export async function initExplore(ctx) {
     disc.arm(g.mid, true); disc.setPlay(g.i, false);
     const t0 = performance.now();
     const wait = () => { if (token !== needleToken) return;
-      if (disc.armSettled() || performance.now() - t0 > 2600 || ctx.reduced()) { player.start(); disc.setPlay(g.i, true); } else requestAnimationFrame(wait); };
+      if (disc.armSettled() || performance.now() - t0 > 2600 || ctx.reduced()) { player.start(); disc.setPlay(g.i, true); needleRipple(); } else requestAnimationFrame(wait); };
     requestAnimationFrame(wait);
   }
   function liftNeedle() { needleToken++; player.stop(); }
@@ -476,6 +722,8 @@ export async function initExplore(ctx) {
     else if (state === 'paused' && player.current()) { view.needle = 'paused'; disc?.setPlay(M.ringOf.get(t.id)?.i ?? -1, false); }
     else { view.needle = 'idle'; disc?.arm(null, false); disc?.setPlay(-1, false); if (state === 'error' || state === 'blocked') say(tr('这段音频现在放不出来')); }
     if (state === 'playing' && disc) disc.setPlay(M.ringOf.get(t.id)?.i ?? -1, true);
+    cosmos?.setPlaying(state === 'playing');
+    bgm.hold('needle', state === 'playing' || state === 'loading' || state === 'waiting');   // 落针就让开
     renderNeedle(); renderBar();
   });
   function renderNeedle() {
@@ -596,20 +844,20 @@ export async function initExplore(ctx) {
   });
   panel.addEventListener('focusout', e => { if (e.target.id === 'customSize') e.target.value = Math.min(M.prefs.custom, poolSize()); });
 
-  M.onChange(what => { if (what === 'lanes') { disc?.refreshLanes(); if (view.flat) mountFlat(); } if (!$('roomDisc').hidden) renderPanel(); });
+  M.onChange(what => { if (what === 'lanes') { disc?.refreshLanes(); if (view.flat) mountFlat(); updateSky(); } if (!$('roomDisc').hidden) renderPanel(); });
 
   /* ---------- 入口：只在第一次 ---------- */
   let introTimer = 0;
   function playIntro() {
     if (!disc || ctx.reduced()) return;
-    view.intro = true; stage.dataset.intro = '1'; $('introSkip').hidden = false;
+    view.intro = true; stage.dataset.intro = '1'; $('introSkip').hidden = false; cosmos?.setState('intro');
     disc.setMode('intro'); disc.jumpCamera(); disc.setLight(0, 1.5, true);
     requestAnimationFrame(() => { disc.setLight(1, 0); disc.setMode('over', -1, 2.3); });
     clearTimeout(introTimer); introTimer = setTimeout(() => endIntro(false), 1400);
   }
   function endIntro(snap = true) {
     if (!view.intro) return; clearTimeout(introTimer);
-    view.intro = false; stage.dataset.intro = '0'; $('introSkip').hidden = true;
+    view.intro = false; stage.dataset.intro = '0'; $('introSkip').hidden = true; cosmos?.setState(view.mode); cosmos?.reveal();
     if (snap && disc) { disc.setLight(1, 0, true); disc.setMode('over'); disc.jumpCamera(); }
   }
   $('introSkip').addEventListener('click', () => endIntro());
@@ -623,7 +871,7 @@ export async function initExplore(ctx) {
     intro: playIntro,
     get flat() { return view.flat; },
     // 钻进标签：返回动画时长（毫秒）
-    dive() { spread.hidden = true; if (!disc || ctx.reduced()) return 0; liftNeedle(); setChip(null); stage.dataset.mode = 'dive'; disc.setMode('dive', -1, 6.2); return 520; },
+    dive() { spread.hidden = true; cosmos?.setState('dive'); if (!disc || ctx.reduced()) return 0; liftNeedle(); setChip(null); stage.dataset.mode = 'dive'; disc.setMode('dive', -1, 6.2); return 520; },
     // 从标签拉远回到盘面
     surface(fromLabel) {
       liftNeedle();
@@ -631,6 +879,8 @@ export async function initExplore(ctx) {
       view.mode = 'over'; view.band = -1; view.song = null; applyView(!fromLabel || ctx.reduced());
       if (disc && fromLabel) disc.setMode('over', -1, 3.4);
       disc?.home();
+      cosmos?.resume(); if (!view.intro) cosmos?.reveal();
+      bgm.setRoom(true);
     },
     // 一轮结束后回到盘面：把这一轮答过的圈当场刻上
     celebrate(list) {
@@ -642,9 +892,22 @@ export async function initExplore(ctx) {
       setTimeout(() => disc.setMarks([]), 500 + todo.length * 260 + 2600);
       // 动画开始前先把这些圈放回旧的样子
       for (const c of todo) disc.cut(c.id, c.before, c.before, 1);
+      // 天上只做一件事：刻纹走完后，进步最多的那首在它年份尾数的辐线上显影（放不下就放在两个数字中间，绝不指向别的数字）
+      const gain = c => c.after.reduce((s, v, i) => s + v - (c.before[i] || 0), 0);
+      const spoke = d => () => { const o = disc?.project([0, 0, 0]), a = d / 10 * TAU, p = disc?.project([1.16 * Math.sin(a), 0, -1.16 * Math.cos(a)]);
+        if (!o || !p) return null; const v = [p[0] - o[0], p[1] - o[1]], l = Math.hypot(...v) || 1; return [v[0] / l, v[1] / l]; };
+      const mids = d => () => Array.from({length: 10}, (_, k) => k + .5).sort((a, b) => Math.abs(a - d - .5) - Math.abs(b - d - .5)).map(m => spoke(m)());
+      const cands = [...list].sort((a, b) => gain(b) - gain(a)).map(c => { const d = (M.ringOf.get(c.id)?.t.year ?? 0) % 10; return {id: c.id, dir: spoke(d), mid: mids(d)}; });
+      cosmos?.recall(cands, (500 + todo.length * 260 + 1500) / 1000);
     },
     focusSong(id) { const g = M.ringOf.get(id); if (g) enterBand(bands[g.band], g); },
-    pause() { liftNeedle(); pauseVideo(); },
+    pause(opts = {}) { liftNeedle(); pauseVideo(); bgm.setRoom(false); closeCard(); if (!opts.keepCosmos) cosmos?.pause(); },
+    pauseCosmos() { cosmos?.pause(); },
+    get cosmos() { return cosmos; },
+    get bgm() { return bgm; },
+    get sfx() { return sfx; },
+    updateSky,
+    get disc() { return disc; },
     focus: focusDisc
   };
 }

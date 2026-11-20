@@ -156,12 +156,17 @@ const FLOOR_VS = `#version 300 es
 in vec2 aPos; uniform mat4 uVP; uniform float uY; out vec2 vP;
 void main(){ vP = aPos*6.; gl_Position = uVP*vec4(vP.x,uY,vP.y,1.); }`;
 const FLOOR_FS = COMMON + `
-in vec2 vP; uniform float uLight; out vec4 o;
+in vec2 vP; uniform float uLight, uSpace; out vec4 o;
 void main(){ float rr = length(vP);
   vec3 bg = vec3(.0048,.0040,.0036);
   vec3 pool = bg*(1.+2.2*uLight*exp(-rr*rr/2.4));
   pool *= 1.-.7*exp(-max(rr-1.,0.)/.07);
-  o = vec4(pow(mix(pool,bg,smoothstep(1.5,3.4,rr)), vec3(1./2.2)),1.); }`;
+  vec4 room = vec4(pow(mix(pool,bg,smoothstep(1.5,3.4,rr)), vec3(1./2.2)),1.);
+  // 深空：盘缘外一圈暗环（刻度落在暗底上）+ 原来的光池变成极淡的暖光；其余透明，露出下面的宇宙。预乘透明度
+  float aura = .62*exp(-max(rr-1.,0.)/.085);
+  vec3 glow = vec3(1.,.90,.74)*.040*uLight*exp(-rr*rr/1.7);
+  vec4 space = vec4(glow, max(aura, max(glow.r, max(glow.g, glow.b))));
+  o = mix(room, space, uSpace); }`;
 
 const MESH_VS = `#version 300 es
 in vec3 aPos; in vec3 aNor; in vec4 aCol; uniform mat4 uVP, uModel; out vec3 vN, vW; out vec4 vC;
@@ -265,7 +270,8 @@ function blankSleeve(t) {
 
 /* ---------- 主体 ---------- */
 export function createDisc(canvas, opts = {}) {
-  const gl = canvas.getContext('webgl2', {antialias: true, alpha: false, powerPreference: 'high-performance'});
+  // 背景透明：下面是深空的画布。深空准备好之前 space = 0，画出来和以前一模一样
+  const gl = canvas.getContext('webgl2', {antialias: true, alpha: true, premultipliedAlpha: true, powerPreference: 'high-performance'});
   if (!gl) throw new Error('no webgl2');
   const reduced = () => opts.reducedMotion?.() ?? false;
   const P = {disc: program(gl, DISC_VS, DISC_FS), floor: program(gl, FLOOR_VS, FLOOR_FS), mesh: program(gl, MESH_VS, MESH_FS), sleeve: program(gl, SLEEVE_VS, SLEEVE_FS)};
@@ -367,7 +373,7 @@ export function createDisc(canvas, opts = {}) {
     intro: (a, pf) => ({eye: [0, 1.25, 2.3], tgt: [0, 0, .1], shift: -pf, up: 0})
   };
   const S = {rot: 0, rotV: 0, rotGoal: null, dragging: false, spin: false,
-    mode: 'over', band: -1, hover: -1, focus: -1, play: -1, cut: -1, light: 1, sweep: 0, lightGoal: 1, sweepGoal: 0,
+    mode: 'over', band: -1, hover: -1, focus: -1, play: -1, cut: -1, light: 1, sweep: 0, lightGoal: 1, sweepGoal: 0, space: 0, spaceGoal: 0,
     cam: null, goal: null, camRate: 4.2, arm: {rho: ARM.rest, goal: ARM.rest, lift: 1, down: false},
     sleeveSet: new Set(), sleeveScale: 1, W: 1, H: 1, aspect: 1.6, vp: null, inv: null, eye: [0, 2, 2.7], time: 0};
   let dead = false, raf = 0, last = 0, wake = 0;
@@ -492,6 +498,8 @@ export function createDisc(canvas, opts = {}) {
     // 光
     S.light = lerp(S.light, S.lightGoal, k(3.2)); S.sweep = lerp(S.sweep, S.sweepGoal, k(2.6));
     if (Math.abs(S.light - S.lightGoal) + Math.abs(S.sweep - S.sweepGoal) > .002) moving = true; else { S.light = S.lightGoal; S.sweep = S.sweepGoal; }
+    S.space = lerp(S.space, S.spaceGoal, k(2.6));
+    if (Math.abs(S.space - S.spaceGoal) > .002) moving = true; else S.space = S.spaceGoal;
     // 唱臂：先抬起，移过去，再落下
     const a = S.arm, away = Math.abs(a.rho - a.goal) > .003;
     const liftGoal = away || !a.down ? 1 : 0;
@@ -523,10 +531,10 @@ export function createDisc(canvas, opts = {}) {
   function draw() {
     matrices();
     gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.clearColor(15 / 255, 13 / 255, 12 / 255, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    const room = 1 - S.space; gl.clearColor(15 / 255 * room, 13 / 255 * room, 12 / 255 * room, room); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.disable(gl.CULL_FACE);
     // 地面
-    gl.useProgram(P.floor.p); gl.uniformMatrix4fv(P.floor.u.uVP, false, S.vp); gl.uniform1f(P.floor.u.uY, -GEO.T - .0005); gl.uniform1f(P.floor.u.uLight, S.light);
+    gl.useProgram(P.floor.p); gl.uniformMatrix4fv(P.floor.u.uVP, false, S.vp); gl.uniform1f(P.floor.u.uY, -GEO.T - .0005); gl.uniform1f(P.floor.u.uLight, S.light); gl.uniform1f(P.floor.u.uSpace, S.space);
     gl.bindVertexArray(vaoFloor); gl.drawArrays(gl.TRIANGLES, 0, 6);
     // 侧壁、唱臂底座
     const I = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
@@ -536,7 +544,7 @@ export function createDisc(canvas, opts = {}) {
     gl.bindVertexArray(meshSide.vao); gl.drawArrays(gl.TRIANGLES, 0, meshSide.count);
     gl.bindVertexArray(meshBase.vao); gl.drawArrays(gl.TRIANGLES, 0, meshBase.count);
     // 盘面
-    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.useProgram(P.disc.p); const u = P.disc.u;
     gl.uniformMatrix4fv(u.uVP, false, S.vp); gl.uniform1f(u.uRot, S.rot); gl.uniform3fv(u.uEye, S.eye);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tLut); gl.uniform1i(u.uLut, 0);
@@ -642,6 +650,8 @@ export function createDisc(canvas, opts = {}) {
     rotateTo(phi) { S.rotGoal = Math.PI - phi; request(); },
     // 页面在后台不出帧时，手动走几步并画一帧（只用于检查）
     renderNow(steps = 1) { resize(); S.cam ||= structuredClone(S.goal); for (let i = 0; i < steps; i++) step(.05); draw(); opts.onFrame?.(api); },
+    // 录制用：按任意步长推进一步并画出来
+    advance(dt) { resize(); S.cam ||= structuredClone(S.goal); step(dt); draw(); opts.onFrame?.(api); },
     // 贴近时把哪个角度转到正面：一排 → 这一年的辐线；弧 → 这张封套自己
     frontPhi(id) { const L = fanLayout(), it = L?.items.get(id); return !it ? rings.find(g => g.id === id)?.phi ?? 0 : L.mode === 'row' ? L.phi0 : L.phi0 - it.c / L.r0; },
     fanMode: () => fanLayout()?.mode || null,
@@ -655,6 +665,11 @@ export function createDisc(canvas, opts = {}) {
     armSettled: () => Math.abs(S.arm.rho - S.arm.goal) < .004 && (S.arm.down ? S.arm.lift < .05 : true),
     setPlay(i, spin) { S.play = i; S.spin = !!spin; request(); },
     setLight(light, sweep, snap) { S.lightGoal = light; S.sweepGoal = sweep; if (snap) { S.light = light; S.sweep = sweep; } request(); },
+    // 深空：0 = 暗室地面（以前的样子），1 = 地面化开，露出下面的宇宙
+    setSpace(v, snap) { S.spaceGoal = v; if (snap) S.space = v; request(); },
+    // 唱臂在世界里的两端（配重、唱针），给深空的封面让位
+    armSegment() { const {yaw} = armYaw(S.arm.rho), d = [Math.cos(yaw), 0, -Math.sin(yaw)];
+      return [[pv[0] - d[0] * .32, pv[1], pv[2] - d[2] * .32], [pv[0] + d[0] * (ARM.L + .02), pv[1], pv[2] + d[2] * (ARM.L + .02)]]; },
     refreshLanes() { for (const g of rings) if (!cuts.some(q => q.id === g.id)) laneNow.set(g.id, lanesOf(g.id)); uploadRings(); request(); },
     // 把一圈从旧的刻纹过渡到新的
     cut(id, from, to, ms = 1400, done) { const g = rings.find(g => g.id === id); if (!g) return; laneNow.set(id, from); cuts.push({id, i: g.i, from, to, t0: performance.now(), ms, done}); S.cut = g.i; request(); },

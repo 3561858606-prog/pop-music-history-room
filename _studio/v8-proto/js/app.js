@@ -82,13 +82,14 @@ async function route() {
   busy = true;
   try {
     if (from === 'train') train.pause();
-    if (from === 'disc') explore?.pause();
+    // 去听辨：宇宙要陪着镜头钻进标签，换完页再停
+    if (from === 'disc') explore?.pause({keepCosmos: room === 'train'});
     if (room === 'train') {
       // 没有正在做的一轮（例如在结果页按了返回）：回到盘面，不要悄悄开一轮新的
       if (!train.active()) { const saved = preferredRound(); if (!saved || !train.restore(saved)) { location.replace('#disc'); return; } rememberRound(train.id()); }
       // 钻进标签：镜头落向标签，纸色铺满，再换到纸面
       if (from === 'disc' && explore) { const ms = explore.dive(); if (ms) { await sleep(ms - 200); await veilTo(true, 200); } }
-      swap('train'); train.resume();
+      swap('train'); train.resume(); explore?.pauseCosmos();
       await veilTo(false, 240);
     } else if (room === 'result') {
       const id = decodeURIComponent(location.hash.split('/')[1] || '');

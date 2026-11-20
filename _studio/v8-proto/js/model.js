@@ -269,6 +269,8 @@ export function lanesOf(id) {
 }
 export const fieldStatus = (id, key) => prefs.demo === 'real' ? status(memory.records[id]?.fields?.[key]) : null;
 export const hasRecord = id => !!memory.records[id];
+// 最近一次作答的时间（ISO 字符串）；示意数据时没有
+export const lastSeen = id => prefs.demo === 'real' ? memory.records[id]?.last || null : null;
 export const avgCut = id => lanesOf(id).reduce((a, b) => a + b, 0) / 4;
 export function stats() {
   let full = 0, some = 0;

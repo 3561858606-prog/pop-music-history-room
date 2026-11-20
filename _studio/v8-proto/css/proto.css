@@ -48,6 +48,10 @@ html[data-side=paper] .tabs a[aria-current]{border-bottom-color:var(--ink)}
 /* 深空：盘下面的宇宙，只是背景 */
 #cosmos{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
 .stage[data-flat="1"] #cosmos{display:none}
+/* 唱片的立体画面暂时不可用时，舞台中间的说明 */
+.disc-wait{position:absolute;left:28px;right:calc(var(--panel) + 56px);top:42%;z-index:5;text-align:center;color:var(--dim);font-size:14px;line-height:1.7}
+.disc-wait button{margin-top:12px;padding:8px 16px;border:1px solid var(--faint);border-radius:999px;color:var(--fg);font-size:13px}
+@media(max-width:860px){.disc-wait{left:16px;right:16px;top:38%}}
 /* 星空的暂停开关：和图例同一种小字，只有它接收指针 */
 .lg-down{display:none;margin-left:auto;pointer-events:auto;align-items:center;gap:4px;padding:6px 10px;border:1px solid var(--faint);border-radius:999px;color:var(--fg);font-size:11px;white-space:nowrap}
 .lg-cosmos{pointer-events:auto;color:var(--dim);text-decoration:underline;text-decoration-color:var(--faint);text-underline-offset:3px}
@@ -166,13 +170,13 @@ html[data-side=paper] .tabs a[aria-current]{border-bottom-color:var(--ink)}
 .stage[data-mode=close] .spread-head{padding-right:132px}
 @media(max-width:860px){.stage[data-mode=close] .bgm-chip{right:16px}.stage[data-mode=close] .spread-head{right:20px;padding-right:100px}}
 @media(max-width:860px){.bgm-chip{left:16px;top:8px;max-width:calc(100% - 32px)}.bgm-k,.bgm-meta{display:none}.bgm-title{font-size:13px}}
+/* 手机上还在等第一次点按：把「点一下页面就开始」显示出来，代替歌名 */
+@media(max-width:860px){.bgm-chip[data-mode=wait] .bgm-k{display:block;color:var(--amber);font-size:12px}.bgm-chip[data-mode=wait] .bgm-title{display:none}}
 #gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:default}
 #gl.grabbing{cursor:grabbing!important}
 #gl:focus-visible{outline:none}
 #gl.kb:focus-visible{outline:1px solid rgba(231,163,60,.75);outline-offset:-8px}
 @media (pointer:coarse){kbd,.tr-now{display:none}}
-.flat-host{position:absolute;inset:var(--top) 36% 44px 0;display:grid;place-items:center}
-.flat-host svg{width:min(100%,calc(100svh - var(--top) - 60px));height:auto;max-height:100%}
 .flat-disc text{font-family:var(--num);font-weight:800}
 .fd-digit{fill:rgba(238,232,218,.55)} .fd-digit.on{fill:var(--amber)}
 .fd-decade{fill:var(--paper);font-weight:600;paint-order:stroke;stroke:var(--lacquer);stroke-width:.014px}
@@ -412,7 +416,6 @@ html[data-side=paper] .fd-digit{fill:rgba(22,19,15,.45)} html[data-side=paper] .
     background:linear-gradient(180deg,rgba(15,13,12,0),rgba(15,13,12,.86) 55%)}
   .lg-down{display:inline-flex}
   .stage::after{background:linear-gradient(180deg,rgba(15,13,12,0) 78%,var(--lacquer) 100%)}
-  .flat-host{inset:0}
   .stage-hint{display:none} .legend{font-size:11px} .lg-src{display:none}
   .panel{position:static;width:auto;padding:4px 16px 40px;overflow:visible}
   .p-years{margin-top:6px;font-size:64px}

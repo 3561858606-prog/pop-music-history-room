@@ -1,18 +1,27 @@
 // 唱片页的背景音乐（星空）。
-// 默认开着；落针、播放课件视频时淡出并暂停；停下 1.5 s 后，从暂停的位置用 3 s 淡入接着放。
+// 默认开着；落针、播放课件视频时淡出并暂停；停下 1.5 s 后，从暂停的位置用 3 s 淡入接着放（第一次开始只用 0.8 s）。
 // 离开唱片页、页面切到后台时也暂停。浏览器不让自动出声时，等第一次点按或按键再开始。
 // 音量用 Web Audio 的增益来淡入淡出（iOS 不让网页改 <audio> 的音量）；在第一次点按之前用元素自己的音量。
 
-const FADE_IN = 3, FADE_OUT = .6, RELEASE_MS = 1500;
+// 淡入：第一次开始用 0.8 s（太慢会像没声音、像延迟）；落针结束后接回来用 3 s，慢慢引入
+const FADE_FIRST = .8, FADE_BACK = 3, FADE_OUT = .6, RELEASE_MS = 1500;
 // iPhone / iPad（iPadOS 会自称 Mac）
 const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 // 浏览器认作「用户操作」、允许出声的事件。iOS 上按下（pointerdown）不算，抬起才算
 const UNLOCK = ['pointerup', 'touchend', 'click', 'keydown'];
 
 export function createBgm({src, volume = .32, enabled = () => true, onChange = () => {}}) {
+  // 播放器自己不预先下载（下面在后台整首下载，免得下两遍）
   const a = new Audio(); a.loop = true; a.preload = 'none'; a.src = src;
+  // iPhone 的 Safari 不理会 preload：在后台把整首（1.9 MB）先下到内存里，还没开始放就换成内存里的那份，点下去马上有声音
+  let blobUrl = null;
+  fetch(src).then(r => r.ok ? r.blob() : null).then(b => {
+    if (!b || dead) return; blobUrl = URL.createObjectURL(b);
+    if (a.paused && a.currentTime === 0) { a.src = blobUrl; try { a.load(); } catch {} }
+  }).catch(() => {});
   a.addEventListener('play', () => onChange()); a.addEventListener('pause', () => onChange());
-  let room = false, hidden = document.hidden, level = 0, raf = 0, last = 0, ctx = null, gain = null, tapsObj = null;
+  let dead = false;
+  let room = false, hidden = document.hidden, level = 0, raf = 0, last = 0, ctx = null, gain = null, tapsObj = null, fadeIn = FADE_FIRST;
   const busy = new Set();   // 谁在占用声音：'needle'（唱片）、'media'（课件视频等）
   const release = new Map();
 
@@ -31,7 +40,8 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
     raf = 0;
     const dt = Math.min(.1, last ? (now - last) / 1000 : 1 / 60); last = now;
     const g = goal();
-    if (level < g) { if (audible()) level = Math.min(g, level + volume / FADE_IN * dt); }   // 真的出声了才开始淡入
+    if (level < g) { if (audible()) level = Math.min(g, level + volume / fadeIn * dt); }   // 真的出声了才开始淡入
+    else if (level >= g && g > 0) fadeIn = FADE_FIRST;
     else if (level > g) level = Math.max(g, level - volume / FADE_OUT * dt);
     apply();
     if (level <= 0 && g <= 0) { if (!a.paused) a.pause(); last = 0; return; }   // 暂停时记着播放位置，下次从这里接着放
@@ -81,7 +91,7 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
       clearTimeout(release.get(key)); release.delete(key);
       if (on) { busy.add(key); update(); return; }
       if (!busy.has(key)) return;
-      release.set(key, setTimeout(() => { release.delete(key); busy.delete(key); update(); }, RELEASE_MS));
+      release.set(key, setTimeout(() => { release.delete(key); busy.delete(key); fadeIn = FADE_BACK; update(); }, RELEASE_MS));   // 唱片停了：慢慢引回来
     },
     // 开关改了之后调用
     refresh() { update(); },
@@ -97,7 +107,7 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
     get state() { return {room, hidden, busy: [...busy], level: +level.toFixed(3), paused: a.paused, time: +a.currentTime.toFixed(2), webAudio: !!gain, enabled: enabled(), waiting: unlockArmed && a.paused && goal() > 0}; },
     // 给界面用：'on' 在放 · 'yield' 让给唱片 / 视频 · 'off' 关掉了 · 'wait' 浏览器不让自动出声，等点一下
     get mode() { if (!enabled()) return 'off'; if (busy.size) return 'yield'; if (a.paused && unlockArmed && goal() > 0) return 'wait'; return 'on'; },
-    destroy() { cancelAnimationFrame(raf); a.pause(); a.src = ''; document.removeEventListener('visibilitychange', onVis);
+    destroy() { dead = true; cancelAnimationFrame(raf); a.pause(); a.src = ''; if (blobUrl) URL.revokeObjectURL(blobUrl); document.removeEventListener('visibilitychange', onVis);
       for (const n of ['play', 'playing', 'pause', 'ended']) document.removeEventListener(n, onMedia, true); ctx?.close?.(); }
   };
   return api;

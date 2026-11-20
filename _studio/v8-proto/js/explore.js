@@ -1,6 +1,5 @@
 // 探索：首页就是这张盘。转（拖动）、贴近（进入一条年代带）、落（唱针）。
 import * as M from './model.js';
-import {flatDisc} from './flat.js';
 import {player} from './audio.js';
 import {createBgm} from './bgm.js';
 import {createSfx} from './sfx.js';
@@ -16,9 +15,9 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;',
 const {TAU, rings, bands, GEO} = M;
 
 export async function initExplore(ctx) {
-  const canvas = $('gl'), hud = $('hud'), panel = $('panel'), live = $('live'), flatHost = $('flatHost'), stage = $('stage');
+  const canvas = $('gl'), hud = $('hud'), panel = $('panel'), live = $('live'), stage = $('stage');
   const view = {mode: 'over', band: -1, song: null, kbBand: bands.length - 1, flat: false, needle: 'idle', intro: false};
-  let disc = null, flat = null, chipAt = null;
+  let disc = null, chipAt = null;
   const spread = document.createElement('section'); spread.className = 'sleeve-spread'; spread.hidden = true; spread.setAttribute('aria-label',tr('同年封套')); stage.appendChild(spread);
   let spreadKey = '', spreadPosition = '';
   const overviewSleeves = band => [...new Map(band.ids.map(id => { const t = M.byId.get(id); return [t.year,id]; })).values()];
@@ -410,34 +409,29 @@ export async function initExplore(ctx) {
   let glLost = false;
   // 手机切到后台、显存紧张时，系统会收回 WebGL；还回来时重建成立体的盘和星空，不留在平面盘上
   canvas.addEventListener('webglcontextrestored', () => { if (glLost) { glLost = false; mount(); } });
-  $('cosmos')?.addEventListener('webglcontextrestored', () => { if (!cosmos && disc && !view.flat) mountCosmos(); });
-  if (M.prefs.flat && !M.prefs.flatTest) { delete M.prefs.flat; M.savePrefs(); }   // 以前 WebGL 丢失一次就永久换成平面盘；清掉这个旧值
-  async function mount() {
-    disc?.destroy(); disc = null; flat = null; flatHost.replaceChildren(); hud.replaceChildren(); hudBuilt = false;
-    // 平面盘：测试页可以指定；WebGL 丢失（手机切到后台久了常见）只在这一次打开里换成平面的，不写进偏好，下次打开照旧是立体的
-    view.flat = M.prefs.flat === true && !!M.prefs.flatTest || glLost;
-    if (!view.flat) {
-      try {
-        const {createDisc} = await import('./gl.js');
-        disc = createDisc(canvas, {reducedMotion: ctx.reduced, onFrame: updateHud, panelFrac: () => innerWidth > 860 ? panel.offsetWidth / stage.clientWidth : 0, onLost: () => { glLost = true; mount(); }});
-      } catch (e) { console.warn('WebGL 不可用，改用平面的盘：', e.message); view.flat = true; }
-    }
-    canvas.hidden = view.flat; flatHost.hidden = !view.flat; stage.dataset.flat = view.flat ? '1' : '0';
-    if (view.flat) mountFlat();
-    mountCosmos();
-    $('discHelp').textContent = tr(view.flat ? '平面盘 · ↑↓ 换年代 · ←→ 换歌 · 空格落针或抬针'
-      : matchMedia('(pointer:coarse)').matches ? '拖动转盘 · 点一条年代带贴近' : '拖动转盘 · 点一条年代带贴近 · ↑↓ 换年代 ←→ 换歌 · 空格落针或抬针');
-    applyView(true);
+  $('cosmos')?.addEventListener('webglcontextrestored', () => { if (!cosmos && disc) mountCosmos(); });
+  // 回到这一页时，如果系统已经把 WebGL 还回来了（有的手机不发 restored 事件），就重建
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !disc && !$('roomDisc').hidden) { const g = canvas.getContext('webgl2'); if (g && !g.isContextLost()) { glLost = false; mount(); } } });
+  if ('flat' in M.prefs) { delete M.prefs.flat; M.savePrefs(); }   // 平面盘已经去掉；清掉以前留下的偏好
+  // 唱片只有立体的一种。WebGL 被系统暂时收回（why = 'lost'）或这台设备打不开（'none'）时，舞台上说明一下，曲目表照常能用
+  const discWait = document.createElement('div'); discWait.className = 'disc-wait'; discWait.hidden = true; discWait.setAttribute('role', 'status'); stage.appendChild(discWait);
+  discWait.addEventListener('click', e => { if (e.target.closest('button')) location.reload(); });
+  function renderDiscWait(why) {
+    discWait.hidden = !why; if (!why) return;
+    discWait.innerHTML = `<p>${tr(why === 'lost' ? '唱片的画面被系统暂时收回了，回到这一页时会自己恢复。' : '这台设备的浏览器打不开唱片的立体画面。曲目表、目录和听辨都照常能用。')}</p><button type="button">${tr('重新载入')}</button>`;
   }
-  function mountFlat() {
-    flat = flatDisc({detail: true, digits: true, decades: true, title: tr('母盘（平面）')});
-    flatHost.replaceChildren(flat.svg);
-    const at = e => { const b = flat.svg.getBoundingClientRect(), vb = flat.svg.viewBox.baseVal;
-      const x = vb.x + (e.clientX - b.left) / b.width * vb.width, y = vb.y + (e.clientY - b.top) / b.height * vb.height;
-      return M.ringAtRadius(Math.hypot(x, y), 2.5); };
-    flat.svg.addEventListener('click', e => { const g = at(e); if (g) enterBand(bands[g.band], g); });
-    flat.svg.addEventListener('pointermove', e => { const g = at(e); flat.svg.style.cursor = g ? 'pointer' : ''; });
-    if (view.song) flat.setFocus(view.song);
+  async function mount() {
+    disc?.destroy(); disc = null; hud.replaceChildren(); hudBuilt = false;
+    view.flat = false; stage.dataset.flat = '0';
+    let why = glLost ? 'lost' : null;
+    if (!why) try {
+      const {createDisc} = await import('./gl.js');
+      disc = createDisc(canvas, {reducedMotion: ctx.reduced, onFrame: updateHud, panelFrac: () => innerWidth > 860 ? panel.offsetWidth / stage.clientWidth : 0, onLost: () => { glLost = true; mount(); }});
+    } catch (e) { console.warn('唱片的立体画面打不开：', e.message); why = 'none'; }
+    canvas.hidden = !disc; renderDiscWait(why);
+    mountCosmos();
+    $('discHelp').textContent = tr(matchMedia('(pointer:coarse)').matches ? '拖动转盘 · 点一条年代带贴近' : '拖动转盘 · 点一条年代带贴近 · ↑↓ 换年代 ←→ 换歌 · 空格落针或抬针');
+    applyView(true);
   }
 
   /* ---------- HUD：盘缘数字、年代名、年份牌 ---------- */
@@ -502,7 +496,6 @@ export async function initExplore(ctx) {
       disc.setFocus(g ? g.i : -1);
       if (snap) disc.jumpCamera();
     }
-    flat?.setFocus(view.song);
     renderPanel(); renderSpread();
   }
   function frontRing(band) {   // 这条带里离观众最近的一圈
@@ -620,7 +613,7 @@ export async function initExplore(ctx) {
   canvas.addEventListener('dblclick', e => { if (!disc) return; const [x, y] = local(e), t = hit(x, y); if (t?.g && view.song === t.g.id) toggleNeedle(); });
 
   /* ---------- 键盘 ---------- */
-  function focusDisc() { (view.flat ? flatHost : canvas).focus({preventScroll: true}); }
+  function focusDisc() { canvas.focus({preventScroll: true}); }
   document.addEventListener('keydown', e => {
     const room = $('roomDisc'), t = e.target;
     if (room.hidden || e.defaultPrevented || e.isComposing || e.keyCode === 229 ||
@@ -966,7 +959,7 @@ export async function initExplore(ctx) {
   });
   panel.addEventListener('focusout', e => { if (e.target.id === 'customSize') e.target.value = Math.min(M.prefs.custom, poolSize()); });
 
-  M.onChange(what => { if (what === 'lanes') { disc?.refreshLanes(); if (view.flat) mountFlat(); updateSky(); } if (!$('roomDisc').hidden) renderPanel(); });
+  M.onChange(what => { if (what === 'lanes') { disc?.refreshLanes(); updateSky(); } if (!$('roomDisc').hidden) renderPanel(); });
 
   /* ---------- 入口：只在第一次 ---------- */
   let introTimer = 0;

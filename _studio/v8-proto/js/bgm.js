@@ -34,7 +34,7 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
   }
   function play() {
     const p = a.play();
-    if (p) p.then(() => { if (!raf) loop(); }).catch(() => armUnlock());
+    if (p) p.then(() => { blocked = false; if (!raf) loop(); }).catch(() => { blocked = true; armUnlock(); onChange(); });   // 浏览器真的拒绝出声了，才算「在等点一下」
   }
   function loop(now = performance.now()) {
     raf = 0;
@@ -54,7 +54,7 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
   }
 
   // 浏览器拦下了自动播放：第一次点按 / 按键时接上 Web Audio，再开始
-  let unlockArmed = false, primed = false;
+  let unlockArmed = false, primed = false, blocked = false;
   function unlock() {
     // iOS：经过 Web Audio 的声音默认会被侧面的静音开关压掉。声明成「播放」类（Safari 17+），和唱片一样不受静音开关影响；
     // 更老的 iOS 没有这个开关，就不接 Web Audio，直接用 <audio> 放（那里不能淡入淡出，只能直接开停）
@@ -67,7 +67,7 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
     // 在这一下点按里先「试放」一下再停：手机只允许点按里开始的播放，之后进唱片页（不在点按里）才能直接放
     if (a.paused && goal() <= 0 && !primed) { primed = true; const m = a.muted; a.muted = true; a.play().then(() => { if (goal() <= 0) a.pause(); a.muted = m; }).catch(() => { a.muted = m; }); }
     for (const n of UNLOCK) removeEventListener(n, unlock, true);
-    unlockArmed = false;
+    unlockArmed = false; blocked = false;
     update();
   }
   function armUnlock() {
@@ -104,9 +104,9 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
         const an = ctx.createAnalyser(); an.fftSize = 2048; an.smoothingTimeConstant = 0; gain.connect(an); an.connect(sink); tapsObj = {an, aL: null, aR: null, ctx}; }
       return tapsObj;
     },
-    get state() { return {room, hidden, busy: [...busy], level: +level.toFixed(3), paused: a.paused, time: +a.currentTime.toFixed(2), webAudio: !!gain, enabled: enabled(), waiting: unlockArmed && a.paused && goal() > 0}; },
+    get state() { return {room, hidden, busy: [...busy], level: +level.toFixed(3), paused: a.paused, time: +a.currentTime.toFixed(2), webAudio: !!gain, enabled: enabled(), waiting: blocked && a.paused && goal() > 0}; },
     // 给界面用：'on' 在放 · 'yield' 让给唱片 / 视频 · 'off' 关掉了 · 'wait' 浏览器不让自动出声，等点一下
-    get mode() { if (!enabled()) return 'off'; if (busy.size) return 'yield'; if (a.paused && unlockArmed && goal() > 0) return 'wait'; return 'on'; },
+    get mode() { if (!enabled()) return 'off'; if (busy.size) return 'yield'; if (a.paused && blocked && goal() > 0) return 'wait'; return 'on'; },
     destroy() { dead = true; cancelAnimationFrame(raf); a.pause(); a.src = ''; if (blobUrl) URL.revokeObjectURL(blobUrl); document.removeEventListener('visibilitychange', onVis);
       for (const n of ['play', 'playing', 'pause', 'ended']) document.removeEventListener(n, onMedia, true); ctx?.close?.(); }
   };

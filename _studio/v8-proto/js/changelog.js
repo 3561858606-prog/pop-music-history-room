@@ -7,6 +7,9 @@
 // 老用户打开网站时，左下角会出现一次这条更新的小纸条；新用户只看上手指南，不打扰。
 // 新的小设计加到 DESIGNS 里，since 写这次更新的 v，更新说明里会标「新」。
 export const RELEASES = [
+  {v: '2026-11-20g', title: {zh: '「轻点进入」', ko: '「눌러서 들어가기」', en: 'Tap to enter'}, items: [
+    {t: 'new', text: {zh: 'iPhone 等设备规定网页要先被点一下才能出声。在这些设备上，打开网站会先看到一张转动的唱片和「轻点进入」，点下去的那一刻背景音乐和唱片一起出来。能直接出声的设备、关掉了背景音乐时，不会出现。', ko: 'iPhone 등은 웹 페이지를 한 번 눌러야 소리를 낼 수 있습니다. 이런 기기에서는 사이트를 열면 돌아가는 레코드와 「눌러서 들어가기」가 먼저 보이고, 누르는 순간 배경음악과 레코드가 함께 나타납니다. 바로 소리를 낼 수 있는 기기나 배경음악을 끈 경우에는 나타나지 않습니다.', en: 'Devices such as the iPhone only let a page make sound after it is tapped. There, the site now opens on a spinning record and “Tap to enter”, and the background music starts the moment you tap. It does not appear where sound can start on its own, or when background music is off.'}}
+  ]},
   {v: '2026-11-20f', title: {zh: '唱片只保留立体的；手机上背景音乐不再晚', ko: '레코드는 입체만 남기고, 휴대폰 배경음악이 늦지 않아요', en: 'The record is 3D only; background music no longer lags on phones'}, items: [
     {t: 'tweak', text: {zh: '去掉了唱片的平面版。系统暂时收回画面时，舞台上会说明一下，回到这一页就恢复成立体的；设备打不开立体画面时，曲目表、目录和听辨照常能用。', ko: '레코드의 평면 버전을 없앴습니다. 시스템이 화면을 잠시 회수하면 무대에 안내가 나오고, 이 페이지로 돌아오면 입체로 복원됩니다. 입체 화면을 열 수 없는 기기에서도 곡 목록, 목록, 듣기 연습은 그대로 쓸 수 있습니다.', en: 'The flat version of the record is gone. If the system takes the view away for a moment, the stage says so and the 3D record returns when you come back; on devices that cannot open it, the track list, catalogue and listening practice still work.'}},
     {t: 'fix', text: {zh: '手机上的背景音乐：打开页面就在后台下载好，第一次点屏幕马上有声音，开头的淡入也缩短到不到一秒；还没点之前，左上角会提示「点一下页面就开始」。', ko: '휴대폰 배경음악: 페이지를 열면 미리 내려받아 두어 화면을 처음 누르는 즉시 소리가 나고, 시작할 때 커지는 시간도 1초 안으로 줄였습니다. 누르기 전에는 왼쪽 위에 「화면을 한 번 누르면 시작」이 보입니다.', en: 'Background music on phones is downloaded as soon as the page opens, so it starts the moment you first tap, with a fade-in under a second; until then the top-left says it starts on your first tap.'}}

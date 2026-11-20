@@ -143,6 +143,22 @@ html[data-side=paper] .tabs a[aria-current]{border-bottom-color:var(--ink)}
   .lg-key{display:none}
   .np-fx span{display:none}
 }
+/* 入口画面「轻点进入」：只在设备不让网页自动出声时出现 */
+.entry-gate{position:fixed;inset:0;z-index:90;background:radial-gradient(ellipse at 50% 42%,#231c16 0%,var(--lacquer) 62%);display:grid;place-items:center;transition:opacity .5s ease;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.entry-gate.out{opacity:0;pointer-events:none}
+.eg-btn{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--paper);cursor:pointer}
+.eg-btn:focus-visible .eg-tap{outline:2px solid var(--amber);outline-offset:4px}
+.eg-disc{width:min(52vw,240px);aspect-ratio:1;border-radius:50%;margin-bottom:18px;animation:egSpin 9s linear infinite;
+  background:radial-gradient(circle,var(--paper) 0 13%,var(--amber) 13.5% 14.5%,var(--paper) 15% 17%,#0c0a09 17.5% 19%,transparent 19.5%),
+    repeating-radial-gradient(circle,#15120f 0 2px,#1d1915 2px 3px),#15120f;box-shadow:0 30px 70px rgba(0,0,0,.6),inset 0 0 0 1px rgba(238,232,218,.08)}
+.eg-disc::after{content:"";position:absolute}
+.eg-btn b{font-size:20px;letter-spacing:.12em;font-weight:700}
+.eg-btn em{font:800 15px/1 var(--num);font-style:normal;letter-spacing:.2em;color:var(--dim)}
+.eg-tap{margin-top:22px;padding:11px 26px;border:1px solid rgba(231,163,60,.7);border-radius:999px;color:var(--amber);font-size:15px;letter-spacing:.16em;animation:egPulse 2.4s ease-in-out infinite}
+.eg-btn small{margin-top:6px;font-size:12px;color:var(--dim)}
+@keyframes egSpin{to{transform:rotate(360deg)}}
+@keyframes egPulse{0%,100%{box-shadow:0 0 0 0 rgba(231,163,60,0)}50%{box-shadow:0 0 0 8px rgba(231,163,60,.12)}}
+@media (prefers-reduced-motion:reduce){.eg-disc,.eg-tap{animation:none}.entry-gate{transition:none}}
 /* 背景音乐署名：舞台左上角，照曲目的写法（歌名 · 音乐家 · 年份 · 风格）；开关是明确的按钮 */
 .bgm-chip{position:absolute;left:28px;top:calc(var(--top) + 18px);z-index:4;display:flex;align-items:flex-start;gap:10px;max-width:min(420px,calc(100% - var(--panel) - 80px));transition:opacity .45s}
 .bgm-eq{display:flex;align-items:flex-end;gap:2px;height:14px;margin-top:3px;flex:none}

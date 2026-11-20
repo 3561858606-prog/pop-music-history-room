@@ -38,7 +38,7 @@ export const KO = {
   '饱和的颜色；立体声越宽，色边分得越开': '짙은 색. 스테레오가 넓을수록 색 테두리가 더 벌어집니다',
   // 会回应的天空
   '该复习了': '복습할 때', '上次是 {n} 天前': '마지막 복습 {n}일 전', '天上这颗星是你记住的歌：四项都刻满了': '하늘의 이 별은 외운 노래입니다: 네 항목을 모두 새겼어요', '天上这颗星是你记住的歌': '하늘의 이 별은 외운 노래입니다',
-  '在盘上找到它': '디스크에서 찾기', '唱片的画面被系统暂时收回了，回到这一页时会自己恢复。': '시스템이 레코드 화면을 잠시 회수했습니다. 이 페이지로 돌아오면 다시 나타납니다.', '这台设备的浏览器打不开唱片的立体画面。曲目表、目录和听辨都照常能用。': '이 기기의 브라우저에서는 레코드의 입체 화면을 열 수 없습니다. 곡 목록, 목록, 듣기 연습은 그대로 쓸 수 있어요.', '重新载入': '다시 불러오기', '再听一次': '다시 듣기', '年份个位是 {d} 的歌：{list}': '연도 끝자리가 {d}인 노래: {list}', '年份个位是 {d} 的歌': '연도 끝자리가 {d}인 노래',
+  '在盘上找到它': '디스크에서 찾기', '轻点进入': '눌러서 들어가기', '唱片的画面被系统暂时收回了，回到这一页时会自己恢复。': '시스템이 레코드 화면을 잠시 회수했습니다. 이 페이지로 돌아오면 다시 나타납니다.', '这台设备的浏览器打不开唱片的立体画面。曲目表、目录和听辨都照常能用。': '이 기기의 브라우저에서는 레코드의 입체 화면을 열 수 없습니다. 곡 목록, 목록, 듣기 연습은 그대로 쓸 수 있어요.', '重新载入': '다시 불러오기', '再听一次': '다시 듣기', '年份个位是 {d} 的歌：{list}': '연도 끝자리가 {d}인 노래: {list}', '年份个位是 {d} 的歌': '연도 끝자리가 {d}인 노래',
   '1858 · 多纳蒂彗星：第一颗被拍成照片的彗星': '1858 · 도나티 혜성: 처음으로 사진에 찍힌 혜성',
   '1859 · 卡林顿事件：太阳风暴，连热带都看见了极光': '1859 · 캐링턴 사건: 태양 폭풍으로 열대 지방에서도 오로라가 보였다',
   '1868 · 日食的光谱里出现一条黄线：发现了氦': '1868 · 일식 스펙트럼의 노란 선: 헬륨 발견',
@@ -203,7 +203,7 @@ export const EN = {
   '饱和的颜色；立体声越宽，色边分得越开': 'Saturated colour; the wider the stereo, the further the colour fringes split',
   // 会回应的天空
   '该复习了': 'Time to review', '上次是 {n} 天前': 'last reviewed {n} days ago', '天上这颗星是你记住的歌：四项都刻满了': 'This star is a song you know: all four grooves are cut', '天上这颗星是你记住的歌': 'This star is a song you know',
-  '在盘上找到它': 'Find it on the disc', '唱片的画面被系统暂时收回了，回到这一页时会自己恢复。': 'The system has taken the record view away for a moment; it comes back when you return to this page.', '这台设备的浏览器打不开唱片的立体画面。曲目表、目录和听辨都照常能用。': 'This browser cannot open the 3D record. The track list, catalogue and listening practice still work.', '重新载入': 'Reload', '再听一次': 'Listen again', '年份个位是 {d} 的歌：{list}': 'Songs whose year ends in {d}: {list}', '年份个位是 {d} 的歌': 'Songs whose year ends in {d}',
+  '在盘上找到它': 'Find it on the disc', '轻点进入': 'Tap to enter', '唱片的画面被系统暂时收回了，回到这一页时会自己恢复。': 'The system has taken the record view away for a moment; it comes back when you return to this page.', '这台设备的浏览器打不开唱片的立体画面。曲目表、目录和听辨都照常能用。': 'This browser cannot open the 3D record. The track list, catalogue and listening practice still work.', '重新载入': 'Reload', '再听一次': 'Listen again', '年份个位是 {d} 的歌：{list}': 'Songs whose year ends in {d}: {list}', '年份个位是 {d} 的歌': 'Songs whose year ends in {d}',
   '1858 · 多纳蒂彗星：第一颗被拍成照片的彗星': '1858 · Donati’s Comet: the first comet ever photographed',
   '1859 · 卡林顿事件：太阳风暴，连热带都看见了极光': '1859 · The Carrington Event: a solar storm lit auroras even in the tropics',
   '1868 · 日食的光谱里出现一条黄线：发现了氦': '1868 · A yellow line in an eclipse spectrum: helium is found',

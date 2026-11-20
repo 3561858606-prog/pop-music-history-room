@@ -168,13 +168,28 @@ export async function initExplore(ctx) {
     bgmToggle.setAttribute('aria-pressed', String(mode !== 'off'));
     bgmToggle.setAttribute('aria-label', tr(mode === 'off' ? '开启背景音乐' : '关掉背景音乐'));
   }
-  const bgm = createBgm({src: M.site('audio-bgm/vast-warm-pads.m4a'), enabled: () => !M.prefs.bgmOff, onChange: () => renderBgmToggle()});
+  const bgm = createBgm({src: M.site('audio-bgm/vast-warm-pads.m4a'), enabled: () => !M.prefs.bgmOff, onChange: () => renderBgmAll()});
   if (bgmChip) {
     bgmChip.querySelector('.bgm-title').textContent = BGM.title;
     bgmChip.querySelector('.bgm-meta').textContent = `${BGM.artist} · ${BGM.year} · ${tr(BGM.style)}`;
     bgmChip.hidden = false;
   }
   bgmToggle?.addEventListener('click', () => { M.prefs.bgmOff = !M.prefs.bgmOff; M.savePrefs(); bgm.refresh(); renderBgmToggle(); });
+  /* 入口画面「轻点进入」：iPhone 等设备规定网页要先被点一下才能出声。浏览器真的拒绝了背景音乐（bgm.mode === 'wait'）时，
+     盖一层入口画面，把这必须的一下变成「进门」：点下去，背景音乐和唱片一起出来。能直接出声的设备、关掉了背景音乐的，都不出现 */
+  const gate = document.createElement('div'); gate.className = 'entry-gate'; gate.hidden = true;
+  gate.innerHTML = `<button type="button" class="eg-btn"><span class="eg-disc" aria-hidden="true"></span><b>${tr('大众音乐史复习室')}</b><em>1854—1968</em>
+    <span class="eg-tap">${tr('轻点进入')}</span><small>${tr('背景音乐')} · Vast Warm Pads</small></button>`;
+  document.body.appendChild(gate);
+  let gateDone = false;
+  function updateGate() {
+    const want = !gateDone && bgm.mode === 'wait' && !$('roomDisc').hidden;
+    if (want && gate.hidden) { gate.hidden = false; gate.querySelector('button').focus({preventScroll: true}); }
+    else if (!want && !gate.hidden) closeGate();
+  }
+  function closeGate() { gateDone = true; if (gate.hidden) return; gate.classList.add('out'); setTimeout(() => { gate.hidden = true; gate.classList.remove('out'); }, ctx.reduced() ? 0 : 500); focusDisc(); }
+  gate.addEventListener('click', closeGate);   // 背景音乐在同一下点按（抬起手指）里开始，见 bgm.js
+  const renderBgmAll = () => { renderBgmToggle(); updateGate(); };
   renderBgmToggle();
 
   /* ---------- 会回应的天空：手势、悬停说明、捞起来的卡片、天文年表的说明、你的星空 ----------

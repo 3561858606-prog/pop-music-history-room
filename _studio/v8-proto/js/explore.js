@@ -6,7 +6,7 @@ import {createSfx} from './sfx.js';
 import {createListener} from './listen.js';
 import {FAMILIES, ERA_LOOKS, familyOf, eraOf, normalizeFx, DEFAULT_FX} from './react.js';
 import {sleeveLayout} from './sleeve-layout.js';
-import {nameHTML, trackStoryHTML} from './reading.js';
+import {nameHTML, trackStoryHTML, courseNoteHTML} from './reading.js';
 import {t as tr, join} from './i18n.js';
 import {hasVideo, videoFigureHTML, mountVideo, retryVideo, videoOf, setVideoQuality} from './video.js';
 
@@ -27,9 +27,15 @@ export async function initExplore(ctx) {
     if (api && !view.flat) {   // 立体：按钮每一帧跟着封套在画面上的实际位置
       const edge = panelEdge(), hits = new Map(api.sleeveHits().map(h => [h.g.id, h])), W = api.state.W;
       const list = [...spread.querySelectorAll('[data-cover]')];
+      // 弧形转盘（手机、同年歌多）的两端，封套侧着、很窄，还会被更近的那张挡住：这些不给点击区，转过来再点。
+      // 从最宽（正对镜头）的开始收，比最宽的窄一半以上、或和已收的重叠，就隐藏
+      const inView = [...hits.values()].filter(h => h.x1 <= edge && h.x0 >= 0 && h.x1 <= W).sort((a, b) => (b.x1 - b.x0) - (a.x1 - a.x0));
+      const widest = inView.length ? inView[0].x1 - inView[0].x0 : 0, keep = [];
+      for (const h of inView) if (h.x1 - h.x0 >= widest * .5 && !keep.some(k => h.x0 < k.x1 - 1 && h.x1 > k.x0 + 1 && h.y0 < k.y1 - 1 && h.y1 > k.y0 + 1)) keep.push(h);
+      const shown = new Set(keep.map(h => h.g.id));
       for (const b of list) {
         const h = hits.get(b.dataset.cover);
-        if (!h || h.x1 > edge || h.x0 < 0 || h.x1 > W) { b.style.visibility = 'hidden'; continue; }
+        if (!h || !shown.has(b.dataset.cover)) { b.style.visibility = 'hidden'; continue; }
         const w = h.x1 - h.x0, ht = h.y1 - h.y0;
         b.style.visibility = ''; b.style.transform = `translate3d(${h.x0.toFixed(1)}px,${h.y0.toFixed(1)}px,0)`;
         b.style.width = w.toFixed(1) + 'px'; b.style.height = 'auto'; b.querySelector('.st-art').style.height = ht.toFixed(1) + 'px';
@@ -121,7 +127,7 @@ export async function initExplore(ctx) {
       try {
         const {createCosmos} = await import('./cosmos.js');
         if (!disc || cosmos) return;
-        cosmos = createCosmos(cv, {reduced: ctx.reduced, pool: cosmosPool, layout: cosmosLayoutNow,
+        cosmos = createCosmos(cv, {reduced: ctx.reduced, pool: cosmosPool, layout: cosmosLayoutNow, decadeSpan: [Math.floor(M.yearRange.first / 10) * 10, Math.floor(M.yearRange.last / 10) * 10],
           listener, fx: () => fxSettings,               // 听歌时的三条效果链：节奏、风格、年代
           onLost: () => { cosmos = null; renderCosmosToggle(); },   // WebGL 被系统收回：等它还回来（下面的 webglcontextrestored）再重建
           avoid: () => disc?.state.sleeveSet, paused: () => !!M.prefs.cosmosPaused, onReady: () => disc?.setSpace(1),
@@ -178,7 +184,7 @@ export async function initExplore(ctx) {
   /* 入口画面「轻点进入」：iPhone 等设备规定网页要先被点一下才能出声。浏览器真的拒绝了背景音乐（bgm.mode === 'wait'）时，
      盖一层入口画面，把这必须的一下变成「进门」：点下去，背景音乐和唱片一起出来。能直接出声的设备、关掉了背景音乐的，都不出现 */
   const gate = document.createElement('div'); gate.className = 'entry-gate'; gate.hidden = true;
-  gate.innerHTML = `<button type="button" class="eg-btn"><span class="eg-disc" aria-hidden="true"></span><b>${tr('大众音乐史复习室')}</b><em>1854—1968</em>
+  gate.innerHTML = `<button type="button" class="eg-btn"><span class="eg-disc" aria-hidden="true"></span><b>${tr('大众音乐史复习室')}</b><em>${M.yearRange.first}—${M.yearRange.last}</em>
     <span class="eg-tap">${tr('轻点进入')}</span><small>${tr('背景音乐')} · Vast Warm Pads</small></button>`;
   document.body.appendChild(gate);
   let gateDone = false;
@@ -874,25 +880,26 @@ export async function initExplore(ctx) {
     if (liveVideo) { pauseVideo(); liveVideo = null; }
     const st = M.stats(), all = M.prefs.scope.length === M.lectures.length;
     const pool = M.tracks.filter(t => M.lectureIds(t).some(inScope)).length;
+    const facts = M.courseFacts();
     panel.innerHTML = `
       <div class="p-over">
-        <h1 class="p-years">1854<i>—</i>1968</h1>
-        <p class="p-sub">${tr('75 首 · 七讲 · 刻满 {n} 圈', {n: st.full})}${st.some ? tr('，刻了一部分 {n} 圈', {n: st.some}) : ''}</p>
+        <h1 class="p-years">${M.yearRange.first}<i>—</i>${M.yearRange.last}</h1>
+        <p class="p-sub">${tr('{t} 首 · {k} 讲 · 刻满 {n} 圈', {...facts, t: facts.n, n: st.full})}${st.some ? tr('，刻了一部分 {n} 圈', {n: st.some}) : ''}</p>
         <button class="drop-btn" id="startRound"><span>${dropLabel(pool)}</span><kbd>${tr('进入听辨 →')}</kbd></button>
         ${M.unfinished().length ? `<button class="resume-round" data-resume="${M.unfinished()[0].id}">${tr('继续未完成的一轮 · 已答 {a} / {b} 首 →', {a: M.unfinished()[0].entries.length, b: M.unfinished()[0].size})}</button>` : ''}
         <div class="seg question-types" role="group" aria-label="${tr('题型')}"><button data-type="choice" aria-pressed="${M.prefs.questionType === 'choice'}">${tr('选择题')}</button><button data-type="written" aria-pressed="${M.prefs.questionType === 'written'}">${tr('填空题')}</button></div>
         <div class="p-opts">
           <div class="seg" role="group" aria-label="${tr('一轮几首')}">${[[10, tr('{n} 首', {n: 10})], [20, tr('{n} 首', {n: 20})], ['all', tr('全部听完')], ['custom', tr('自定义')]].map(([v, t]) => `<button data-size="${v}" aria-pressed="${M.prefs.size === v}">${t}</button>`).join('')}</div>
           ${M.prefs.size === 'custom' ? `<label class="p-custom">${tr('每轮')} <input id="customSize" type="number" inputmode="numeric" min="1" max="${pool}" value="${Math.min(M.prefs.custom, pool)}" aria-label="${tr('自定义每轮首数')}"> ${tr('首')} <span>${tr('（最多 {n}）', {n: pool})}</span></label>` : ''}
-          <span class="p-scope">${all ? tr('范围：全部七讲') : tr('范围：{a} 讲，{b} 首', {a: M.prefs.scope.length, b: pool})}</span>
+          <span class="p-scope">${all ? tr('范围：全部 {k} 讲', facts) : tr('范围：{a} 讲，{b} 首', {a: M.prefs.scope.length, b: pool})}</span>
         </div>
-        <div class="p-head"><span>${tr('SIDE A · 七讲')}</span><span>${tr('点方格加入范围')}</span></div>
+        <div class="p-head"><span>${tr('SIDE A · {k} 讲', facts)}</span><span>${tr('点方格加入范围')}</span></div>
         <ol class="lec-list">${M.lectures.map(l => `
           <li data-lec="${l.id}">
             <button class="lec-name" data-start="${l.id}" title="${tr('只练这一讲')}"><i>A${l.id}</i><b>${esc(M.lectureLabel(l.id))}</b><em>${tr('{n} 首', {n: l.count})}</em></button>
             <button class="lec-box" role="checkbox" aria-checked="${inScope(l.id)}" aria-label="${tr('把「{l}」加入范围', {l: esc(M.lectureLabel(l.id))})}" data-toggle="${l.id}"></button>
           </li>`).join('')}</ol>
-        <p class="p-foot">${tr('盘面每一圈是一首歌：外圈 1854，内圈 1968。一圈正好十年，盘缘的 0—9 是年份的个位数。')}</p>
+        <p class="p-foot">${tr('盘面每一圈是一首歌：外圈 {a}，内圈 {b}。一圈正好十年，盘缘的 0—9 是年份的个位数。', facts)}</p>
         <p class="p-feedback"><button data-open-guide="feedback">${tr('问题反馈')}</button></p>
       </div>`;
     $('legendSrc').textContent = tr(st.source === 'demo' ? '当前是示意数据' : st.source === 'empty' ? '这台浏览器里还没有作答记录' : st.source === 'proto' ? '按原型里的作答绘制' : '按这台浏览器里的学习记录绘制');
@@ -906,6 +913,7 @@ export async function initExplore(ctx) {
     const top = panel.scrollTop;
     const sameSong = panel.querySelector('.song')?.dataset.track === view.song;
     const storyOpen = sameSong && panel.querySelector('.story-long')?.open;
+    const noteOpen = panel.querySelector('.course-note') ? panel.querySelector('.course-note').open : null;
     const band = bands[view.band], t = M.byId.get(view.song), g = M.ringOf.get(view.song), lanes = M.lanesOf(t.id), cover = M.coverOf(t);
     const mates = M.spokeMates(t), style = M.styleOf(t);
     panel.innerHTML = `
@@ -920,6 +928,7 @@ export async function initExplore(ctx) {
           </div>
           <h2>${nameHTML(t, 'song', M.titleOf(t))}</h2>
           <div class="song-meta name-meta"><p>${nameHTML(t, 'artist')}</p><p>${nameHTML(t, 'style')}</p><p>${M.lectureIds(t).map(id => tr('第 {l} 讲', {l: id}) + ' ' + esc(M.lectureLabel(id))).join('; ')}</p></div>
+          ${courseNoteHTML(t, 'course-note', sameSong ? noteOpen : null)}
           ${cover ? `<details class="cover-info"><summary>${esc(M.coverLabel(cover))}</summary><p>${esc(cover.album || '')}<br>${esc(cover.artist || '')}</p><p>${esc(cover.note || '')}</p>${cover.source ? `<a href="${esc(cover.source)}" target="_blank" rel="noopener noreferrer">${tr('封面来源')} ↗</a>` : ''}</details>` : ''}
           ${videoFigureHTML(t)}
           <button class="needle-btn" aria-pressed="false"><i></i><span>${tr('落针试听')}</span><kbd>${tr('空格')}</kbd></button>

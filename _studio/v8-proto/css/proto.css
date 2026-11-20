@@ -775,6 +775,24 @@ li[data-fix=done] .k::after{content:" ✓";color:var(--ink)}
 .g-toast .g-x{position:absolute;right:8px;top:4px;font-size:18px;line-height:1;padding:6px;color:rgba(22,19,15,.45)}
 body:not([data-room=disc]) .g-toast{display:none}
 @media (max-width:860px){.g-toast{left:12px;right:12px;bottom:12px;width:auto}.help-btn{margin-left:0}}
+
+/* 课件注记：评分口径、录音年份与版本。漆面（唱片页）和纸面（答后反馈）共用，颜色跟着 --fg / --dim 走 */
+.course-note{margin:12px 0 14px;border-top:1px solid var(--faint);border-bottom:1px solid var(--faint);font-size:12.5px;line-height:1.65}
+.course-note summary{display:flex;align-items:baseline;gap:10px;padding:9px 0;cursor:pointer;list-style:none}
+.course-note summary::-webkit-details-marker{display:none}
+.course-note summary::before{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);opacity:.6;transition:transform .15s;flex:none;align-self:center}
+.course-note[open] summary::before{transform:rotate(45deg)}
+.course-note summary span{font-weight:600;color:var(--fg)}
+.course-note summary em{font-style:normal;color:var(--dim)}
+.course-note .cn-facts{display:grid;gap:3px;margin:0 0 8px}
+.course-note .cn-facts>div{display:grid;grid-template-columns:6.5em 1fr;gap:10px}
+.course-note dt{color:var(--dim)}
+.course-note dd{margin:0;color:var(--fg)}
+.course-note dd small{color:var(--dim);margin-left:6px;font-size:11.5px}
+.course-note [data-differ] dd{color:var(--amber)}
+html[data-side=paper] .course-note [data-differ] dd{color:var(--ink);text-decoration:underline;text-decoration-color:var(--amber);text-decoration-thickness:2px;text-underline-offset:3px}
+.course-note .cn-text{color:var(--dim);margin:0 0 10px;font-family:var(--serif);font-size:13px;line-height:1.8}
+.fb-note{max-width:36em}
 @media (prefers-reduced-motion:reduce){.guide[open],.g-toast,.g-point,.help-btn[data-dot="1"]::after{animation:none}}
 
 /* ---------- 历史：导入学习备份 ---------- */

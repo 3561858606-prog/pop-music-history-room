@@ -1,7 +1,7 @@
 // 立体的盘：WebGL2，手写，没有库。场景里只有一张盘、一支唱臂、立起来的封套。
 // 只在需要时渲染：没有东西在动就不画帧。
 import {t as tr} from './i18n.js';
-import {rings, bands, GEO, TAU, lanesOf, coverOf, localXZ} from './model.js';
+import {rings, bands, GEO, TAU, lanesOf, coverOf, localXZ, courseFacts} from './model.js';
 import {sleeveLayout} from './sleeve-layout.js';
 
 /* ---------- 一点矩阵 ---------- */
@@ -260,7 +260,8 @@ function drawLabel(cv) {
   c.strokeStyle = '#E7A33C'; c.lineWidth = S * .018; c.beginPath(); c.arc(m, m, S * .44, 0, TAU); c.stroke();
   c.fillStyle = '#16130F';
   // 沿边一圈小字
-  const ringText = 'POPULAR MUSIC HISTORY · LISTENING ROOM · LEAD-IN 1854 · RUN-OUT 1968 · ';
+  const F = courseFacts();
+  const ringText = `POPULAR MUSIC HISTORY · LISTENING ROOM · LEAD-IN ${F.a} · RUN-OUT ${F.b} · `;
   c.font = `600 ${S * .024}px Archivo, sans-serif`;
   for (let i = 0; i < ringText.length; i++) { const a = i / ringText.length * TAU - Math.PI / 2; c.save(); c.translate(m + Math.cos(a) * S * .402, m + Math.sin(a) * S * .402); c.rotate(a + Math.PI / 2); c.fillText(ringText[i], 0, 0); c.restore(); }
   c.font = `700 ${S * .074}px "PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif`;
@@ -269,9 +270,9 @@ function drawLabel(cv) {
   c.fillText('SIDE A', S * .27, m); c.fillText('MHR–A', S * .73, m);
   c.fillRect(S * .2, S * .365, S * .6, S * .003);
   c.font = `800 extra-condensed ${S * .15}px Archivo, sans-serif`;
-  c.fillText('1854—1968', m, S * .665);
+  c.fillText(`${F.a}—${F.b}`, m, S * .665);
   c.font = `600 ${S * .027}px "PingFang SC","Hiragino Sans GB","Noto Sans SC",sans-serif`;
-  c.fillText(tr('75 首 · 七讲 · 外圈 1854 → 内圈 1968'), m, S * .765, S * .64);
+  c.fillText(tr('{n} 首 · {k} 讲 · 外圈 {a} → 内圈 {b}', F), m, S * .765, S * .64);
 }
 
 function blankSleeve(t) {

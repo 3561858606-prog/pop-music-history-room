@@ -7,8 +7,10 @@ export function sleeveLayout(items, width, height, panelFraction = 0) {
   const maximum = Math.max(1, Math.min(items.length, Math.floor((area + gap) / ((width <= 400 ? 84 : 100) + gap))));
   const rows = Math.ceil(items.length / maximum), columns = Math.ceil(items.length / rows);
   const minTop = width <= 860 ? 150 : 190;
-  const size = Math.min(items.length === 1 ? 176 : 148, (area - gap * (columns - 1)) / columns, (height - minTop - 12) / rows - 100);
-  const rowHeight = size + 100;
+  // 标题区高度：手机上只显示两行歌名，省下的高度留给封面（同一年 8 首时要排三行）
+  const caption = width <= 400 ? 46 : 100;
+  const size = Math.min(items.length === 1 ? 176 : 148, (area - gap * (columns - 1)) / columns, (height - minTop - 12) / rows - caption);
+  const rowHeight = size + caption;
   const top = Math.max(width <= 860 ? 150 : 190, Math.min(height * .58 - rows * rowHeight / 2, height - rows * rowHeight - 44));
   return items.map((item, i) => {
     const row = Math.floor(i / columns), col = i % columns, n = Math.min(columns, items.length - row * columns);

@@ -32,6 +32,8 @@ export const COARSE_UNTIL = 1948;       // 之前是 78 转的粗纹，之后是
 export const tracks = [...catalog.tracks].sort((a, b) => a.year - b.year || a.id.localeCompare(b.id));
 export const byId = new Map(tracks.map(t => [t.id, t]));
 export const yearRange = {first: tracks[0].year, last: tracks.at(-1).year};
+// 界面上所有「几首、几讲、哪年到哪年」都从这里取，增加讲次时不用再改文案
+export const courseFacts = () => ({n: tracks.length, k: catalog.lectures.length, a: yearRange.first, b: yearRange.last});
 const dec = y => Math.floor(y / 10) * 10;
 
 const sameYear = new Map();

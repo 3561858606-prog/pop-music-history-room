@@ -2,6 +2,7 @@
 import * as M from './model.js';
 import {player} from './audio.js';
 import {createBgm} from './bgm.js';
+import {discBgm, bindDiscBgm} from './bgm-start.js';
 import {createSfx} from './sfx.js';
 import {createListener} from './listen.js';
 import {FAMILIES, ERA_LOOKS, familyOf, eraOf, normalizeFx, DEFAULT_FX} from './react.js';
@@ -159,38 +160,48 @@ export async function initExplore(ctx) {
   // 署名照曲目的写法：歌名 · 音乐家 · 年份 · 风格
   const BGM = {title: 'Vast Warm Pads', artist: 'linbingbo', year: 2026, style: '氛围音乐 · 太空音乐'};
   const bgmChip = $('bgmChip'), bgmToggle = $('bgmToggle');
-  const BGM_STATE = {on: '正在播放', yield: '让给唱片中', off: '已关掉', wait: '点一下页面就开始'};
+  const BGM_STATE = {on: '正在播放', yield: '让给唱片中', off: '已关掉', wait: '点一下页面就开始', error: '音频加载失败，点击播放重试'};
   function renderBgmToggle() {
     if (!bgmChip) return;
     const mode = bgm.mode; bgmChip.dataset.mode = mode;
     bgmChip.querySelector('.bgm-state').textContent = tr(BGM_STATE[mode]);
-    bgmToggle.querySelector('span').textContent = tr(mode === 'off' ? '开启' : '关掉');
-    bgmToggle.setAttribute('aria-pressed', String(mode !== 'off'));
-    bgmToggle.setAttribute('aria-label', tr(mode === 'off' ? '开启背景音乐' : '关掉背景音乐'));
+    const canStart = mode === 'off' || mode === 'error';
+    bgmToggle.querySelector('span').textContent = tr(canStart ? '开启' : '关掉');
+    bgmToggle.setAttribute('aria-pressed', String(!canStart));
+    bgmToggle.setAttribute('aria-label', tr(canStart ? '开启背景音乐' : '关掉背景音乐'));
   }
-  const bgm = createBgm({src: M.site('audio-bgm/vast-warm-pads.m4a'), enabled: () => !M.prefs.bgmOff, onChange: () => renderBgmAll()});
+  const bgm = discBgm || createBgm({src: M.site('audio-bgm/vast-warm-pads.m4a'), enabled: () => !M.prefs.bgmOff, onChange: () => renderBgmAll()});
   if (bgmChip) {
     bgmChip.querySelector('.bgm-title').textContent = BGM.title;
     bgmChip.querySelector('.bgm-meta').textContent = `${BGM.artist} · ${BGM.year} · ${tr(BGM.style)}`;
     bgmChip.hidden = false;
   }
-  bgmToggle?.addEventListener('click', () => { M.prefs.bgmOff = !M.prefs.bgmOff; M.savePrefs(); bgm.refresh(); renderBgmToggle(); });
-  /* 入口画面「轻点进入」：iPhone 等设备规定网页要先被点一下才能出声。浏览器真的拒绝了背景音乐（bgm.mode === 'wait'）时，
-     盖一层入口画面，把这必须的一下变成「进门」：点下去，背景音乐和唱片一起出来。能直接出声的设备、关掉了背景音乐的，都不出现 */
-  const gate = document.createElement('div'); gate.className = 'entry-gate'; gate.hidden = true;
-  gate.innerHTML = `<button type="button" class="eg-btn"><span class="eg-disc" aria-hidden="true"></span><b>${tr('大众音乐史复习室')}</b><em>1854—1968</em>
-    <span class="eg-tap">${tr('轻点进入')}</span><small>${tr('背景音乐')} · Vast Warm Pads</small></button>`;
-  document.body.appendChild(gate);
-  let gateDone = false;
-  function updateGate() {
-    const want = !gateDone && bgm.mode === 'wait' && !$('roomDisc').hidden;
-    if (want && gate.hidden) { gate.hidden = false; gate.querySelector('button').focus({preventScroll: true}); }
-    else if (!want && !gate.hidden) closeGate();
+  bgmToggle?.addEventListener('click', () => {
+    if (bgm.mode === 'error') { bgm.refresh(); return; }
+    M.prefs.bgmOff = !M.prefs.bgmOff;
+    M.savePrefs();
+    if (discBgm) bindDiscBgm(!!M.prefs.bgmOff, renderBgmAll);
+    bgm.refresh();
+  });
+  // iOS 应用允许页面直接出声，常规网页才需要准备点按入口。
+  let updateGate = () => {};
+  if (!window.musicRoomIOS) {
+    const gate = document.createElement('div'); gate.className = 'entry-gate'; gate.hidden = true;
+    gate.innerHTML = `<button type="button" class="eg-btn"><span class="eg-disc" aria-hidden="true"></span><b>${tr('大众音乐史复习室')}</b><em>1854—1968</em>
+      <span class="eg-tap">${tr('轻点进入')}</span><small>${tr('背景音乐')} · Vast Warm Pads</small></button>`;
+    document.body.appendChild(gate);
+    let gateDone = false;
+    function closeGate() { gateDone = true; if (gate.hidden) return; gate.classList.add('out'); setTimeout(() => { gate.hidden = true; gate.classList.remove('out'); }, ctx.reduced() ? 0 : 500); focusDisc(); }
+    updateGate = () => {
+      const want = !gateDone && bgm.mode === 'wait' && !$('roomDisc').hidden;
+      if (want && gate.hidden) { gate.hidden = false; gate.querySelector('button').focus({preventScroll: true}); }
+      else if (!want && !gate.hidden) closeGate();
+    };
+    gate.addEventListener('click', closeGate);
   }
-  function closeGate() { gateDone = true; if (gate.hidden) return; gate.classList.add('out'); setTimeout(() => { gate.hidden = true; gate.classList.remove('out'); }, ctx.reduced() ? 0 : 500); focusDisc(); }
-  gate.addEventListener('click', closeGate);   // 背景音乐在同一下点按（抬起手指）里开始，见 bgm.js
   const renderBgmAll = () => { renderBgmToggle(); updateGate(); };
-  renderBgmToggle();
+  if (discBgm) bindDiscBgm(!!M.prefs.bgmOff, renderBgmAll);
+  renderBgmAll();
 
   /* ---------- 会回应的天空：手势、悬停说明、捞起来的卡片、天文年表的说明、你的星空 ----------
      点 = 一滴水（水波）；按住 = 漩涡蓄力，松手炸开；拖 = 划水的尾流。只在天空的空白处，点盘、曲目表、按钮都照旧 */

@@ -10,15 +10,21 @@ const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform ==
 // 浏览器认作「用户操作」、允许出声的事件。iOS 上按下（pointerdown）不算，抬起才算
 const UNLOCK = ['pointerup', 'touchend', 'click', 'keydown'];
 
-export function createBgm({src, volume = .32, enabled = () => true, onChange = () => {}}) {
-  // 播放器自己不预先下载（下面在后台整首下载，免得下两遍）
-  const a = new Audio(); a.loop = true; a.preload = 'none'; a.src = src;
-  // iPhone 的 Safari 不理会 preload：在后台把整首（1.9 MB）先下到内存里，还没开始放就换成内存里的那份，点下去马上有声音
-  let blobUrl = null;
-  fetch(src).then(r => r.ok ? r.blob() : null).then(b => {
-    if (!b || dead) return; blobUrl = URL.createObjectURL(b);
-    if (a.paused && a.currentTime === 0) { a.src = blobUrl; try { a.load(); } catch {} }
-  }).catch(() => {});
+export function createBgm({src, bundledSrc, volume = .32, enabled = () => true, onChange = () => {}}) {
+  // 允许自动播放时直接流式起播。只有浏览器拦截时，才准备点按所需的音频。
+  const a = new Audio(); a.loop = true; a.preload = 'none'; a.src = bundledSrc || src;
+  let blobUrl = bundledSrc || null, warming = false, playPending = false, attempt = 0, failed = false;
+  function warmOnBlock() {
+    if (!IOS || warming || blobUrl || navigator.connection?.saveData) return;
+    warming = true;
+    fetch(src).then(r => r.ok ? r.blob() : null).then(blob => {
+      // If the visitor tapped while it was downloading, leave the live request alone.
+      if (!blob || dead || !blocked || !goal() || playPending || !a.paused || a.currentTime !== 0) return;
+      blobUrl = URL.createObjectURL(blob);
+      a.src = blobUrl;
+      a.load();
+    }).catch(() => {});
+  }
   a.addEventListener('play', () => onChange()); a.addEventListener('pause', () => onChange());
   let dead = false;
   let room = false, hidden = document.hidden, level = 0, raf = 0, last = 0, ctx = null, gain = null, tapsObj = null, fadeIn = FADE_FIRST;
@@ -33,8 +39,26 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
     else a.volume = Math.min(1, level);
   }
   function play() {
-    const p = a.play();
-    if (p) p.then(() => { blocked = false; if (!raf) loop(); }).catch(() => { blocked = true; armUnlock(); onChange(); });   // 浏览器真的拒绝出声了，才算「在等点一下」
+    const id = ++attempt;
+    playPending = true; failed = false;
+    Promise.resolve(a.play()).then(() => {
+      if (dead || id !== attempt) return;
+      playPending = false; blocked = false;
+      if (!raf) loop();
+      onChange();
+    }, error => {
+      if (dead || id !== attempt) return;
+      playPending = false;
+      blocked = error.name === 'NotAllowedError';
+      failed = !blocked && error.name !== 'AbortError';
+      if (failed && bundledSrc && a.src === bundledSrc) {
+        a.src = src;
+        play();
+        return;
+      }
+      if (blocked) { armUnlock(); if (goal() > 0) warmOnBlock(); }
+      onChange();
+    });
   }
   function loop(now = performance.now()) {
     raf = 0;
@@ -47,34 +71,55 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
     if (level <= 0 && g <= 0) { if (!a.paused) a.pause(); last = 0; return; }   // 暂停时记着播放位置，下次从这里接着放
     raf = requestAnimationFrame(loop);
   }
+  function connectGain() {
+    if (!ctx || gain || dead) return;
+    const node = ctx.createGain();
+    node.gain.value = level;
+    ctx.createMediaElementSource(a).connect(node).connect(ctx.destination);
+    gain = node;
+    a.volume = 1;
+  }
+  function createContext() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!ctx && AC && !(IOS && !navigator.audioSession)) ctx = new AC();
+  }
+  function startNativeGain() {
+    if (!bundledSrc || ctx) return;
+    try {
+      if (navigator.audioSession) navigator.audioSession.type = 'playback';
+      createContext();
+      if (ctx?.state === 'running') connectGain();
+      else ctx?.resume().then(connectGain).catch(() => {});
+    } catch {}
+  }
   function update() {
-    if (goal() > 0 && a.paused) { apply(); play(); }
+    if (goal() > 0 && a.paused && !playPending && !blocked && !failed) { startNativeGain(); apply(); play(); }
     if (!raf && !a.paused) { last = 0; raf = requestAnimationFrame(loop); }
     onChange();
   }
 
   // 浏览器拦下了自动播放：第一次点按 / 按键时接上 Web Audio，再开始
-  let unlockArmed = false, primed = false, blocked = false;
+  let unlockArmed = false, interacted = false, primed = false, blocked = false;
   function unlock() {
     // iOS：经过 Web Audio 的声音默认会被侧面的静音开关压掉。声明成「播放」类（Safari 17+），和唱片一样不受静音开关影响；
     // 更老的 iOS 没有这个开关，就不接 Web Audio，直接用 <audio> 放（那里不能淡入淡出，只能直接开停）
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
-    if (!ctx && !(IOS && !navigator.audioSession)) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) try { ctx = new AC(); const s = ctx.createMediaElementSource(a); gain = ctx.createGain(); gain.gain.value = level; s.connect(gain).connect(ctx.destination); a.volume = 1; } catch { ctx = null; gain = null; }
-    }
-    ctx?.resume?.();
+    try {
+      createContext();
+      connectGain();
+      ctx?.resume().catch(() => {});
+    } catch {}
     // 在这一下点按里先「试放」一下再停：手机只允许点按里开始的播放，之后进唱片页（不在点按里）才能直接放
-    if (a.paused && goal() <= 0 && !primed) { primed = true; const m = a.muted; a.muted = true; a.play().then(() => { if (goal() <= 0) a.pause(); a.muted = m; }).catch(() => { a.muted = m; }); }
+    if (enabled() && a.paused && goal() <= 0 && !primed) { primed = true; const m = a.muted; a.muted = true; a.play().then(() => { if (goal() <= 0) a.pause(); a.muted = m; }).catch(() => { a.muted = m; }); }
     for (const n of UNLOCK) removeEventListener(n, unlock, true);
-    unlockArmed = false; blocked = false;
+    unlockArmed = false; interacted = true; blocked = false;
+    if (a.paused && goal() > 0 && !failed) { apply(); play(); }
     update();
   }
   function armUnlock() {
     if (unlockArmed) return; unlockArmed = true;
     for (const n of UNLOCK) addEventListener(n, unlock, {capture: true, passive: true});
   }
-  armUnlock();   // 第一次点按时总要接上 Web Audio，之后淡入淡出在 iOS 上也有效
 
   // 别的声音在放：唱片、课件视频……（媒体事件不冒泡，在 document 上用捕获）
   const others = () => [...document.querySelectorAll('audio,video')].some(m => m !== a && !m.paused && !m.ended && !m.muted);
@@ -85,7 +130,11 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
 
   const api = {
     // 是否在唱片页
-    setRoom(on) { room = !!on; update(); },
+    setRoom(on) {
+      room = !!on;
+      if (room && !interacted) armUnlock(); // 第一击接上 Web Audio，供淡入和星空音效使用。
+      update();
+    },
     // 占用 / 释放声音。释放要等 1.5 s：换歌、缓冲、自动下一首不会让音乐冒出来又退下去
     hold(key, on) {
       clearTimeout(release.get(key)); release.delete(key);
@@ -94,7 +143,7 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
       release.set(key, setTimeout(() => { release.delete(key); busy.delete(key); fadeIn = FADE_BACK; update(); }, RELEASE_MS));   // 唱片停了：慢慢引回来
     },
     // 开关改了之后调用
-    refresh() { update(); },
+    refresh() { failed = false; update(); },
     // 天上的音效和背景音乐共用一个 AudioContext（第一次点按之后才有）
     get ctx() { return ctx; },
     // 给星空听的分析器（没有唱片在放、而效果器手动选了风格或年代时，星空跟着背景音乐轻轻动）
@@ -106,8 +155,10 @@ export function createBgm({src, volume = .32, enabled = () => true, onChange = (
     },
     get state() { return {room, hidden, busy: [...busy], level: +level.toFixed(3), paused: a.paused, time: +a.currentTime.toFixed(2), webAudio: !!gain, enabled: enabled(), waiting: blocked && a.paused && goal() > 0}; },
     // 给界面用：'on' 在放 · 'yield' 让给唱片 / 视频 · 'off' 关掉了 · 'wait' 浏览器不让自动出声，等点一下
-    get mode() { if (!enabled()) return 'off'; if (busy.size) return 'yield'; if (a.paused && blocked && goal() > 0) return 'wait'; return 'on'; },
+    get mode() { if (!enabled()) return 'off'; if (busy.size) return 'yield'; if (a.paused && blocked && goal() > 0) return 'wait'; if (failed) return 'error'; return 'on'; },
     destroy() { dead = true; cancelAnimationFrame(raf); a.pause(); a.src = ''; if (blobUrl) URL.revokeObjectURL(blobUrl); document.removeEventListener('visibilitychange', onVis);
+      for (const n of UNLOCK) removeEventListener(n, unlock, true);
+      for (const timer of release.values()) clearTimeout(timer);
       for (const n of ['play', 'playing', 'pause', 'ended']) document.removeEventListener(n, onMedia, true); ctx?.close?.(); }
   };
   return api;

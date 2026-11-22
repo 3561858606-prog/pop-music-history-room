@@ -5,6 +5,7 @@ import {renderHistory} from './history.js';
 import {nameHTML} from './reading.js';
 import {hasVideo, videoTag, videoCount} from './video.js';
 import {t as tr, join, applyStatic} from './i18n.js';
+import {discBgm, finishBgmStartup} from './bgm-start.js';
 applyStatic();
 
 const $ = id => document.getElementById(id);
@@ -81,6 +82,8 @@ async function route() {
   currentHash = hash;
   busy = true;
   try {
+    finishBgmStartup();
+    if (room !== 'disc') discBgm?.setRoom(false);
     if (from === 'train') train.pause();
     // 去听辨：宇宙要陪着镜头钻进标签，换完页再停
     if (from === 'disc') explore?.pause({keepCosmos: room === 'train'});
@@ -195,6 +198,8 @@ M.onChange(what => {
 notice(tr('正在载入本地学习记录…'));
 try { await M.ready; lastRound = M.history()[0] || null; notice(''); await route(); afterFirst(); }
 catch (error) {
+  finishBgmStartup();
+  discBgm?.setRoom(false);
   notice(tr('学习存储暂不可用：{m}。原有记录未改动，请刷新重试。', {m: error.message}));
   const retry = document.createElement('button'); retry.textContent = tr('重新载入'); retry.onclick = () => location.reload(); $('appNotice').append(retry);
 }

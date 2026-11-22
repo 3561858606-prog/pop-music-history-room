@@ -7,6 +7,9 @@
 // 老用户打开网站时，左下角会出现一次这条更新的小纸条；新用户只看上手指南，不打扰。
 // 新的小设计加到 DESIGNS 里，since 写这次更新的 v，更新说明里会标「新」。
 export const RELEASES = [
+  {v: '2026-11-21b', title: {zh: '背景音乐更早开始', ko: '더 빨리 시작하는 배경음악', en: 'Background music starts earlier'}, items: [
+    {t: 'fix', text: {zh: '打开唱片页时先准备背景音乐。浏览器允许有声自动播放时直接起播，需要点按时才显示入口。', ko: '레코드 화면을 열면 배경음악을 먼저 준비합니다. 브라우저가 소리 자동 재생을 허용하면 바로 재생하고, 눌러야 할 때만 입구를 표시합니다.', en: 'The record page prepares its music first. It starts automatically when the browser allows sound and shows the entrance only when a tap is required.'}}
+  ]},
   {v: '2026-11-20g', title: {zh: '「轻点进入」', ko: '「눌러서 들어가기」', en: 'Tap to enter'}, items: [
     {t: 'new', text: {zh: 'iPhone 等设备规定网页要先被点一下才能出声。在这些设备上，打开网站会先看到一张转动的唱片和「轻点进入」，点下去的那一刻背景音乐和唱片一起出来。能直接出声的设备、关掉了背景音乐时，不会出现。', ko: 'iPhone 등은 웹 페이지를 한 번 눌러야 소리를 낼 수 있습니다. 이런 기기에서는 사이트를 열면 돌아가는 레코드와 「눌러서 들어가기」가 먼저 보이고, 누르는 순간 배경음악과 레코드가 함께 나타납니다. 바로 소리를 낼 수 있는 기기나 배경음악을 끈 경우에는 나타나지 않습니다.', en: 'Devices such as the iPhone only let a page make sound after it is tapped. There, the site now opens on a spinning record and “Tap to enter”, and the background music starts the moment you tap. It does not appear where sound can start on its own, or when background music is off.'}}
   ]},

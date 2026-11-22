@@ -173,12 +173,8 @@ html[data-side=paper] .tabs a[aria-current]{border-bottom-color:var(--ink)}
 .bgm-k{font-size:11px;letter-spacing:.06em;color:var(--dim)}
 .bgm-title{font:600 14px/1.35 var(--num);letter-spacing:.01em;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bgm-meta{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bgm-chip[data-mode=off] .bgm-title,.bgm-chip[data-mode=off] .bgm-meta{opacity:.55}
-.bgm-btn{flex:none;display:inline-flex;align-items:center;gap:5px;margin-left:6px;padding:4px 10px 4px 8px;border:1px solid var(--faint);border-radius:999px;font-size:12px;color:var(--dim);transition:color .2s,border-color .2s}
-.bgm-btn:hover{color:var(--fg);border-color:var(--dim)}
-.bgm-btn .bgm-x{display:none}
-.bgm-chip[data-mode=off] .bgm-btn .bgm-wave{display:none}
-.bgm-chip[data-mode=off] .bgm-btn .bgm-x{display:inline}
+.bgm-chip:is([data-mode=off],[data-mode=error]) .bgm-btn .bgm-wave{display:none}
+.bgm-chip:is([data-mode=off],[data-mode=error]) .bgm-btn .bgm-x{display:inline}
 .stage[data-intro="1"] .bgm-chip,.stage[data-mode=dive] .bgm-chip{opacity:0;pointer-events:none}
 /* 贴近一个年代时，左上角是「同年封套」的标题：署名收成一个小开关，挪到右上角，不和标题叠在一起 */
 .stage[data-mode=close] .bgm-chip{left:auto;right:calc(var(--panel) + 56px);max-width:none;align-items:center}
@@ -187,7 +183,7 @@ html[data-side=paper] .tabs a[aria-current]{border-bottom-color:var(--ink)}
 @media(max-width:860px){.stage[data-mode=close] .bgm-chip{right:16px}.stage[data-mode=close] .spread-head{right:20px;padding-right:100px}}
 @media(max-width:860px){.bgm-chip{left:16px;top:8px;max-width:calc(100% - 32px)}.bgm-k,.bgm-meta{display:none}.bgm-title{font-size:13px}}
 /* 手机上还在等第一次点按：把「点一下页面就开始」显示出来，代替歌名 */
-@media(max-width:860px){.bgm-chip[data-mode=wait] .bgm-k{display:block;color:var(--amber);font-size:12px}.bgm-chip[data-mode=wait] .bgm-title{display:none}}
+@media(max-width:860px){.bgm-chip:is([data-mode=wait],[data-mode=error]) .bgm-k{display:block;color:var(--amber);font-size:12px}.bgm-chip:is([data-mode=wait],[data-mode=error]) .bgm-title{display:none}}
 #gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:default}
 #gl.grabbing{cursor:grabbing!important}
 #gl:focus-visible{outline:none}

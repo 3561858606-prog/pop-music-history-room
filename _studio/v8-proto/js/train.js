@@ -192,7 +192,7 @@ export function createTrain(root, ctx) {
     return `<header class="tr-top">
         <button class="tr-back" data-act="back">← ${tr('盘面')}</button>
         <div class="tr-count"><span class="tr-type">${tr(round.questionType === 'written' ? '填空' : '选择')}</span>${tr('第 <b>{n}</b> / {m} 首', {n, m: round.size})}${round.size > 20 ? `<span class="tr-bar" aria-hidden="true"><i style="--v:${round.done.length / round.size}"></i></span>` : ''}<span class="tr-dots" aria-hidden="true" ${round.size > 20 ? 'hidden' : ''}>${Array.from({length: round.size > 20 ? 0 : round.size}, (_, i) => `<i data-s="${i < round.done.length ? (round.done[i].result.score === 4 ? 'ok' : 'miss') : i === n - 1 ? 'now' : ''}"></i>`).join('')}</span></div>
-        <div class="tr-right"><button class="tr-cards" data-act="cards" aria-expanded="${ys.open}" aria-controls="yearSheet">${tr('年份卡片')}<kbd>Y</kbd></button><button class="tr-end" data-act="end">${tr('结束本轮')}</button></div>
+        <div class="tr-right"><button class="tr-cards" data-act="cards" aria-expanded="${ys.open}" aria-controls="yearSheet" aria-keyshortcuts="Y Alt+Y">${tr('年份卡片')}<kbd>Y</kbd></button><button class="tr-end" data-act="end">${tr('结束本轮')}</button></div>
       </header>
       <div class="groove">
         <button class="g-play" data-act="play" data-on="0" aria-label="${tr('播放')}"></button>
@@ -451,6 +451,29 @@ export function createTrain(root, ctx) {
     setTimeout(() => { if (!ys.open) el.hidden = true; }, ctx.reduced() ? 0 : 260);
     if (restore) { const o = ys.opener?.isConnected ? ys.opener : root.querySelector('.tr-cards'); o?.focus?.({preventScroll: true}); }
   }
+  function toggleSheet() { ys.open ? hideSheet() : showSheet(); }
+  // 先处理卡片的按键，避免输入框或按钮的 Enter 抢先提交、订正或开关卡片。
+  document.addEventListener('keydown', e => {
+    if (!round || root.hidden || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
+    const target = e.target, inSheet = ys.open && ys.el.contains(target);
+    if (!inSheet && !root.contains(target) && target !== document.body && target !== document.documentElement) return;
+    if (e.key === 'Enter' && (target.closest?.('.tr-cards,.ys-close') || (ys.open && !inSheet))) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    if (operating || e.ctrlKey || e.metaKey) return;
+    const input = target.closest?.('input,textarea,select,[contenteditable]:not([contenteditable="false"])');
+    const y = e.key === 'y' || e.key === 'Y' || e.code === 'KeyY';
+    const yearShortcut = y && (e.altKey || !input || input.matches('input[inputmode="numeric"]'));
+    const closeShortcut = ys.open && e.key === 'Escape' && !e.altKey;
+    if (!yearShortcut && !closeShortcut) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.repeat) return;
+    if (closeShortcut) hideSheet();
+    else toggleSheet();
+  }, {capture: true});
 
   /* ---------- 事件 ---------- */
   root.addEventListener('click', e => {
@@ -470,7 +493,7 @@ export function createTrain(root, ctx) {
     else if (act === 'next') next();
     else if (act === 'back') ctx.exit();
     else if (act === 'end') finish();
-    else if (act === 'cards') ys.open ? hideSheet() : showSheet();
+    else if (act === 'cards') toggleSheet();
     else if (act === 'fix') checkFix(e.target.closest('[data-key]').dataset.key);
   });
   // 挂在 document 上：焦点在页面任何地方（甚至没有焦点）时，数字键都能直接作答
@@ -499,14 +522,11 @@ export function createTrain(root, ctx) {
     else if (e.key === 'Enter') { e.preventDefault(); if (complete(round.answers)) submit(); else focusCol((ci + 1) % 4); }
   });
   document.addEventListener('keydown', e => {
-    if (!round || operating || root.hidden || e.defaultPrevented || e.repeat || e.altKey || e.ctrlKey || e.metaKey || e.isComposing || e.keyCode === 229) return;
+    if (!round || operating || root.hidden || ys.open || e.defaultPrevented || e.repeat || e.altKey || e.ctrlKey || e.metaKey || e.isComposing || e.keyCode === 229) return;
     if (e.target.closest?.('input,textarea,select')) return;
-    if (e.key === 'Escape' && ys.open) { hideSheet(); e.preventDefault(); return; }
-    if ((e.key === 'y' || e.key === 'Y') && !e.target.closest?.('.ys')) { ys.open ? hideSheet() : showSheet(); e.preventDefault(); return; }
-    if (ys.open) return;   // 卡片开着的时候，数字键不作答
     const digit = /^(?:Digit|Numpad)([0-4])$/.exec(e.code || '')?.[1];
     const k = digit ?? e.key;
-    if (k === ' ') { if (!e.target.closest('.tr-back,.tr-end,.submit,.next,.g-play')) { toggle(); e.preventDefault(); } return; }
+    if (k === ' ') { if (!e.target.closest('.tr-back,.tr-end,.tr-cards,.submit,.next,.g-play')) { toggle(); e.preventDefault(); } return; }
     if (round.phase === 'feedback') { if (k === 'Enter' && !e.target.closest('button')) { next(); e.preventDefault(); } return; }
     if (round.questionType === 'written') {
       if ((k === 'ArrowLeft' || k === 'ArrowRight') && !e.shiftKey) { focusCol((round.col + (k === 'ArrowRight' ? 1 : 3)) % 4); e.preventDefault(); }

@@ -74,5 +74,23 @@ await test('选择题四列作答与一首正常完成',async()=>{
  fixture.querySelector('[data-act=next]').click();await until(()=>completed);
  assert(completed.reason==='completed'&&completed.entries.length===1&&M.history().length===2,'完整轮次或历史丢失');
 });
+await test('年份卡片绑定 Y，Enter 不开关并保留填空输入',async()=>{
+ await train.start([1],'written');
+ const year=fixture.querySelector('[data-field=year]'), song=fixture.querySelector('[data-field=song]');
+ const opener=fixture.querySelector('.tr-cards');
+ const press=(target,key,extra={})=>target.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true,cancelable:true,...extra}));
+ const opened=()=>opener.getAttribute('aria-expanded')==='true';
+ year.focus();
+ assert(!press(year,'y',{code:'KeyY'})&&opened(),'年份框里的 Y 没有打开卡片');
+ const closer=document.querySelector('#yearSheet .ys-close');
+ assert(!press(closer,'Enter')&&opened(),'关闭按钮上的 Enter 未被拦截');
+ assert(!press(closer,'y',{code:'KeyY'})&&!opened()&&document.activeElement===year,'Y 没有关闭卡片或恢复焦点');
+ assert(!press(opener,'Enter')&&!opened(),'打开按钮上的 Enter 未被拦截');
+ song.focus();
+ assert(press(song,'y',{code:'KeyY'})&&!opened(),'填空框吞掉了字母 y');
+ assert(press(song,'y',{code:'KeyY',isComposing:true})&&!opened(),'组字期间误开卡片');
+ assert(!press(song,'¥',{code:'KeyY',altKey:true})&&opened(),'填空时 Alt+Y 没有打开卡片');
+ assert(!press(document.querySelector('#yearSheet .ys-close'),'Escape')&&!opened(),'Esc 未能关闭卡片');
+});
 await train.discard();const dbName=M.store.name;M.store.close();indexedDB.deleteDatabase(dbName);
 fixture.replaceChildren();out.textContent+='\n'+(results.every(r=>r.startsWith('PASS'))?'ALL PASS':'FAILED');document.title=results.every(r=>r.startsWith('PASS'))?'PASS · v8 流程回归':'FAIL · v8 流程回归';

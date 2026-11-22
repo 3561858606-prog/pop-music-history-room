@@ -4,7 +4,7 @@ import {FIELDS, NOT_HEARD, RandomQueue, buildQuestion, filterTracks, gradeQuesti
 import * as M from './model.js';
 import {markPrefetched} from './net.js';
 import {gradeWritten, checkField} from './names.js';
-import {nameHTML, optionAliasesHTML, trackStoryHTML} from './reading.js';
+import {nameHTML, optionAliasesHTML, trackStoryHTML, courseNoteHTML} from './reading.js';
 import {createAudio} from './audio.js';
 import {flatDisc} from './flat.js';
 import {createWaveform} from './waveform.js';
@@ -310,6 +310,7 @@ export function createTrain(root, ctx) {
             ? `<li data-ok="1"><span class="k">${M.FIELD_NAMES[f.key]}</span><span class="is">${esc(optionLabel(f.key, f.correct))}</span><span class="tick" aria-label="${tr('对')}">✓</span></li>`
             : fixRowHTML(d, f)).join('')}</ul>
           ${wrong.length ? `<p class="fix-rule">${tr('看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，按 Enter 核对。写错要重写；也可以不订正，直接下一首。')}</p>` : ''}
+          ${courseNoteHTML(t, 'course-note fb-note')}
           ${trackStoryHTML(t, 'fb-story')}
         </div>
         <aside class="fb-side">
@@ -566,7 +567,7 @@ export function renderResult(root, last, ctx) {
     const label = (key, value) => value === NOT_HEARD ? tr('没听出') : key === 'style' ? (M.catalog.styles.find(s => s.id === value)?.label || value) : value;
     root.innerHTML = `<div class="rs">
       <header class="rs-head">
-        <p class="rs-kicker">${tr('这一轮')} · ${tr('{n} 首', {n})} · ${!Array.isArray(last.scope) ? tr('旧记录 · 范围未保存') : last.scope.length === M.lectures.length ? tr('全部七讲') : tr('第 {l} 讲', {l: join(last.scope)})} · ${tr(last.questionType === 'written' ? '填空题' : '选择题')}${last.reason === 'early' ? ' · ' + tr('提前结束') : ''}</p>
+        <p class="rs-kicker">${tr('这一轮')} · ${tr('{n} 首', {n})} · ${!Array.isArray(last.scope) ? tr('旧记录 · 范围未保存') : last.scope.length === M.lectures.length ? tr('全部 {k} 讲', {k: M.lectures.length}) : tr('第 {l} 讲', {l: join(last.scope)})} · ${tr(last.questionType === 'written' ? '填空题' : '选择题')}${last.reason === 'early' ? ' · ' + tr('提前结束') : ''}</p>
         <h1><b>${perfect}</b><span>${tr('/ {n} 首四项全对', {n})}</span></h1>
         <p class="rs-sub">${grew ? tr('{n} 圈往前刻了一段。', {n: grew}) : tr('这一轮没有新的刻纹。')}${tr('单项正确率 {p}%。', {p: sum.accuracy})}${(() => { const fx = last.entries.flatMap(e => Object.values(e.fix || {})); return fx.length ? tr('当场订正 {a} / {b} 项。', {a: fx.filter(x => x.state === 'done').length, b: fx.length}) : ''; })()}</p>
       </header>

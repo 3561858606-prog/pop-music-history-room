@@ -82,7 +82,7 @@ export function createSfx({enabled = () => true, allowed = () => true, context =
       if (kind === 'needle') { if (ready(false)) splash(panOf(info.x, info.W)); return; }   // 落针的水声：唱片放的时候也响（它没有音高，不会和歌打架）
       if (!ready()) return;
       const pan = panOf(info.x, info.W), hi = info.H ? clamp(1 - info.y / info.H, 0, 1) : .5;
-      const dec = d => clamp(Math.round(((d || 1900) - 1850) / 10), 0, 11);
+      const dec = d => clamp(Math.round(((d || 1900) - 1850) / 10), 0, 12);
       switch (kind) {
         case 'tap': bell(3 + Math.round(hi * 6), {pan, vol: .05}); break;   // 越高的地方音越高
         case 'cover': bell(1 + Math.round(dec(info.decade) * .75), {pan, vol: info.gen ? .022 : .032, decay: 2.8, bright: .15}); break;   // 每个年代一个音

@@ -7,6 +7,8 @@ import {hasVideo, videoTag, videoCount} from './video.js';
 import {t as tr, join, applyStatic} from './i18n.js';
 import {discBgm, finishBgmStartup} from './bgm-start.js';
 applyStatic();
+// 画布的无障碍说明随课程数据变化（增加讲次后年份范围会变）
+{ const g = document.getElementById('gl'); if (g) g.setAttribute('aria-label', tr('母盘：外圈 {a} 年，内圈 {b} 年。方向键移动，回车进入，空格落针。', M.courseFacts())); }
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));

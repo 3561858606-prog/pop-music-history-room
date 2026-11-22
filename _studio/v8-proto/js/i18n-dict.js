@@ -3,6 +3,17 @@
 const s = (n, one, many) => (+n === 1 ? one : many).replace('{n}', n);
 
 export const KO = {
+  '课件注记': '강의 자료 메모', '评分年 {y}': '채점 연도 {y}', '录音年份未定': '녹음 연도 미확정', '录音 {y}': '녹음 {y}',
+  '评分年': '채점 연도', '录音发行': '녹음 발매', '本题版本': '이 문제의 버전', '尚未确认': '아직 확인되지 않음', '同评分年': '채점 연도와 같음',
+  '课件注记目前只有中文。': '강의 자료 메모는 지금은 중국어로만 있습니다.',
+  // 课程数字由数据计算（2026-11-20 起有第 8 讲）
+  '{t} 首 · {k} 讲 · 刻满 {n} 圈': '{t}곡 · {k}강 · 다 새긴 바퀴 {n}',
+  '范围：全部 {k} 讲': '범위: {k}강 전체', 'SIDE A · {k} 讲': 'SIDE A · {k}강', '全部 {k} 讲': '{k}강 전체',
+  '{n} 首 · {k} 讲 · 外圈 {a} → 内圈 {b}': '{n}곡 · {k}강 · 바깥 {a} → 안쪽 {b}',
+  '盘面每一圈是一首歌：外圈 {a}，内圈 {b}。一圈正好十年，盘缘的 0—9 是年份的个位数。': '레코드의 한 바퀴가 한 곡입니다. 바깥은 {a}년, 안쪽은 {b}년. 한 띠가 10년이고, 가장자리의 0–9는 연도의 끝자리입니다.',
+  '外圈 {a}，内圈 {b}。拖动转盘，点一条年代带就能贴近看。': '바깥 {a}년, 안쪽 {b}년. 레코드를 끌어 돌리고, 연대 띠를 누르면 가까이 볼 수 있습니다.',
+  '母盘：外圈 {a} 年，内圈 {b} 年。方向键移动，回车进入，空格落针。': '마스터 디스크: 바깥은 {a}년, 안쪽은 {b}년. 방향키로 이동, Enter로 들어가기, 스페이스로 바늘 내리기.',
+  '母盘：一圈一首歌，外圈最早，内圈最晚。方向键移动，回车进入，空格落针。': '마스터 디스크: 한 바퀴가 한 곡, 바깥이 가장 이르고 안쪽이 가장 늦습니다. 방향키로 이동, Enter로 들어가기, 스페이스로 바늘 내리기.',
   '流畅音质': '절약 음질',
   '自动': '자동',
   '自动画质：按网速选 {q}p，卡了会自动降低。': '자동 화질: 인터넷 속도에 맞춰 {q}p로 재생하고, 끊기면 자동으로 낮춥니다.',
@@ -168,6 +179,17 @@ export const KO = {
 };
 
 export const EN = {
+  '课件注记': 'Course note', '评分年 {y}': 'Graded as {y}', '录音年份未定': 'recording year unconfirmed', '录音 {y}': 'recorded {y}',
+  '评分年': 'Graded year', '录音发行': 'Recording released', '本题版本': 'Version used', '尚未确认': 'Not yet confirmed', '同评分年': 'Same as graded year',
+  '课件注记目前只有中文。': 'Course notes are only in Chinese for now.',
+  // Course numbers come from the data (lecture 8 added 2026-11-20)
+  '{t} 首 · {k} 讲 · 刻满 {n} 圈': '{t} songs · {k} lectures · {n} fully cut',
+  '范围：全部 {k} 讲': 'Range: all {k} lectures', 'SIDE A · {k} 讲': 'SIDE A · {k} lectures', '全部 {k} 讲': 'All {k} lectures',
+  '{n} 首 · {k} 讲 · 外圈 {a} → 内圈 {b}': '{n} songs · {k} lectures · {a} outside → {b} inside',
+  '盘面每一圈是一首歌：外圈 {a}，内圈 {b}。一圈正好十年，盘缘的 0—9 是年份的个位数。': 'Each ring on the record is a song: {a} on the outside, {b} inside. Each band is a decade, and the 0–9 on the rim is the last digit of the year.',
+  '外圈 {a}，内圈 {b}。拖动转盘，点一条年代带就能贴近看。': '{a} outside, {b} inside. Drag to spin; click a decade band to zoom in.',
+  '母盘：外圈 {a} 年，内圈 {b} 年。方向键移动，回车进入，空格落针。': 'Master disc: {a} on the outer edge, {b} at the centre. Arrow keys to move, Enter to zoom in, Space to drop the needle.',
+  '母盘：一圈一首歌，外圈最早，内圈最晚。方向键移动，回车进入，空格落针。': 'Master disc: one ring per song, earliest outside, latest inside. Arrow keys to move, Enter to zoom in, Space to drop the needle.',
   '流畅音质': 'data-saver audio',
   '自动': 'Auto',
   '自动画质：按网速选 {q}p，卡了会自动降低。': 'Auto quality: playing {q}p for your connection; it steps down automatically if playback stalls.',
@@ -254,7 +276,7 @@ export const EN = {
   '75 首 · 七讲 · 刻满 {n} 圈': '75 songs · 7 lectures · {n} fully cut', '，刻了一部分 {n} 圈': ', {n} partly cut', '进入听辨 →': 'Start quiz →',
   '继续未完成的一轮 · 已答 {a} / {b} 首 →': 'Continue unfinished round · {a} / {b} answered →', '题型': 'Question type', '选择题': 'Multiple choice', '填空题': 'Fill in', '一轮几首': 'Songs per round',
   '全部听完': 'All', '自定义': 'Custom', '每轮': 'Each round', '首': 'songs', '（最多 {n}）': '(max {n})', '自定义每轮首数': 'Custom songs per round',
-  '范围：全部七讲': 'Range: all 7 lectures', '范围：{a} 讲，{b} 首': 'Range: {a} lectures, {b} songs', 'SIDE A · 七讲': 'SIDE A · 7 lectures', '点方格加入范围': 'Tick boxes to set the range',
+  '范围：全部七讲': 'Range: all 7 lectures', '范围：{a} 讲，{b} 首': v => `Range: ${v.a} lecture${+v.a === 1 ? '' : 's'}, ${v.b} song${+v.b === 1 ? '' : 's'}`, 'SIDE A · 七讲': 'SIDE A · 7 lectures', '点方格加入范围': 'Tick boxes to set the range',
   '只练这一讲': 'Practise just this lecture', '把「{l}」加入范围': 'Add “{l}” to the range',
   '盘面每一圈是一首歌：外圈 1854，内圈 1968。一圈正好十年，盘缘的 0—9 是年份的个位数。': 'Each ring on the record is a song: 1854 on the outside, 1968 inside. Each band is a decade, and the 0–9 on the rim is the last digit of the year.',
   '问题反馈': 'Feedback', '当前是示意数据': 'Showing sample data', '这台浏览器里还没有作答记录': 'No answers in this browser yet', '按原型里的作答绘制': 'Drawn from prototype answers', '按这台浏览器里的学习记录绘制': 'Drawn from this browser’s records',

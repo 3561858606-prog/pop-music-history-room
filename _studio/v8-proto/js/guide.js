@@ -12,7 +12,7 @@ const ILL = {
   look: `<svg viewBox="0 0 160 112" aria-hidden="true">
     ${[46, 39, 32, 25].map(r => `<circle class="l" cx="72" cy="58" r="${r}"/>`).join('')}
     <circle class="lb" cx="72" cy="58" r="46"/><circle class="lbl" cx="72" cy="58" r="15"/>
-    <text x="72" y="61" text-anchor="middle" class="sm">1968</text><text x="72" y="8" text-anchor="middle">1854</text>
+    <text x="72" y="61" text-anchor="middle" class="sm">${M.yearRange.last}</text><text x="72" y="8" text-anchor="middle">${M.yearRange.first}</text>
     <path class="lb" d="M146 58H124m0 0l6-4m-6 4l6 4"/><text class="cn" x="122" y="74">${t('向内更晚')}</text></svg>`,
   listen: `<svg viewBox="0 0 160 112" aria-hidden="true">
     ${[48, 40, 32, 24].map(r => `<circle class="l" cx="62" cy="62" r="${r}"/>`).join('')}
@@ -32,7 +32,7 @@ const ILL = {
 };
 const VIDEO_TAG = `<span class="vid-tag"><i aria-hidden="true"></i>${t('视频')}</span>`;
 const STEPS = [
-  ['01', t('看'), t('一圈，一首歌'), t('外圈 1854，内圈 1968。拖动转盘，点一条年代带就能贴近看。'), ILL.look],
+  ['01', t('看'), t('一圈，一首歌'), t('外圈 {a}，内圈 {b}。拖动转盘，点一条年代带就能贴近看。', M.courseFacts()), ILL.look],
   ['02', t('听'), t('点歌，落针试听'), t('看封面和故事；带{tag}的歌能直接看课件视频。', {tag: VIDEO_TAG}), ILL.listen],
   ['03', t('答'), t('落针一轮'), t('随机听 10 首，每首答歌名、年份、音乐家、风格。选择题、填空题都行。'), ILL.answer],
   ['04', t('刻'), t('答对就刻上'), t('答对的部分刻进那一圈，记住的圈会发亮；还是漆面的，就是下次该听的。'), ILL.cut]

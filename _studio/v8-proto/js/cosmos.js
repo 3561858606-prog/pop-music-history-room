@@ -452,6 +452,8 @@ const hash01 = s => { let h = 2166136261; for (const c of String(s)) h = Math.im
    onReady(), paused(), camRate(), camDist(), panel, unheard()→[id],
    onRipple({x,y,s,gen})、onCue(kind, info)、onAnchors({hover, era, labels})、onEra(def|null)：给界面和声音用 } */
 export function createCosmos(canvas, opts = {}) {
+  // 课程的首尾年代（加了讲次会变）：越早的歌离盘越远
+  const SPAN = opts.decadeSpan || [1850, 1960];
   const gl = canvas.getContext('webgl2', {alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'low-power'});
   if (!gl) throw new Error('no webgl2');
   const P = {neb: program(gl, TRI_VS, NEBULA_FS), bake: program(gl, TRI_VS, CLOUD_BAKE_FS), sky: program(gl, TRI_VS, SKY_FS),
@@ -662,7 +664,7 @@ export function createCosmos(canvas, opts = {}) {
     const placed = [];
     for (const st of sky.list) {
       st.pos = null;
-      const base = (st.digit + .2 + .6 * hash01(st.id)) / 10 * TAU, f = .08 + .8 * Math.min(1, (1960 - st.decade) / 110) + (hash01(st.id + 'r') - .5) * .12;
+      const base = (st.digit + .2 + .6 * hash01(st.id)) / 10 * TAU, f = .08 + .8 * Math.max(0, Math.min(1, (SPAN[1] - st.decade) / Math.max(10, SPAN[1] - SPAN[0]))) + (hash01(st.id + 'r') - .5) * .12;
       for (const off of [0, .2, -.2, .4, -.4, .65, -.65, .95, -.95, 1.3, -1.3, 1.8, -1.8, 2.4, -2.4, Math.PI]) {
         const a = base + off, dx = Math.sin(a) * rx, dy = -Math.cos(a) * ry;
         let t0 = null, t1 = null;
@@ -984,7 +986,7 @@ export function createCosmos(canvas, opts = {}) {
       if (age > e.def.dur || (e.killAt != null && RT > e.killAt + .7)) { era[slot] = null; if (slot === 'cur') opts.onEra?.(null); }
     }
     if (era.pending && !era.cur) { const d = era.pending; era.pending = null; startEra(d); }
-    // 终章：刻满 75 首。露出盘面几秒后，盘后升起地球
+    // 终章：所有歌都刻满。露出盘面几秒后，盘后升起地球
     if (era.finWant && !era.fin && !era.finShown && revealT0 !== null && mode === 'over' && (performance.now() - revealT0) / 1000 > 4) { era.finShown = startEra(FINALE, 'fin'); }
     if (!era.finWant && era.fin) era.fin.killAt ??= RT;
     // 空闲时偶尔轮到一件
@@ -1275,7 +1277,7 @@ export function createCosmos(canvas, opts = {}) {
       era.nextIdle = Math.max(era.nextIdle, RT + 20);
       return true;
     },
-    // 75 首全部刻满：终章
+    // 所有歌全部刻满：终章
     setFinale(on) { era.finWant = !!on; },
     // 听歌：现在放的是哪一首（{id, style, year}），停了传 null。三条效果链据此「跟着歌」选风格和年代
     setTrack(t) { react.setTrack(t || null); },

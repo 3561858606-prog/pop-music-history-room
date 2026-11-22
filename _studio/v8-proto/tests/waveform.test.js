@@ -7,10 +7,10 @@ async function test(name,work){try{await work();results.push('PASS '+name);}catc
 const until=async fn=>{for(let i=0;i<750;i++){if(fn())return;await new Promise(r=>setTimeout(r,40));}throw Error('等待超时');};
 await M.ready;
 const tracks=M.tracks;
-await test('75 首音频各有对应的 4096 段真实波形',async()=>{
+await test('全部音频各有对应的 4096 段真实波形',async()=>{
  let index=0;const all=[];
  await Promise.all(Array.from({length:6},async()=>{while(index<tracks.length){const t=tracks[index++],d=await loadWaveform(t);assert(d.id===t.id&&d.src===t.src&&d.bins===4096&&Math.abs(d.duration-t.duration)<.15,'对应关系错误 '+t.id);all.push(d);}}));
- assert(all.length===75,'曲目覆盖不足');assert(new Set(all.map(d=>JSON.stringify(d.max))).size===75,'不同音频使用了相同的波形');
+ assert(all.length===tracks.length,'曲目覆盖不足');assert(new Set(all.map(d=>JSON.stringify(d.max))).size===tracks.length,'不同音频使用了相同的波形');
 });
 await test('缩小波形保留短暂峰值与真实静音',()=>{
  const d={bins:4,min:[0,-1000,0,0],max:[0,900,0,0],rms:[0,200,0,0]};

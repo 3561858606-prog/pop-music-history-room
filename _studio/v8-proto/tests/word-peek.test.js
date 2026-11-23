@@ -17,14 +17,19 @@ let train=createTrain(root,{reduced:()=>true,exit:()=>{},finish:()=>{}}),snapsho
 await train.start([1],'written');
 root.querySelectorAll('[data-unknown]').forEach(b=>b.click());root.querySelector('[data-act=submit]').click();
 await until(()=>root.dataset.phase==='feedback');await train.flush();
-row=[...root.querySelectorAll('.fb-rows li[data-ok="0"]')].find(r=>r.querySelectorAll('.peek-word').length>1);
-words=[...row.querySelectorAll('.peek-word')];input=row.querySelector('input');
+// 订正 2.0：先看答案，再「凭记忆写回」；写回时提示词放在作答格下方的 .hint 里，始终遮住
+let slot;
+const open=key=>{root.querySelector(`.fb-rows li[data-key="${key}"]`).click();slot=root.querySelector(`.fb [data-slot="${key}"]`);input=slot.querySelector('.slot-in');words=[...slot.querySelectorAll('.hint .peek-word')];};
 const type=value=>{input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));};
-await test('输入后逐词遮挡，提示按钮不暴露未揭示答案',()=>{
- input.focus();type('M');assert(row.classList.contains('typing'),'未遮挡');
+await test('看答案时不遮；写回时原位出现作答格，提示词遮住且标签不泄漏答案',()=>{
+ assert(!root.querySelector('.slot-in'),'未开始写回就出现作答格');
+ open('song');assert(root.querySelector('.fb').dataset.mode==='recall','没有进入写回');
+ assert(slot.dataset.state==='writing'&&document.activeElement===input,'歌名格没有在原位等待输入');
+ assert(words.length>1,'歌名提示没有按词拆开');
  assert(words.every(w=>w.getAttribute('aria-label').startsWith('短暂查看')),'隐藏词标签泄漏答案');
  assert(words.every(w=>getComputedStyle(w).color==='rgba(0, 0, 0, 0)'),'隐藏词仍可见');
- snapshot=JSON.stringify(M.roundById(train.id()));
+ assert(slot.querySelector('.ink').getAttribute('aria-hidden')==='true','标签上的答案没有对读屏隐藏');
+ type('M');snapshot=JSON.stringify(M.roundById(train.id()));
 });
 await test('点另一个词立即关闭上一个，提示不改草稿、次数或成绩',()=>{
  const ev=new PointerEvent('pointerdown',{bubbles:true,cancelable:true});words[0].dispatchEvent(ev);assert(ev.defaultPrevented,'点击会抢走输入焦点');
@@ -37,20 +42,21 @@ await test('1.2 秒自动遮回；继续输入立即遮回',async()=>{
  await sleep(1300);assert(!root.querySelector('.peeked'),'到时没遮回');
  words[0].click();type('Ma');assert(!root.querySelector('.peeked'),'继续输入未遮回');
 });
-await test('跨行仍只显示一个；键盘空格不会切换音频或跳题',()=>{
- words[0].click();const other=[...root.querySelectorAll('input[data-fix]')].find(i=>i!==input);other.value='x';other.dispatchEvent(new Event('input',{bubbles:true}));
- words[0].click();const b=other.closest('li').querySelector('.peek-word');b.click();assert(!words[0].classList.contains('peeked')&&root.querySelectorAll('.peeked').length===1,'跨行没有互斥');
+await test('同一时间只写一项；键盘空格不会切换音频或跳题',()=>{
+ words[0].click();const keep=words;open('artist');
+ assert(!keep[0].isConnected&&root.querySelectorAll('.slot-in').length===1,'换项后旧作答格还在');
+ assert(!root.querySelector('.peeked'),'换项后残留提示');
  const before=root.querySelector('.g-play').textContent;
- const key=new KeyboardEvent('keydown',{key:' ',bubbles:true,cancelable:true});words[1].dispatchEvent(key);
- assert(key.defaultPrevented&&words[1].classList.contains('peeked'),'键盘无法提示');assert(root.querySelector('.g-play').textContent===before&&root.dataset.phase==='feedback','空格触发了播放或跳题');
- words[1].dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert(!root.querySelector('.peeked'),'Escape没关闭');
+ const key=new KeyboardEvent('keydown',{key:' ',bubbles:true,cancelable:true});words[0].dispatchEvent(key);
+ assert(key.defaultPrevented&&words[0].classList.contains('peeked'),'键盘无法提示');assert(root.querySelector('.g-play').textContent===before&&root.dataset.phase==='feedback','空格触发了播放或跳题');
+ words[0].dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert(!root.querySelector('.peeked'),'Escape没关闭');
 });
-await test('暂停与重新渲染清掉提示，订正核对仍能正确保存',async()=>{
+await test('暂停与重新渲染清掉提示，写回核对仍能正确保存',async()=>{
  words[0].click();train.pause();assert(!root.querySelector('.peeked'),'暂停后残留提示');
  words[0].click();train.resume();assert(!root.querySelector('.peeked'),'重绘后残留提示');
- row=[...root.querySelectorAll('.fb-rows li[data-ok="0"]')].find(r=>r.querySelectorAll('.peek-word').length>1);input=row.querySelector('input');words=[...row.querySelectorAll('.peek-word')];
- type(row.querySelector('.ans').textContent);input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));await train.flush();
- assert(row.dataset.fix==='done','正确答案未通过核对');const r=M.roundById(train.id());assert(r.entries[0].fix[row.dataset.key].tries===1,'提示计入订正次数');assert(r.entries[0].fields.every(f=>!f.isCorrect),'订正改变原始分数');
+ open('song');type(slot.querySelector('.hint-w').textContent);input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));await train.flush();
+ assert(slot.dataset.state==='done','正确答案未通过核对');const r=M.roundById(train.id());assert(r.entries[0].fix.song.tries===1,'提示计入订正次数');assert(r.entries[0].fields.every(f=>!f.isCorrect),'订正改变原始分数');
+ assert(root.querySelector('.slot[data-state=writing]'),'写对后没有自动换到下一项');
 });
 await train.discard();M.store.close();indexedDB.deleteDatabase(M.store.name);
 // 保留独立的示意界面用于鼠标/键盘检查，不写入学习记录。

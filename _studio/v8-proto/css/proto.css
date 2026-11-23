@@ -1016,3 +1016,100 @@ body:not([data-room=disc]) .top{background:var(--bg);box-shadow:0 1px 0 var(--fa
 @media (max-width:860px){.top{background:var(--bg);box-shadow:0 1px 0 var(--faint)}}
 /* 手机页头放不下：重练轮次只留「错题重练」标签，题型照原轮，不另写 */
 @media (max-width:860px){.tr-review+.tr-qt{display:none}.tr-review{margin-right:4px}}
+
+/* ======================================================================
+   当场订正 2.0：看 → 合上 → 在原处写回
+   不往答案上“压”任何东西。写错的项把墨迹从标签上收走，只留下按词划好的格线：
+   字号、行距、版面都还是原来的样子，大字年份依旧是这一页的视觉锚点，只是变成了四道空格。
+   你在原来的位置、用原来的字号写回去；写对了，墨迹落回标签。
+   ====================================================================== */
+.fb{--rule:rgba(22,19,15,.26);--rule-on:var(--red)}
+.slot{--rw:max(1.5px,.06em)}
+.fb-year.slot{--rw:max(3px,.028em)}
+.slot .w{background:linear-gradient(var(--rule),var(--rule)) 0 100%/0 var(--rw) no-repeat;
+  transition:color .32s ease calc(var(--i,0)*28ms),background-size .42s cubic-bezier(.4,0,.2,1) calc(var(--i,0)*28ms + .1s)}
+/* 褪成格线：字还在原处占着位置，只是没有墨；格线长短就是词的长短 */
+.slot[data-state=blank] .w{color:transparent;background-size:100% var(--rw)}
+.slot[data-state=blank]{cursor:pointer}
+.slot[data-state=blank]:hover .w{--rule:rgba(22,19,15,.5)}
+/* 正在写：墨迹整个让位给输入框；外框高度锁成原来的，下面的内容不跳 */
+.slot[data-state=writing]{position:relative}
+.slot[data-state=writing]>.ink{position:absolute;inset:0 0 auto 0;pointer-events:none}
+.slot[data-state=writing] .w{color:transparent;background-size:0 var(--rw);transition-delay:0s}
+.slot-io{display:block;animation:slotIn .34s cubic-bezier(.2,.7,.2,1) .06s both}
+@keyframes slotIn{from{opacity:0;transform:translateY(.12em)}}
+.slot-in{display:block;width:min(100%,22em);font:inherit;font-stretch:inherit;letter-spacing:inherit;line-height:1.2;color:var(--ink);caret-color:var(--red);
+  background:none;border:0;border-bottom:var(--rw) solid var(--ink);border-radius:0;padding:0 0 .06em;margin:0;outline:none;
+  transition:border-color .2s}
+.slot-in:focus{border-bottom-color:var(--red)}
+.slot-in::placeholder{color:var(--red);opacity:.38}
+.fb-year .slot-in{width:calc(4ch + .12em);line-height:.86;padding-bottom:.03em}
+.fb h2 .slot-in{font-weight:700}
+.fb-meta .slot-in{font-weight:600;width:min(100%,20em)}
+/* 小提示条：项名 + 按词的小格子（点一格偷看 1.2 秒）+ 一句状态 */
+.hint{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin-top:10px;font:400 12.5px/1.5 var(--sans);font-stretch:normal;letter-spacing:0;color:var(--dim)}
+.hint-k{font-weight:600;color:var(--red)}
+.hint-w{display:inline-flex;flex-wrap:wrap;gap:2px 6px;font-weight:600;color:var(--ink)}
+.hint .peek-word{color:transparent;background:linear-gradient(var(--rule),var(--rule)) 0 100%/100% 2px no-repeat;padding:0 1px 1px;cursor:pointer;transition:color .15s,background-color .15s}
+.hint .peek-word:hover{--rule:var(--ink)}
+.hint .peek-word.peeked{color:var(--red);background-color:#f5edcf;--rule:var(--red)}
+.hint-msg{flex-basis:100%}
+.slot.shake .slot-in{animation:shake .32s cubic-bezier(.36,.07,.19,.97)}
+/* 写回之后：墨迹直接落回标签，不再另加记号——对勾只留在下面的订正行里，一处就够 */
+.fb-rows li[data-fix=done] .k::after{content:none}
+/* 写回时：只有正在写的那一行保留红笔，其余的圈退成淡墨，红色只指向“现在” */
+.fb[data-mode=recall] .fb-rows li:not([data-active]) .pen path{stroke:var(--rule)}
+/* 会顺带说出答案的内容（故事、封面、辐位）：写回时退进雾里，不改版面；写完再清晰回来 */
+.fb-ctx{transition:filter .5s ease,opacity .5s ease}
+.fb[data-mode=recall] .fb-ctx{filter:blur(9px) saturate(.5);opacity:.28;user-select:none;-webkit-user-select:none}
+
+/* 判语：写回时换成进度，写完后转成墨色 */
+.fb[data-mode=recall] .fb-verdict{color:var(--ink)}
+.fb[data-mode=settled][data-all="0"] .fb-verdict{color:var(--ink)}
+.fb[data-mode=recall] .fix-rule{display:none}
+
+/* 订正行：“看”的时候是红笔圈出的答案；“写回”的时候答案退场，换成这一项的进度，可以点着跳 */
+.fb-rows li[data-ok="0"]{cursor:pointer;flex-wrap:nowrap}
+.fb-rows .cell{font-weight:600}
+.fb-rows .cell .st{display:none;font-weight:500;font-size:14px;color:var(--dim)}
+.fb[data-mode=recall] .fb-rows .cell .is{display:none}
+.fb[data-mode=recall] .fb-rows .cell .st{display:inline}
+.fb-rows .st b{color:var(--ink);margin-right:2px} .fb-rows .st small{color:var(--dim);margin-left:6px;font-size:12px}
+.fb-rows li[data-active] .k,.fb-rows li[data-active] .st{color:var(--red)}
+.fb-rows li[data-active]{background:linear-gradient(90deg,rgba(201,58,34,.07),transparent 70%)}
+.row-go{margin-left:auto;flex:none;font-size:13px;color:var(--dim);padding:6px 0 6px 10px;white-space:nowrap}
+.row-go:hover{color:var(--ink)}
+.row-go[data-done="1"]{color:var(--ink);font-size:12.5px}
+.fb[data-mode=recall] .row-go{visibility:hidden}
+
+/* 底栏：一个主操作，一个次操作 */
+.tr-foot .acts{display:flex;gap:10px;align-items:center}
+.tr-foot .ghost{height:52px;padding:0 18px;font-size:15px;font-weight:600;color:var(--ink);background:none;border-radius:2px;box-shadow:inset 0 0 0 1.5px var(--faint);display:inline-flex;align-items:center;gap:12px}
+.tr-foot .ghost:hover{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.tr-foot .next.ghost[data-pending="1"]:hover{background:none;color:var(--ink)}
+
+@media (max-width:860px){
+  /* 窄屏的订正行像校对符号：上一行是划掉的错答，正确答案另起一行圈在它下面，长名字也不会把圈撑歪 */
+  .fb-rows li[data-ok="0"]{display:grid;grid-template-columns:4.2em minmax(0,1fr) auto;column-gap:12px;row-gap:6px;align-items:center;padding:12px 0 14px}
+  .fb-rows li[data-ok="0"] .k{grid-row:1/3;align-self:start;padding-top:2px}
+  .fb-rows li[data-ok="0"] .was{grid-column:2;font-size:14px;min-width:0}
+  .fb-rows li[data-ok="0"] .row-go{grid-column:3;grid-row:1}
+  .fb-rows li[data-ok="0"] .cell{grid-column:2/4;justify-self:start;max-width:calc(100% - 20px);margin-left:4px;line-height:1.35}
+  .fb-year .slot-in{line-height:.9}
+  .hint{margin-top:8px}
+  /* 底栏是一条真正的栏：纸色底、顶上一道细线、往上渐隐，内容从它下面滑过时不会被“切”成半截 */
+  .fb .tr-foot{position:sticky;bottom:0;z-index:5;margin:0 -14px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+    background:var(--paper);border-top:1px solid var(--faint)}
+  .fb .tr-foot::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:22px;background:linear-gradient(rgba(238,232,218,0),var(--paper));pointer-events:none}
+  .tr-foot .acts{flex:1}
+  .tr-foot .primary,.tr-foot .next.primary{flex:1;justify-content:center;height:50px}
+  .tr-foot .ghost{flex:none;height:50px;padding:0 16px;font-size:14px}
+  .tr-foot .ghost kbd{display:none}
+  /* 正在写的时候，键盘上的“完成”就是核对；底栏让开，不再压住正在写的那一行 */
+  [data-kb="1"] .fb .tr-foot{display:none}
+  /* 跳到某一行或某个输入框时，留出顶栏和底栏的位置 */
+  html:has(body[data-room=train]){scroll-padding:calc(var(--top) + 12px) 0 96px}
+}
+@media (prefers-reduced-motion:reduce){.fb[data-mode=recall] .fb-ctx{filter:none;opacity:.12}}
+.fb h2 .ver{font-weight:500;color:var(--dim);font-size:.82em}
+.slot[data-state=writing] .ver{color:transparent}

@@ -8,13 +8,14 @@ import {nameHTML, optionAliasesHTML, trackStoryHTML, courseNoteHTML} from './rea
 import {createAudio} from './audio.js';
 import {flatDisc} from './flat.js';
 import {createWaveform} from './waveform.js';
-import {wordAnswerHTML, createWordPeek} from './word-peek.js';
+import {wordAnswerHTML, segmentWords, createWordPeek} from './word-peek.js';
 import {t as tr, join} from './i18n.js';
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 const clock = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 export function createTrain(root, ctx) {
-  const peeks = createWordPeek(root);
+  const peeks = createWordPeek(root, {scope: '.hint'});
+  let recall = null;   // 正在“凭记忆写回”时为 {key}；只是界面状态，不存档
   const playback = createAudio();
   const audio = playback.element;
   const queue = new RandomQueue();
@@ -230,7 +231,7 @@ export function createTrain(root, ctx) {
     if (!round) return;
     peeks.hide();
     cancelAnimationFrame(raf); raf = 0;
-    root.dataset.phase = round.phase;
+    root.dataset.phase = round.phase; recall = null; delete root.dataset.kb;
     root.innerHTML = `<div class="tr">${head()}${round.phase === 'answer' ? answerHTML() : feedbackHTML()}</div>`;
     peeks.sync();
     wave = root.querySelector('.g-wave');
@@ -323,22 +324,21 @@ export function createTrain(root, ctx) {
   const optionLabel = (key, value) => value === NOT_HEARD ? tr('没听出') : key === 'style' ? (M.catalog.styles.find(s => s.id === value)?.label || value) : value;
   function feedbackHTML() {
     const d = round.done[round.done.length - 1], t = d.track, g = M.ringOf.get(t.id), band = M.bands[g.band], cover = M.coverOf(t);
-    const wrong = d.result.fields.filter(f => !f.isCorrect), mates = M.spokeMates(t).slice(0, 6), last = round.done.length >= round.size;
+    const wrong = d.result.fields.filter(f => !f.isCorrect), mates = M.spokeMates(t).slice(0, 6);
     const grew = d.cut.after.some((v, i) => v > d.cut.before[i] + .004);
-    return `<div class="fb" data-all="${wrong.length ? 0 : 1}">
+    return `<div class="fb" data-all="${wrong.length ? 0 : 1}" data-mode="${wrong.length && !pendingFix(d) ? 'settled' : 'look'}">
         <div class="fb-main">
           <p class="fb-verdict" aria-live="polite">${wrong.length ? verdictText(d) : tr('四项全对') + (grew ? tr('，这一圈往前刻了一段') : '')}</p>
-          <div class="fb-year">${t.year}</div>
-          <h2>${nameHTML(t, 'song', M.titleOf(t))}</h2>
-          <div class="fb-meta name-meta"><p>${nameHTML(t, 'artist')}</p><p>${nameHTML(t, 'style')}</p><p>${join(M.lectureIds(t).map(id => tr('第 {l} 讲', {l: id})))}</p></div>
+          ${slotHTML(t, 'year', 'div', 'fb-year', d)}
+          ${slotHTML(t, 'song', 'h2', '', d)}
+          <div class="fb-meta name-meta">${slotHTML(t, 'artist', 'p', '', d)}${slotHTML(t, 'style', 'p', '', d)}<p>${join(M.lectureIds(t).map(id => tr('第 {l} 讲', {l: id})))}</p></div>
           <ul class="fb-rows">${d.result.fields.map(f => f.isCorrect
             ? `<li data-ok="1"><span class="k">${M.FIELD_NAMES[f.key]}</span><span class="is">${esc(optionLabel(f.key, f.correct))}</span><span class="tick" aria-label="${tr('对')}">✓</span></li>`
             : fixRowHTML(d, f)).join('')}</ul>
-          ${fixRuleHTML(d, last)}
-          ${courseNoteHTML(t, 'course-note fb-note')}
-          ${trackStoryHTML(t, 'fb-story')}
+          ${wrong.length ? `<p class="fix-rule">${ruleText(d)}</p>` : ''}
+          <div class="fb-ctx">${courseNoteHTML(t, 'course-note fb-note')}${trackStoryHTML(t, 'fb-story')}</div>
         </div>
-        <aside class="fb-side">
+        <aside class="fb-side fb-ctx">
           ${cover ? `<img class="fb-cover" data-shape="${cover.shape}" src="${cover.url}" alt="${tr('{s} 的封面', {s: esc(t.song)})}" width="${cover.w}" height="${cover.h}"><p class="fb-cover-caption">${esc(M.coverLabel(cover))}</p>` : ''}
           <div class="fb-where">
             <div class="fb-disc" id="fbDisc"></div>
@@ -347,62 +347,182 @@ export function createTrain(root, ctx) {
           </div>
           <dl class="fb-lanes" aria-label="${tr('这一圈的四道刻纹')}">${M.KEYS.map((k, i) => `<div><dt>${M.FIELD_NAMES[k]}</dt><dd><span class="lane-bar" style="--v:${d.cut.before[i]}" data-to="${d.cut.after[i]}"></span></dd></div>`).join('')}</dl>
         </aside>
-        <footer class="tr-foot"><span class="keys">${keysText(d)}</span><button class="next" data-act="next" data-pending="${pendingFix(d) ? 1 : 0}">${nextLabel(d, last)}${nextKbd(d)}</button></footer>
+        <footer class="tr-foot">${footHTML(d)}</footer>
       </div>`;
   }
 
-  /* ---------- 当场订正：看一眼 → 盖住 → 凭记忆写一遍 → 核对，写错重写，可以跳过 ----------
+  /* ---------- 当场订正：看 → 合上 → 在原处写回 ----------
+     “看”：标签照常展示答案，红笔圈出写错的项。
+     “写回”：写错的项从标签上褪去墨迹，只留下按词划好的格线（版面、字号、层级都不变）；
+       正在写的那一项就在原来的位置、用原来的字号写，写对了墨迹落回去，自动换到下一项；
+       写错时答案以淡红色出现在格子里，一落笔就消失。故事、封面、辐位这些会顺带说出答案的内容暂时退到雾里。
      订正不改成绩、不进记忆统计；只记在这一轮里，结果页会标出订正过的项。 */
   const PEN = '<svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path d="M8 22 C6 8 40 3 62 4 C88 6 97 14 94 23 C90 35 52 38 30 36 C12 34 4 28 10 17" pathLength="1"/></svg>';
+  const FIX_ORDER = ['year', 'song', 'artist', 'style'];   // 按标签上从上到下的顺序写
   const fixFor = result => { const w = result.fields.filter(f => !f.isCorrect); return w.length ? Object.fromEntries(w.map(f => [f.key, {state: 'todo', tries: 0}])) : null; };
   const pendingFix = d => d.fix ? Object.values(d.fix).filter(x => x.state !== 'done').length : 0;
+  const pendingKeys = d => d.fix ? FIX_ORDER.filter(k => d.fix[k] && d.fix[k].state !== 'done') : [];
+  const current = () => round?.phase === 'feedback' ? round.done[round.done.length - 1] : null;
+  const answerOf = (t, key) => key === 'year' ? String(t.year) : key === 'style' ? M.styleOf(t).label : String(t[key]);   // 歌名只写歌名本身，版本说明不算答案
   // 英文里「next song」单独出现时要大写开头
-  const nextLabel = (d, last) => { const s = (pendingFix(d) ? tr('不订正，') : '') + tr(last ? '看这一轮' : '下一首'); return s.charAt(0).toUpperCase() + s.slice(1); };
-  // 还有没订正的项时，Enter 在订正框里是「核对」，跳过要按 Shift+Enter；按钮上就标这个组合键
-  // 订正说明、页脚提示跟着状态走：还有没订正的项时才提订正；末题时「下一首」换成「看这一轮」；触屏说按钮、键盘说按键
+  const nextLabel = (d, last) => { const s = (pendingFix(d) ? tr('跳过，') : '') + tr(last ? '看这一轮' : '下一首'); return s.charAt(0).toUpperCase() + s.slice(1); };
+  const fieldList = keys => join(keys.map(k => M.FIELD_NAMES[k]));
+  // 触屏说按钮，键盘说按键
   const touch = () => matchMedia('(pointer:coarse)').matches;
-  const fixRuleHTML = (d, last) => !pendingFix(d) ? '' : `<p class="fix-rule">${tr(touch() ? (last ? '看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，点「核对」。写错要重写；也可以不订正，点「不订正，看这一轮」。' : '看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，点「核对」。写错要重写；也可以不订正，点「不订正，下一首」。') : (last ? '看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，按 Enter 核对。写错要重写；也可以不订正，按 Shift+Enter 直接看这一轮。' : '看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，按 Enter 核对。写错要重写；也可以不订正，按 Shift+Enter 直接下一首。'))}</p>`;
-  const keysText = d => pendingFix(d) ? tr('订正框里 <kbd>Enter</kbd> 核对 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 跳过订正') : tr('空格 再听 · Enter 继续');
-  const nextKbd = d => pendingFix(d) ? '<kbd class="kbd-combo">Shift+Enter</kbd>' : '<kbd>Enter</kbd>';
-  const verdictText = d => { const n = pendingFix(d), all = Object.keys(d.fix || {}).length;
-    return n ? tr('订正 {f}', {f: join(d.result.fields.filter(f => !f.isCorrect).map(f => M.FIELD_NAMES[f.key]))}) + (n < all ? tr(' · 还差 {n} 项', {n}) : '') : tr('订正完成 · {n} 项都凭记忆写对了', {n: all}); };
+  function verdictText(d) {
+    const all = Object.keys(d.fix || {}).length, left = pendingKeys(d);
+    if (!left.length) return tr('订正完成 · {n} 项都凭记忆写回了', {n: all});
+    if (recall) return tr('凭记忆写回 · 第 {i} / {n} 项', {i: all - left.length + 1, n: all});
+    return tr('{n} 项要订正：{f}', {n: all, f: fieldList(FIX_ORDER.filter(k => d.fix[k]))}) + (left.length < all ? tr(' · 还差 {n} 项', {n: left.length}) : '');
+  }
+  const ruleText = d => pendingFix(d)
+    ? tr('先看清红笔圈出的答案。开始后，它们会从标签上褪去，只留下按词划好的格线，你在原来的位置凭记忆写回去。卡住时可以点下方的小格，偷看一个词 1.2 秒。')
+    : tr('订正过的项已经写回标签。');
+
+  // 标签上的一项：墨迹按词拆开，褪去时每个词留下一条格线，所以版面、字数和层级都不变
+  function inkHTML(text, perChar) {
+    let i = 0;
+    const parts = perChar ? [...String(text)].map(c => ({text: c, word: /\S/.test(c)})) : segmentWords(text);
+    return parts.map(p => p.word ? `<span class="w" style="--i:${i++}">${esc(p.text)}</span>` : esc(p.text)).join('');
+  }
+  function slotHTML(t, key, tag, cls, d) {
+    const main = answerOf(t, key), aliases = key === 'year' ? [] : M.aliasesOf(t, key, [main]), fx = d.fix?.[key];
+    return `<${tag} class="${cls ? cls + ' ' : ''}slot" data-slot="${key}"${fx ? ` data-fixable="1"${fx.state === 'done' ? ' data-state="done"' : ''}` : ''}>`
+      + `<span class="ink"><span class="name-main">${inkHTML(main, key === 'year')}</span>`
+      // 同名歌的版本说明：不是答案，始终留在标签上
+      + (key === 'song' && M.titleOf(t) !== main ? `<span class="ver">${esc(M.titleOf(t).slice(main.length))}</span>` : '')
+      + (aliases.length ? `<small class="name-aliases" title="${tr('其它可用写法')}">${inkHTML(aliases.join(' / '))}</small>` : '')
+      + `</span></${tag}>`;
+  }
+  function ioHTML(d, key) {
+    const t = d.track, fx = d.fix[key], name = M.FIELD_NAMES[key], answer = answerOf(t, key);
+    return `<span class="slot-io">
+        <input class="slot-in" data-fix="${key}" type="text" maxlength="200" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+          ${key === 'year' ? 'inputmode="numeric"' : ''} ${fx.state === 'retry' ? `placeholder="${esc(answer)}"` : ''}
+          aria-label="${tr(touch() ? '凭记忆写出{f}，再点「核对」' : '凭记忆写出{f}，回车核对', {f: name})}">
+        <span class="hint"><span class="hint-k">${name}</span><span class="hint-w" aria-label="${tr('提示：按词偷看')}">${wordAnswerHTML(key === 'year' ? [...answer].join(' ') : answer)}</span>
+          <span class="hint-msg" role="status">${fx.state === 'retry' ? tr('不对。答案淡淡写在格子里了，落笔它就消失（第 {n} 次）', {n: fx.tries}) : tr('卡住了就点一格，偷看一个词 1.2 秒')}</span></span>
+      </span>`;
+  }
+  function statusHTML(fx, active) {
+    if (fx.state === 'done') return `<b>✓</b> ${tr('写回了')}${fx.tries > 1 ? `<small>${tr('写了 {n} 次', {n: fx.tries})}</small>` : ''}`;
+    if (active) return tr('正在写…');
+    return tr(fx.state === 'retry' ? '再写一次' : '待写');
+  }
   function fixRowHTML(d, f) {
-    const fx = d.fix?.[f.key] || {state: 'todo', tries: 0}, done = fx.state === 'done', ph = f.key === 'year' ? tr('写出四位年份') : tr('写出{f}', {f: M.FIELD_NAMES[f.key]});
+    const fx = d.fix?.[f.key] || {state: 'todo', tries: 0}, done = fx.state === 'done';
     return `<li data-ok="0" data-key="${f.key}" data-fix="${fx.state}">
       <span class="k">${M.FIELD_NAMES[f.key]}</span><span class="was"><s>${esc(optionLabel(f.key, f.chosen))}</s></span>
-      <span class="is pen"><span class="ans">${wordAnswerHTML(optionLabel(f.key, f.correct))}</span>${PEN}</span>
-      <div class="fix">${done
-        ? `<span class="fix-ok"><b>✓</b> ${tr('已订正：')}${esc(fx.text || '')}${fx.tries > 1 ? `<small>${tr('写了 {n} 次', {n: fx.tries})}</small>` : ''}</span>`
-        : `<input data-fix="${f.key}" type="text" maxlength="200" enterkeyhint="done" autocomplete="off" autocapitalize="off" spellcheck="false" ${f.key === 'year' ? 'inputmode="numeric"' : ''}
-            placeholder="${ph}" aria-label="${tr(touch() ? '订正{f}：凭记忆写一遍，再点「核对」' : '订正{f}：凭记忆写一遍，按 Enter 核对', {f: M.FIELD_NAMES[f.key]})}">
-           <button class="fix-check" data-act="fix" data-key="${f.key}">${tr('核对')}</button>
-           <span class="fix-msg" role="status">${fx.tries ? tr('不对，再看一眼，重写一遍（已写 {n} 次）', {n: fx.tries}) : ''}</span>`}</div></li>`;
+      <span class="cell pen"><span class="is">${esc(optionLabel(f.key, f.correct))}</span><span class="st">${statusHTML(fx, false)}</span>${PEN}</span>
+      ${done ? `<span class="row-go" data-done="1">✓ ${tr('写回了')}</span>` : `<button class="row-go" data-act="recall" data-key="${f.key}">${tr('写回')}<span aria-hidden="true"> →</span></button>`}</li>`;
   }
-  function checkFix(key) {
+  // 还有没订正的项时，跳过要按 Shift+Enter；按钮上就标这个组合键
+  function footHTML(d) {
+    const last = round.done.length >= round.size, n = pendingFix(d);
+    if (recall) return `<span class="keys">${tr('Enter 核对 · Esc 先不写 · Shift+Enter 跳过 · 空格 再听')}</span><div class="acts">
+        <button class="ghost" data-act="leave">${tr('先不写了')}<kbd>Esc</kbd></button>
+        <button class="primary" data-act="check">${tr('核对')}<kbd>Enter</kbd></button></div>`;
+    if (n) return `<span class="keys">${tr('Enter 开始写回 · Shift+Enter 跳过 · 空格 再听')}</span><div class="acts">
+        <button class="next ghost" data-act="next" data-pending="1">${nextLabel(d, last)}<kbd class="kbd-combo">Shift+Enter</kbd></button>
+        <button class="primary" data-act="recall">${tr('凭记忆写回 {n} 项', {n})}<kbd>Enter</kbd></button></div>`;
+    return `<span class="keys">${tr('空格 再听 · Enter 继续')}</span><div class="acts"><button class="next primary" data-act="next" data-pending="0">${nextLabel(d, last)}<kbd>Enter</kbd></button></div>`;
+  }
+
+  // 只更新标签上的局部，不整页重画：动画连贯，输入框也不会丢焦点（手机键盘不会收起再弹出）
+  function paintChrome(d) {
+    const fb = root.querySelector('.fb'); if (!fb) return;
+    fb.querySelector('.fb-verdict').textContent = verdictText(d);
+    const rule = fb.querySelector('.fix-rule'); if (rule) rule.textContent = ruleText(d);
+    fb.querySelector('.tr-foot').innerHTML = footHTML(d);
+    for (const li of fb.querySelectorAll('.fb-rows li[data-key]')) {
+      const key = li.dataset.key, fx = d.fix[key], active = recall?.key === key;
+      li.dataset.fix = fx.state; li.toggleAttribute('data-active', active);
+      li.querySelector('.st').innerHTML = statusHTML(fx, active);
+      const go = li.querySelector('.row-go');
+      if (fx.state === 'done' && go?.tagName === 'BUTTON') go.outerHTML = `<span class="row-go" data-done="1">✓ ${tr('写回了')}</span>`;
+    }
+    for (const el of fb.querySelectorAll('.fb-ctx')) el.inert = !!recall;
+    saveUI();
+  }
+  function setSlot(key, state) {
+    const d = current(), slot = root.querySelector(`.fb [data-slot="${key}"]`); if (!d || !slot) return null;
+    if (state === 'writing') {
+      if (!slot.querySelector('.slot-io')) {
+        slot.style.minHeight = slot.offsetHeight + 'px';     // 锁住原来的高度，换成输入框时下面的内容不跳
+        slot.insertAdjacentHTML('beforeend', ioHTML(d, key));
+      }
+    } else { slot.querySelector('.slot-io')?.remove(); slot.style.minHeight = ''; }
+    if (state) slot.dataset.state = state; else delete slot.dataset.state;
+    slot.querySelector('.ink').setAttribute('aria-hidden', state === 'blank' || state === 'writing' ? 'true' : 'false');
+    return slot;
+  }
+  function focusSlot(key) {
+    const slot = root.querySelector(`.fb [data-slot="${key}"]`), input = slot?.querySelector('.slot-in'); if (!input) return;
+    input.focus({preventScroll: true});
+    keepInView(slot);
+  }
+  // 手机键盘弹起后可视区域变小：把正在写的那一项留在顶栏和键盘之间
+  function keepInView(slot = root.querySelector('.slot[data-state=writing]')) {
+    if (!slot) return;
+    const vv = window.visualViewport, h = vv ? vv.height : innerHeight, top = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--top')) || 56) + 12;
+    const r = slot.getBoundingClientRect(), want = Math.max(top, Math.min(h * .3, h - r.height - 24));
+    if (r.top < top || r.bottom > h - 16) scrollBy({top: r.top - want, behavior: ctx.reduced() ? 'auto' : 'smooth'});
+  }
+  window.visualViewport?.addEventListener('resize', () => { if (recall && root.dataset.kb) keepInView(); });
+
+  function startRecall(key) {
+    const d = current(); if (!d?.fix || operating) return;
+    const left = pendingKeys(d); if (!left.length) return;
     peeks.hide();
-    const d = round?.done[round.done.length - 1]; if (!d?.fix?.[key] || round.phase !== 'feedback') return;
-    const row = root.querySelector(`.fb-rows li[data-key="${key}"]`), input = row?.querySelector('input'), fx = d.fix[key];
+    const fb = root.querySelector('.fb');
+    if (!recall) {
+      recall = {key: null};
+      fb.dataset.mode = 'recall';
+      for (const k of left) setSlot(k, 'blank');
+      if (ys.open) renderSheet();
+    }
+    activate(left.includes(key) ? key : left[0]);
+  }
+  function activate(key) {
+    const d = current(), prev = recall.key;
+    if (prev === key) return focusSlot(key);
+    recall.key = key;
+    setSlot(key, 'writing');
+    focusSlot(key);                       // 先把焦点交给新格子，再拆掉旧的，手机键盘不会收起
+    if (prev && d.fix[prev].state !== 'done') setSlot(prev, 'blank');
+    paintChrome(d); peeks.sync();
+  }
+  function leaveRecall(settled = false) {
+    const d = current(); if (!d || !recall) return;
+    peeks.hide();
+    const fb = root.querySelector('.fb');
+    recall = null;
+    for (const k of FIX_ORDER) if (d.fix[k]) setSlot(k, d.fix[k].state === 'done' ? 'done' : null);
+    fb.dataset.mode = settled ? 'settled' : 'look';
+    paintChrome(d); peeks.sync();
+    if (ys.open) renderSheet();
+    root.querySelector(settled ? '.tr-foot .next' : '.tr-foot [data-act=recall]')?.focus({preventScroll: true});
+  }
+  function checkFix(key = recall?.key) {
+    peeks.hide();
+    const d = current(); if (!d?.fix?.[key] || !recall) return;
+    const slot = root.querySelector(`.fb [data-slot="${key}"]`), input = slot?.querySelector('.slot-in'), fx = d.fix[key];
     if (!input) return;
     if (!input.value.trim()) { input.focus(); return; }
     fx.tries++;
     if (checkField(d.track, key, input.value, M.catalog.styles, M.catalog.tracks)) {
       fx.state = 'done'; fx.text = input.value.trim();
-      row.dataset.fix = 'done'; row.classList.remove('typing');
-      row.querySelector('.fix').innerHTML = `<span class="fix-ok"><b>✓</b> ${tr('已订正：')}${esc(fx.text)}${fx.tries > 1 ? `<small>${tr('写了 {n} 次', {n: fx.tries})}</small>` : ''}</span>`;
-      const nextInput = root.querySelector('.fb-rows input[data-fix]');
-      (nextInput || root.querySelector('.next'))?.focus({preventScroll: true});
+      const next = pendingKeys(d)[0];
+      if (next) { activate(next); setSlot(key, 'done'); }
+      else { setSlot(key, 'done'); leaveRecall(true); }
     } else {
-      fx.state = 'retry'; row.dataset.fix = 'retry';
-      input.value = ''; row.classList.remove('typing');
-      row.querySelector('.fix-msg').textContent = tr('不对，再看一眼，重写一遍（已写 {n} 次）', {n: fx.tries});
-      input.classList.remove('shake'); void input.offsetWidth; input.classList.add('shake');
+      fx.state = 'retry';
+      input.value = ''; input.placeholder = answerOf(d.track, key);
+      slot.querySelector('.hint-msg').textContent = tr('不对。答案淡淡写在格子里了，落笔它就消失（第 {n} 次）', {n: fx.tries});
+      slot.classList.remove('shake'); void slot.offsetWidth; slot.classList.add('shake');
       input.focus();
     }
-    const v = root.querySelector('.fb-verdict'); if (v) v.textContent = verdictText(d);
-    { const rule = root.querySelector('.fix-rule'), keys = root.querySelector('.tr-foot .keys');
-      if (rule && !pendingFix(d)) rule.remove(); if (keys) keys.innerHTML = keysText(d); }
-    const nb = root.querySelector('.next'); if (nb) { nb.dataset.pending = pendingFix(d) ? '1' : '0'; nb.firstChild.textContent = nextLabel(d, round.done.length >= round.size); nb.querySelector('kbd')?.replaceWith(Object.assign(document.createElement('template'), {innerHTML: nextKbd(d)}).content); }
-    peeks.sync(); saveDraft();
+    paintChrome(d); peeks.sync(); saveDraft();
   }
   function afterFeedback() {
     const d = round.done[round.done.length - 1];
@@ -412,8 +532,7 @@ export function createTrain(root, ctx) {
     mini.cut(d.track.id, d.cut.before, 1);
     setTimeout(() => { mini.cut(d.track.id, d.cut.after, ctx.reduced() ? 1 : 900);
       for (const n of root.querySelectorAll('.fb-lanes .lane-bar')) n.style.setProperty('--v', n.dataset.to); }, ctx.reduced() ? 0 : 420);
-    const firstFix = root.querySelector('.fb-rows input[data-fix]');
-    (firstFix && !matchMedia('(pointer:coarse)').matches ? firstFix : root.querySelector('.next'))?.focus({preventScroll: true});
+    root.querySelector('.tr-foot .primary')?.focus({preventScroll: true});
   }
 
   /* ---------- 年份卡片：做题时随时翻看 ----------
@@ -442,7 +561,7 @@ export function createTrain(root, ctx) {
     const el = sheetEl(), locked = round.phase === 'answer';
     if (locked) ys.tab = 'round';
     const roundIds = [...new Set(round.done.map(d => d.track.id))], justId = !locked ? round.done[round.done.length - 1]?.track.id : null;
-    const hidden = locked ? round.question.track.id : null;   // 当前这首绝不出现
+    const hidden = locked ? round.question.track.id : recall ? round.done[round.done.length - 1]?.track.id : null;   // 当前这首绝不出现；凭记忆写回时也先藏起来
     const ids = (ys.tab === 'all' ? M.tracks.filter(t => M.hasRecord(t.id)).map(t => t.id) : roundIds).filter(id => id !== hidden);
     const set = new Set(ids), body = [];
     for (const b of M.bands) {
@@ -458,7 +577,7 @@ export function createTrain(root, ctx) {
         </article>`).join('')}</div></section>`);
     }
     const note = tr(locked ? (roundIds.length ? '这一首还没提交：这里只放本轮已经答过的歌。累计的卡片在提交后可以看。' : '这一轮还没有答过的歌。提交第一首后，它会按年份出现在这里。')
-      : ys.tab === 'all' ? '听辨过的全部歌曲，按年份排。' : '这一轮答过的歌，按年份排。');
+      : recall ? '正在凭记忆写回：这一首先不放进卡片，写完就回来。' : ys.tab === 'all' ? '听辨过的全部歌曲，按年份排。' : '这一轮答过的歌，按年份排。');
     const top = el.querySelector('.ys-body')?.scrollTop || 0, sameTab = el.dataset.tab === ys.tab;
     el.dataset.tab = ys.tab;
     el.innerHTML = `<div class="ys-scrim"></div><div class="ys-panel">
@@ -528,18 +647,31 @@ export function createTrain(root, ctx) {
     else if (act === 'back') ctx.exit();
     else if (act === 'end') finish();
     else if (act === 'cards') toggleSheet();
-    else if (act === 'fix') checkFix(e.target.closest('[data-key]').dataset.key);
+    else if (act === 'recall') startRecall(e.target.closest('[data-key]')?.dataset.key);
+    else if (act === 'check') checkFix();
+    else if (act === 'leave') leaveRecall();
+    else if (round.phase === 'feedback' && !e.target.closest('.peek-word,input')) {
+      // 点写错的那一行、或标签上褪成格线的一项，就从那一项开始写
+      const target = e.target.closest('.fb-rows li[data-ok="0"], .slot[data-fixable]');
+      const key = target?.dataset.key || target?.dataset.slot;
+      if (key && current()?.fix?.[key]?.state !== 'done' && (recall || target.matches('li'))) startRecall(key);
+    }
   });
   // 挂在 document 上：焦点在页面任何地方（甚至没有焦点）时，数字键都能直接作答
-  // 开始写订正时盖住答案；清空就重新露出来，可以再看一眼
+  // 写回时：一落笔，淡红色的答案就从格子里消失（placeholder 本身的行为）；偷看的词也立刻收起
   root.addEventListener('input', e => {
-    const fix = e.target.closest('input[data-fix]');
-    if (fix) { fix.closest('li').classList.toggle('typing', !!fix.value.trim()); peeks.sync(); return; }
+    const fix = e.target.closest('input[data-fix]'); if (!fix) return;
+    peeks.hide();
+    const msg = fix.closest('.slot')?.querySelector('.hint-msg');
+    if (msg && fix.value) msg.textContent = tr(touch() ? '写完点「核对」；卡住了就点一格，偷看一个词 1.2 秒' : '写完按回车核对；卡住了就点一格，偷看一个词 1.2 秒');
   });
+  // 手机上正在写时收起底栏：键盘上的“完成”就是核对，底栏只会挡住正在写的那一行
+  root.addEventListener('focusin', e => { if (e.target.matches?.('.slot-in')) root.dataset.kb = '1'; });
+  root.addEventListener('focusout', e => { if (e.target.matches?.('.slot-in') && !e.relatedTarget?.matches?.('.slot-in')) delete root.dataset.kb; });
   root.addEventListener('keydown', e => {
     const fix = e.target.closest?.('input[data-fix]'); if (!fix || e.isComposing || e.keyCode === 229) return;
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); checkFix(fix.dataset.fix); }
-    else if (e.key === 'Escape') { e.preventDefault(); fix.blur(); root.querySelector('.next')?.focus(); }
+    else if (e.key === 'Escape') { e.preventDefault(); leaveRecall(); }
   });
   root.addEventListener('input', e => {
     const input = e.target.closest('[data-field]');
@@ -569,7 +701,15 @@ export function createTrain(root, ctx) {
     const digit = /^(?:Digit|Numpad)([0-4])$/.exec(e.code || '')?.[1];
     const k = digit ?? e.key;
     if (k === ' ') { if (!e.target.closest('.tr-back,.tr-end,.tr-cards,.submit,.next,.g-play')) { toggle(); e.preventDefault(); } return; }
-    if (round.phase === 'feedback') { if (k === 'Enter' && !e.target.closest('button')) { next(); e.preventDefault(); } return; }
+    if (round.phase === 'feedback') {
+      if (k === 'Escape' && recall) { leaveRecall(); e.preventDefault(); }
+      else if (k === 'Enter' && !e.target.closest('button')) {
+        const d = current();
+        if (recall) focusSlot(recall.key); else if (pendingFix(d)) startRecall(); else next();
+        e.preventDefault();
+      }
+      return;
+    }
     if (round.questionType === 'written') {
       if ((k === 'ArrowLeft' || k === 'ArrowRight') && !e.shiftKey) { focusCol((round.col + (k === 'ArrowRight' ? 1 : 3)) % 4); e.preventDefault(); }
       else if (k === '0' && !e.shiftKey) { writtenUnknown(round.col, false, true); e.preventDefault(); }

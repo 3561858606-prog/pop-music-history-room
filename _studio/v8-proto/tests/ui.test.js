@@ -115,6 +115,9 @@ await test('Shift+Enter 跳过订正，保留已订正项，末题直接结算',
  let saved=M.roundById(id);
  assert(saved.entries[0].fix.year.state==='todo'&&saved.entries[0].fix.song.state==='todo','初次提交没保存订正状态');
  await train.discard(); assert(train.restore(saved),'不能恢复订正');
+ // 订正 2.0：先看答案，按「凭记忆写回」后，年份格在原位出现
+ assert(!fixture.querySelector('input[data-fix]'),'没开始写回就出现作答格');
+ fixture.querySelector('.tr-foot [data-act=recall]').click();
  const year=fixture.querySelector('input[data-fix=year]');
  year.value=String(M.byId.get(firstTrack).year);
  enter(year);
@@ -140,6 +143,7 @@ await test('Shift+Enter 跳过订正，保留已订正项，末题直接结算',
  await train.flush();
  const lastTrack=M.roundById(id).trackId;
  await answerWritten(lastTrack,'year');
+ fixture.querySelector('.tr-foot [data-act=recall]').click();
  enter(fixture.querySelector('input[data-fix=year]'),{shiftKey:true});
  await until(()=>completed);
  sourceRound=completed;
@@ -163,6 +167,7 @@ await test('错题重练独立记录，每首只练一次，恢复后保持范�
  await answerWritten(expected[0],'year');
  const saved=await train.discard();
  assert(train.restore(saved),'未恢复重练');
+ fixture.querySelector('.tr-foot [data-act=recall]').click();
  enter(fixture.querySelector('input[data-fix=year]'),{shiftKey:true});
  await train.flush();
  assert(M.roundById(id).trackId===expected[1],'恢复后抽到其他歌曲');

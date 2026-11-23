@@ -186,7 +186,16 @@ export const KO = {
   '上手指南 · 30 秒': '시작 안내 · 30초', '这张母盘怎么用': '이 레코드 사용법', '第 {i} 步，共 {n} 步': '{n}단계 중 {i}단계',
   '按歌名、年份、风格搜索': '곡명, 연도, 장르로 검색', '回看每一轮的订正': '판마다 교정 다시 보기', '只存在这台浏览器；换网址或换设备时，在「历史」导出，再到新地方导入': '이 브라우저에만 저장됩니다. 주소나 기기를 바꿀 때는 ‘기록’에서 내보내고 새 곳에서 가져오세요',
   '之后点右上角「?」可以再看，也能看更新、小设计和反馈': '오른쪽 위 ‘?’에서 다시 보거나 업데이트, 작은 디자인, 문의를 볼 수 있습니다', '开始转盘': '레코드 돌리기', '下一步 →': '다음 →',
-  '准备好了，就从这里开始一轮': '준비되면 여기서 한 판 시작', '网站有更新': '사이트 업데이트', '{d}更新': '{d} 업데이트', '看看更新': '업데이트 보기', '你可能没注意到 · {a} / {b}': '놓쳤을 수도 있는 것 · {a} / {b}', '全部小设计 →': '작은 디자인 전체 →'
+  '准备好了，就从这里开始一轮': '준비되면 여기서 한 판 시작', '网站有更新': '사이트 업데이트', '{d}更新': '{d} 업데이트', '看看更新': '업데이트 보기', '你可能没注意到 · {a} / {b}': '놓쳤을 수도 있는 것 · {a} / {b}', '全部小设计 →': '작은 디자인 전체 →',
+  // 当场订正 2.0：凭记忆写回（2026-11-23）
+  '跳过，': '건너뛰고 ', '{n} 项要订正：{f}': '{n}개 고쳐 쓰기: {f}', '凭记忆写回 · 第 {i} / {n} 项': '기억으로 다시 쓰기 · {i} / {n}', '订正完成 · {n} 项都凭记忆写回了': '교정 완료 · {n}개 모두 기억으로 다시 썼습니다',
+  '先看清红笔圈出的答案。开始后，它们会从标签上褪去，只留下按词划好的格线，你在原来的位置凭记忆写回去。卡住时可以点下方的小格，偷看一个词 1.2 秒。': '빨간 동그라미 친 정답을 먼저 잘 보세요. 시작하면 정답이 라벨에서 사라지고 단어별 밑줄만 남습니다. 그 자리에 기억으로 다시 쓰세요. 막히면 아래 작은 칸을 눌러 단어 하나를 1.2초 볼 수 있습니다.',
+  '订正过的项已经写回标签。': '고친 항목은 라벨에 다시 써졌습니다.', '凭记忆写出{f}，再点「核对」': '{f}: 기억으로 쓰고 「확인」을 누르세요', '凭记忆写出{f}，回车核对': '{f}: 기억으로 쓰고 Enter로 확인', '提示：按词偷看': '힌트: 단어별로 엿보기',
+  '不对。答案淡淡写在格子里了，落笔它就消失（第 {n} 次）': '틀렸습니다. 칸에 정답이 흐리게 보이고, 쓰기 시작하면 사라집니다 ({n}번째)', '卡住了就点一格，偷看一个词 1.2 秒': '막히면 한 칸을 눌러 단어 하나를 1.2초 엿보세요',
+  '写回了': '다시 씀', '正在写…': '쓰는 중…', '再写一次': '한 번 더', '待写': '쓸 차례', '写回': '다시 쓰기', '先不写了': '나중에 쓰기', '凭记忆写回 {n} 项': '기억으로 {n}개 다시 쓰기',
+  'Enter 核对 · Esc 先不写 · Shift+Enter 跳过 · 空格 再听': 'Enter 확인 · Esc 나중에 · Shift+Enter 건너뛰기 · 스페이스 다시 듣기', 'Enter 开始写回 · Shift+Enter 跳过 · 空格 再听': 'Enter 다시 쓰기 시작 · Shift+Enter 건너뛰기 · 스페이스 다시 듣기',
+  '正在凭记忆写回：这一首先不放进卡片，写完就回来。': '기억으로 다시 쓰는 중이라 이 곡은 잠시 카드에서 뺐습니다. 다 쓰면 돌아옵니다.',
+  '写完按回车核对；卡住了就点一格，偷看一个词 1.2 秒': '다 쓰면 Enter로 확인하세요. 막히면 한 칸을 눌러 단어 하나를 1.2초 엿보세요', '写完点「核对」；卡住了就点一格，偷看一个词 1.2 秒': '다 쓰면 「확인」을 누르세요. 막히면 한 칸을 눌러 단어 하나를 1.2초 엿보세요'
 };
 
 export const EN = {
@@ -365,5 +374,14 @@ export const EN = {
   '上手指南 · 30 秒': 'Quick guide · 30 seconds', '这张母盘怎么用': 'How this record works', '第 {i} 步，共 {n} 步': 'Step {i} of {n}',
   '按歌名、年份、风格搜索': 'search by song, year or style', '回看每一轮的订正': 'review each round’s corrections', '只存在这台浏览器；换网址或换设备时，在「历史」导出，再到新地方导入': 'kept in this browser only; when switching address or device, export from History and import on the other side',
   '之后点右上角「?」可以再看，也能看更新、小设计和反馈': 'Reopen any time with “?” at the top right — updates, details and feedback live there too', '开始转盘': 'Spin the record', '下一步 →': 'Next →',
-  '准备好了，就从这里开始一轮': 'Ready? Start a round here', '网站有更新': 'Site updated', '{d}更新': 'Updated {d}', '看看更新': 'See what’s new', '你可能没注意到 · {a} / {b}': 'You might have missed · {a} / {b}', '全部小设计 →': 'All details →'
+  '准备好了，就从这里开始一轮': 'Ready? Start a round here', '网站有更新': 'Site updated', '{d}更新': 'Updated {d}', '看看更新': 'See what’s new', '你可能没注意到 · {a} / {b}': 'You might have missed · {a} / {b}', '全部小设计 →': 'All details →',
+  // Correction 2.0: write it back from memory (2026-11-23)
+  '跳过，': 'Skip, ', '{n} 项要订正：{f}': v => s(v.n, '1 to correct: {f}', '{n} to correct: {f}').replace('{f}', v.f), '凭记忆写回 · 第 {i} / {n} 项': 'Writing back from memory · {i} of {n}', '订正完成 · {n} 项都凭记忆写回了': v => s(v.n, 'Corrections done · 1 item written back from memory', 'Corrections done · all {n} written back from memory'),
+  '先看清红笔圈出的答案。开始后，它们会从标签上褪去，只留下按词划好的格线，你在原来的位置凭记忆写回去。卡住时可以点下方的小格，偷看一个词 1.2 秒。': 'Take a good look at the answers circled in red. When you start, they fade from the label and leave one line per word; write them back in place from memory. If you get stuck, tap a small box below to peek at one word for 1.2 seconds.',
+  '订正过的项已经写回标签。': 'Corrected items are back on the label.', '凭记忆写出{f}，再点「核对」': v => `Write the ${String(v.f).toLowerCase()} from memory, then tap Check`, '凭记忆写出{f}，回车核对': v => `Write the ${String(v.f).toLowerCase()} from memory, press Enter to check`, '提示：按词偷看': 'Hint: peek one word at a time',
+  '不对。答案淡淡写在格子里了，落笔它就消失（第 {n} 次）': 'Not quite. The answer is faintly in the box and disappears as you type (try {n})', '卡住了就点一格，偷看一个词 1.2 秒': 'Stuck? Tap a box to peek at one word for 1.2 seconds',
+  '写回了': 'Written back', '正在写…': 'Writing…', '再写一次': 'Try again', '待写': 'To write', '写回': 'Write back', '先不写了': 'Not now', '凭记忆写回 {n} 项': v => s(v.n, 'Write 1 back from memory', 'Write {n} back from memory'),
+  'Enter 核对 · Esc 先不写 · Shift+Enter 跳过 · 空格 再听': 'Enter check · Esc not now · Shift+Enter skip · Space listen again', 'Enter 开始写回 · Shift+Enter 跳过 · 空格 再听': 'Enter write back · Shift+Enter skip · Space listen again',
+  '正在凭记忆写回：这一首先不放进卡片，写完就回来。': 'You’re writing this song back from memory, so it’s hidden from the cards until you finish.',
+  '写完按回车核对；卡住了就点一格，偷看一个词 1.2 秒': 'Press Enter to check; stuck? tap a box to peek at one word for 1.2 seconds', '写完点「核对」；卡住了就点一格，偷看一个词 1.2 秒': 'Tap Check when done; stuck? tap a box to peek at one word for 1.2 seconds'
 };

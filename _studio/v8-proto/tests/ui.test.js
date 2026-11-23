@@ -1,5 +1,5 @@
 import * as M from '../js/model.js';
-import {createTrain} from '../js/train.js';
+import {createTrain, renderResult} from '../js/train.js';
 const out=document.querySelector('#results'), fixture=document.querySelector('#fixture'), results=[];
 const assert=(c,m)=>{if(!c)throw Error(m);};
 const until=async fn=>{for(let i=0;i<100;i++){if(fn())return;await new Promise(r=>setTimeout(r,20));}throw Error('等待超时');};
@@ -91,6 +91,101 @@ await test('年份卡片绑定 Y，Enter 不开关并保留填空输入',async()
  assert(press(song,'y',{code:'KeyY',isComposing:true})&&!opened(),'组字期间误开卡片');
  assert(!press(song,'¥',{code:'KeyY',altKey:true})&&opened(),'填空时 Alt+Y 没有打开卡片');
  assert(!press(document.querySelector('#yearSheet .ys-close'),'Escape')&&!opened(),'Esc 未能关闭卡片');
+});
+const enter = (target, options = {}) => target.dispatchEvent(new KeyboardEvent('keydown',
+ {key:'Enter',bubbles:true,cancelable:true,...options}));
+async function answerWritten(trackId, ...wrongFields) {
+ const track = M.byId.get(trackId);
+ for (const input of fixture.querySelectorAll('[data-field]')) {
+  const key = input.dataset.field;
+  const answer = key === 'style' ? M.styleOf(track).label : String(track[key]);
+  input.value = wrongFields.includes(key) ? '错误答案' : answer;
+  input.dispatchEvent(new Event('input',{bubbles:true}));
+ }
+ fixture.querySelector('[data-act=submit]').click();
+ await until(()=>fixture.dataset.phase==='feedback');
+ await train.flush();
+}
+let sourceRound;
+await test('Shift+Enter 跳过订正，保留已订正项，末题直接结算',async()=>{
+ completed=null; M.prefs.custom=3;
+ await train.start([1],'written');
+ const id=train.id(), first=M.roundById(id), firstTrack=first.trackId;
+ await answerWritten(firstTrack,'song','year');
+ let saved=M.roundById(id);
+ assert(saved.entries[0].fix.year.state==='todo'&&saved.entries[0].fix.song.state==='todo','初次提交没保存订正状态');
+ await train.discard(); assert(train.restore(saved),'不能恢复订正');
+ const year=fixture.querySelector('input[data-fix=year]');
+ year.value=String(M.byId.get(firstTrack).year);
+ enter(year);
+ await train.flush();
+ saved=M.roundById(id);
+ assert(saved.trackId===firstTrack&&saved.entries[0].fix.year.state==='done','Enter 没核对当前订正');
+ const song=fixture.querySelector('input[data-fix=song]');
+ song.value='没有核对的文本';
+ enter(song,{shiftKey:true,isComposing:true});
+ enter(song,{shiftKey:true,repeat:true});
+ assert(fixture.dataset.phase==='feedback','输入法组合或按住键误跳题');
+ enter(song,{shiftKey:true});
+ await train.flush();
+ saved=M.roundById(id);
+ assert(saved.phase==='answer'&&saved.trackId===first.queueIds.at(-1),'Shift+Enter 未进入原队列下一首');
+ assert(saved.entries[0].fix.year.state==='done'&&saved.entries[0].fix.song.tries===0,'跳过订正改动了订正记录');
+ const secondTrack=saved.trackId;
+ enter(fixture.querySelector('[data-field=song]'),{shiftKey:true});
+ await train.flush();
+ assert(M.roundById(id).trackId===secondTrack,'答题阶段误跳题');
+ await answerWritten(secondTrack);
+ enter(fixture.querySelector('[data-act=next]'),{shiftKey:true});
+ await train.flush();
+ const lastTrack=M.roundById(id).trackId;
+ await answerWritten(lastTrack,'year');
+ enter(fixture.querySelector('input[data-fix=year]'),{shiftKey:true});
+ await until(()=>completed);
+ sourceRound=completed;
+ assert(completed.entries.length===3&&completed.reason==='completed','末题未直接结算');
+ assert(M.reviewTrackIds(completed).join()===`${firstTrack},${lastTrack}`,'错题集合漏题或混入全对题');
+});
+await test('错题重练独立记录，每首只练一次，恢复后保持范围和题型',async()=>{
+ const expected=M.reviewTrackIds(sourceRound);
+ const duplicates={...sourceRound, entries:[...sourceRound.entries, sourceRound.entries[0], {...sourceRound.entries[0],id:'已移除的曲目'}]};
+ assert(M.reviewTrackIds(duplicates).join()===expected.join(),'重练重复曲目或包含已移除曲目');
+ assert(M.reviewTrackIds({...sourceRound,state:'active'}).length===0,'开放轮次不应进入重练');
+ assert(M.reviewTrackIds({...sourceRound,entries:[sourceRound.entries[1]]}).length===0,'全对轮次仍有错题');
+ assert(M.reviewTrackIds({...sourceRound,entries:[{...sourceRound.entries[0],
+  fix:{song:{state:'done'},year:{state:'done'}}}]}).length===1,'已订正的错题被过滤');
+ const before=JSON.stringify(M.roundById(sourceRound.id));
+ M.prefs.custom=1; M.prefs.questionType='choice'; completed=null;
+ assert(await train.startReview(duplicates),'未开始重练');
+ const id=train.id(), first=M.roundById(id);
+ assert(id!==sourceRound.id&&first.trackId===expected[0]&&first.questionType==='written'&&first.size===2,'使用了偏好或重复计入原轮次');
+ assert(first.review.sourceId===sourceRound.id&&first.review.trackIds.join()===expected.join(),'来源或错题范围未保存');
+ await answerWritten(expected[0],'year');
+ const saved=await train.discard();
+ assert(train.restore(saved),'未恢复重练');
+ enter(fixture.querySelector('input[data-fix=year]'),{shiftKey:true});
+ await train.flush();
+ assert(M.roundById(id).trackId===expected[1],'恢复后抽到其他歌曲');
+ await answerWritten(expected[1]);
+ fixture.querySelector('[data-act=next]').click();
+ await until(()=>completed);
+ assert(completed.entries.map(e=>e.id).join()===expected.join()&&completed.reason==='completed','重练没有恰好完成两首错题');
+ assert(M.reviewTrackIds(completed).join()===expected[0],'新报告应只统计这一轮的错题');
+ const backup=await M.exportBackup();
+ assert(backup.rounds.find(r=>r.id===id).review.sourceId===sourceRound.id,'备份丢失重练来源');
+ assert(backup.events.filter(e=>e.sessionId===id).length===2,'重练事件未独立计分');
+ assert(JSON.stringify(M.roundById(sourceRound.id))===before,'覆盖原轮次');
+});
+await test('结果页动作可接前端按钮，全对报告无法发起',async()=>{
+ const root=document.createElement('section');
+ let called=0;
+ const report=sourceRound, nop=()=>{};
+ const ctx={toDisc:nop,again:nop,history:nop,review:()=>called++};
+ for (const reviewCount of [2,0]) {
+  renderResult(root,report,{...ctx,reviewCount});
+  const button=document.createElement('button'); button.dataset.act='review'; root.append(button); button.click();
+ }
+ assert(called===1,'结果页动作没接通或允许了空重练');
 });
 await train.discard();const dbName=M.store.name;M.store.close();indexedDB.deleteDatabase(dbName);
 fixture.replaceChildren();out.textContent+='\n'+(results.every(r=>r.startsWith('PASS'))?'ALL PASS':'FAILED');document.title=results.every(r=>r.startsWith('PASS'))?'PASS · v8 流程回归':'FAIL · v8 流程回归';

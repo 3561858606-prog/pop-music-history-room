@@ -3,6 +3,17 @@
 const s = (n, one, many) => (+n === 1 ? one : many).replace('{n}', n);
 
 export const KO = {
+  // 订正说明随末题与触屏变化（2026-11-22）
+  '看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，按 Enter 核对。写错要重写；也可以不订正，按 Shift+Enter 直接看这一轮。': '빨간 동그라미 친 정답을 한번 보세요. 쓰기 시작하면 가려지고, 가린 곳을 누르면 단어 하나를 1.2초 볼 수 있습니다. 기억으로 써서 Enter로 확인하세요. 틀리면 다시 씁니다. 고치지 않고 Shift+Enter로 바로 이번 판 결과를 봐도 됩니다.',
+  '看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，点「核对」。写错要重写；也可以不订正，点「不订正，看这一轮」。': '빨간 동그라미 친 정답을 한번 보세요. 쓰기 시작하면 가려지고, 가린 곳을 누르면 단어 하나를 1.2초 볼 수 있습니다. 기억으로 써서 「확인」을 누르세요. 틀리면 다시 씁니다. 고치지 않으려면 「고치지 않고 이번 판 보기」를 누르세요.',
+  '订正{f}：凭记忆写一遍，再点「核对」': '{f} 고쳐 쓰기: 기억으로 쓴 뒤 「확인」을 누르세요',
+  '看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，点「核对」。写错要重写；也可以不订正，点「不订正，下一首」。': '빨간 동그라미 친 정답을 한번 보세요. 쓰기 시작하면 가려지고, 가린 곳을 누르면 단어 하나를 1.2초 볼 수 있습니다. 기억으로 써서 「확인」을 누르세요. 틀리면 다시 씁니다. 고치지 않으려면 「고치지 않고 다음 곡」을 누르세요.',
+  // 错题重练与订正快捷键（2026-11-22）
+  '看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，按 Enter 核对。写错要重写；也可以不订正，按 Shift+Enter 直接下一首。': '빨간 동그라미 친 정답을 한번 보세요. 쓰기 시작하면 가려지고, 가린 곳을 누르면 단어 하나를 1.2초 볼 수 있습니다. 기억으로 써서 Enter로 확인하세요. 틀리면 다시 씁니다. 고치지 않고 Shift+Enter로 바로 다음 곡으로 넘어가도 됩니다.',
+  '订正框里 <kbd>Enter</kbd> 核对 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 跳过订正': '교정 칸에서 <kbd>Enter</kbd> 확인 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 교정 건너뛰기',
+  '错题重练': '오답 복습', '还有 {n} 首没答全对': '아직 다 맞히지 못한 곡 {n}곡', '这一轮有 {n} 首答错': '이번 판에서 틀린 곡 {n}곡',
+  '只把这几首再听一遍，按原来的顺序，仍是{t}；答错一项也算。': '이 곡들만 원래 순서대로 다시 듣습니다. 문제 유형은 그대로 {t}이고, 한 항목만 틀려도 포함됩니다.',
+  '等 {n} 首': '모두 {n}곡', '重练本轮错题': '이번 판 틀린 곡 다시 풀기',
   '课件注记': '강의 자료 메모', '评分年 {y}': '채점 연도 {y}', '录音年份未定': '녹음 연도 미확정', '录音 {y}': '녹음 {y}',
   '评分年': '채점 연도', '录音发行': '녹음 발매', '本题版本': '이 문제의 버전', '尚未确认': '아직 확인되지 않음', '同评分年': '채점 연도와 같음',
   '课件注记目前只有中文。': '강의 자료 메모는 지금은 중국어로만 있습니다.',
@@ -179,6 +190,17 @@ export const KO = {
 };
 
 export const EN = {
+  // Correction notes follow the last song and touch screens (2026-11-22)
+  '看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，按 Enter 核对。写错要重写；也可以不订正，按 Shift+Enter 直接看这一轮。': 'Look at the answers circled in red. They’re covered once you start typing; tap the cover to peek at one word for 1.2 seconds. Write it from memory and press Enter to check. If it’s wrong, write it again — or press Shift+Enter to skip the correction and see the round.',
+  '看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，点「核对」。写错要重写；也可以不订正，点「不订正，看这一轮」。': 'Look at the answers circled in red. They’re covered once you start typing; tap the cover to peek at one word for 1.2 seconds. Write it from memory and tap “Check”. If it’s wrong, write it again — or tap “Skip corrections, see the round”.',
+  '订正{f}：凭记忆写一遍，再点「核对」': v => `Correct the ${String(v.f).toLowerCase()}: write it from memory, then tap “Check”`,
+  '看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，点「核对」。写错要重写；也可以不订正，点「不订正，下一首」。': 'Look at the answers circled in red. They’re covered once you start typing; tap the cover to peek at one word for 1.2 seconds. Write it from memory and tap “Check”. If it’s wrong, write it again — or tap “Skip corrections, next song”.',
+  // Wrong-answer review and correction shortcut (2026-11-22)
+  '看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，按 Enter 核对。写错要重写；也可以不订正，按 Shift+Enter 直接下一首。': 'Look at the answers circled in red. They’re covered once you start typing; tap the cover to peek at one word for 1.2 seconds. Write it from memory and press Enter to check. If it’s wrong, write it again — or press Shift+Enter to skip the correction and move on.',
+  '订正框里 <kbd>Enter</kbd> 核对 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 跳过订正': '<kbd>Enter</kbd> in a box checks · <kbd>Shift</kbd>+<kbd>Enter</kbd> skips the correction',
+  '错题重练': 'Review', '还有 {n} 首没答全对': v => `${v.n} song${+v.n === 1 ? '' : 's'} still not fully right`, '这一轮有 {n} 首答错': v => `${v.n} song${+v.n === 1 ? '' : 's'} had mistakes this round`,
+  '只把这几首再听一遍，按原来的顺序，仍是{t}；答错一项也算。': v => `Hear just these again, in the original order, still as ${String(v.t).toLowerCase()}. One wrong field is enough to include a song.`,
+  '等 {n} 首': '{n} songs in all', '重练本轮错题': 'Review this round’s mistakes',
   '课件注记': 'Course note', '评分年 {y}': 'Graded as {y}', '录音年份未定': 'recording year unconfirmed', '录音 {y}': 'recorded {y}',
   '评分年': 'Graded year', '录音发行': 'Recording released', '本题版本': 'Version used', '尚未确认': 'Not yet confirmed', '同评分年': 'Same as graded year',
   '课件注记目前只有中文。': 'Course notes are only in Chinese for now.',

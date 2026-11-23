@@ -99,7 +99,13 @@ async function route() {
     } else if (room === 'result') {
       const id = decodeURIComponent(location.hash.split('/')[1] || '');
       const report = M.history().find(r => r.id === id) || lastRound || M.history()[0];
-      renderResult($('roomResult'), report, {toDisc: () => go('disc'), again: () => startRound(report?.scope || M.prefs.scope, report?.questionType), history: () => go('history')});
+      renderResult($('roomResult'), report, {
+        toDisc: () => go('disc'),
+        again: () => startRound(report?.scope || M.prefs.scope, report?.questionType),
+        reviewCount: M.reviewTrackIds(report).length,
+        review: () => startTraining(() => train.startReview(report)),
+        history: () => go('history')
+      });
       // 刚做完一轮：底部放一条小设计（一次一条）
       if (justFinished) { justFinished = false; const tip = guide?.tip(); if (tip) $('roomResult').querySelector('.rs-foot')?.insertAdjacentHTML('afterend', tip); }
       swap('result');
@@ -128,12 +134,15 @@ async function route() {
 }
 
 let starting = false;
-async function startRound(scope, type = M.prefs.questionType) {
+function startRound(scope, type = M.prefs.questionType) {
+  return startTraining(() => train.start(scope, typeof type === 'string' ? type : M.prefs.questionType));
+}
+async function startTraining(start) {
   if (starting) return;
   starting = true;
   try {
     await train.discard();
-    await train.start(scope, typeof type === 'string' ? type : M.prefs.questionType);
+    if (!await start()) return;
     rememberRound(train.id()); go('train');
     if (current === 'train') train.resume();
   } catch (error) { notice(error.message); }

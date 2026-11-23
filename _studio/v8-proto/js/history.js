@@ -36,11 +36,11 @@ export function renderHistory(root, ctx, limit = 20) {
     <input type="file" id="importFile" accept=".json,application/json" hidden>
     <p class="history-tip">${t('换网址或换设备时：先在原来的网站导出备份，再在这里导入')}<span class="drop-hint">${t('；也可以把备份文件直接拖到这一页')}</span>${t('。')}</p>
     ${importHTML()}
-    ${active.length ? `<section class="history-active"><h2>${t('继续未完成的一轮')}</h2>${active.map(r => `<button data-resume="${esc(r.id)}"><span>${typeName(r)} · ${t('已答 {a} / {b} 首', {a: r.entries.length, b: r.size})}</span><time>${date(r.updatedAt)}</time><b>${t('继续 →')}</b></button>`).join('')}</section>` : ''}
+    ${active.length ? `<section class="history-active"><h2>${t('继续未完成的一轮')}</h2>${active.map(r => `<button data-resume="${esc(r.id)}"><span>${r.review ? `<em class="tr-review">${t('错题重练')}</em>` : ''}${typeName(r)} · ${t('已答 {a} / {b} 首', {a: r.entries.length, b: r.size})}</span><time>${date(r.updatedAt)}</time><b>${t('继续 →')}</b></button>`).join('')}</section>` : ''}
     <p class="rs-sub">${rounds.length ? t('共 {n} 轮。选择一轮查看订正。', {n: rounds.length}) : t('还没有结束的一轮。完成听辨后会保留在这里。')}</p>
     <ol class="history-list">${rounds.slice(0,limit).map(r => {
       const sum = summarize(r.entries), perfect = r.entries.filter(e => e.fields.every(f => f.isCorrect)).length;
-      return `<li><button data-report="${esc(r.id)}"><time>${date(r.time || r.updatedAt)}</time><span><b>${typeName(r)} · ${t('{n} 首', {n: r.entries.length})}</b><small>${t(r.legacy ? '旧记录，部分轮次信息未保存' : r.reason === 'early' ? '提前结束' : '已完成')}${Array.isArray(r.scope) ? ' · ' + t('第 {l} 讲', {l: join(r.scope)}) : ''}</small></span><span>${t('四项全对 {n}', {n: perfect})}<small>${t('单项正确率 {p}%', {p: sum.accuracy})}</small></span><b>${t('查看 →')}</b></button></li>`;
+      return `<li><button data-report="${esc(r.id)}"><time>${date(r.time || r.updatedAt)}</time><span><b>${r.review ? `<em class="tr-review">${t('错题重练')}</em>` : ''}${typeName(r)} · ${t('{n} 首', {n: r.entries.length})}</b><small>${t(r.legacy ? '旧记录，部分轮次信息未保存' : r.reason === 'early' ? '提前结束' : '已完成')}${Array.isArray(r.scope) ? ' · ' + t('第 {l} 讲', {l: join(r.scope)}) : ''}</small></span><span>${t('四项全对 {n}', {n: perfect})}<small>${t('单项正确率 {p}%', {p: sum.accuracy})}</small></span><b>${t('查看 →')}</b></button></li>`;
     }).join('')}</ol>
     ${rounds.length > limit ? `<button class="history-more" data-h="more">${t('再显示 20 轮')}</button>` : ''}
     <p class="history-note" role="status"></p><footer class="rs-foot"><button class="primary" data-h="disc">${t('回到盘面')}</button><button data-open-guide="feedback">${t('问题反馈')}</button></footer></div>`;

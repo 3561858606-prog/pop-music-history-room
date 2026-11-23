@@ -7,6 +7,10 @@
 // 老用户打开网站时，左下角会出现一次这条更新的小纸条；新用户只看上手指南，不打扰。
 // 新的小设计加到 DESIGNS 里，since 写这次更新的 v，更新说明里会标「新」。
 export const RELEASES = [
+  {v: '2026-11-22', title: {zh: '错题重练；订正时 Shift+Enter 跳过', ko: '틀린 문제 다시 풀기, 교정 중 Shift+Enter로 건너뛰기', en: 'Review your mistakes; Shift+Enter skips a correction'}, items: [
+    {t: 'new', text: {zh: '结果页上，这一轮有答错的歌时会出现「重练本轮错题」：只把这几首按原来的顺序再听一遍，题型照旧，答错一项也算。从「历史」里打开以前的结果也能重练；重练这一轮同样会保存、可以接着做。', ko: '결과 화면에서 이번 판에 틀린 곡이 있으면 「이번 판 틀린 곡 다시 풀기」가 나타납니다. 그 곡들만 원래 순서대로 다시 듣고, 문제 유형은 그대로이며 한 항목만 틀려도 포함됩니다. 「기록」에서 예전 결과를 열어도 다시 풀 수 있고, 다시 푸는 판도 저장되어 이어서 할 수 있습니다.', en: 'When a round has mistakes, the results page shows “Review this round’s mistakes”: hear just those songs again in the original order, with the same question type; one wrong field is enough to include a song. Past results opened from History can be reviewed too, and a review round is saved and can be resumed like any other.'}},
+    {t: 'tweak', text: {zh: '订正时，订正框里按 Enter 还是核对；不想订正了按 Shift+Enter 直接下一首，最后一首会直接看结果。手机上照旧点「不订正，下一首」。', ko: '교정할 때 교정 칸에서 Enter는 그대로 확인이고, 교정하지 않으려면 Shift+Enter로 바로 다음 곡으로 넘어갑니다. 마지막 곡이면 바로 결과를 봅니다. 휴대폰에서는 지금처럼 「고치지 않고 다음 곡」을 누르면 됩니다.', en: 'While correcting, Enter in a box still checks it; press Shift+Enter to skip the correction and go straight to the next song (or to the results after the last one). On phones, tap “Skip corrections, next song” as before.'}},
+  ]},
   {v: '2026-11-21b', title: {zh: '背景音乐更早开始', ko: '더 빨리 시작하는 배경음악', en: 'Background music starts earlier'}, items: [
     {t: 'fix', text: {zh: '打开唱片页时先准备背景音乐。浏览器允许有声自动播放时直接起播，需要点按时才显示入口。', ko: '레코드 화면을 열면 배경음악을 먼저 준비합니다. 브라우저가 소리 자동 재생을 허용하면 바로 재생하고, 눌러야 할 때만 입구를 표시합니다.', en: 'The record page prepares its music first. It starts automatically when the browser allows sound and shows the entrance only when a tap is required.'}}
   ]},

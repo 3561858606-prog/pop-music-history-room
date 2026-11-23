@@ -198,6 +198,12 @@ export const history = () => rounds.filter(r => ['finished', 'legacy'].includes(
 // 「继续未完成的一轮」只算至少答过一首的；一首没答的空轮次不提示。
 export const unfinished = () => rounds.filter(r => r.state === 'active' && r.entries?.length > 0).sort((a,b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
 export const roundById = id => rounds.find(r => r.id === id);
+// 重练使用原判分，现场订正的状态不影响错题范围。
+export function reviewTrackIds(report) {
+  if (!['finished', 'legacy'].includes(report?.state) || !Array.isArray(report.entries)) return [];
+  return [...new Set(report.entries.filter(e => byId.has(e?.id) &&
+    Array.isArray(e.fields) && e.fields.some(f => f?.isCorrect === false)).map(e => e.id))];
+}
 export async function saveRound(snapshot, entry) {
   const saved = await store.saveRound(snapshot, entry);
   mergeRounds([saved]);

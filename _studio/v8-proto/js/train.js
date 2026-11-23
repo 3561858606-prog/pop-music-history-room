@@ -23,6 +23,7 @@ export function createTrain(root, ctx) {
   const complete = a => FIELDS.every(f => typeof a[f.key] === 'string' && a[f.key].trim());
   const snapshot = () => ({version: 2, id: round.id, revision: round.revision, state: 'active',
     scope: round.scope, size: round.size, questionType: round.questionType, startedAt: round.startedAt,
+    ...(round.review ? {review: round.review} : {}),
     entries: round.done.map(d => ({...d.entry, cut: d.cut, ...(d.fix ? {fix: d.fix} : {})})), cuts: [...round.cuts.values()],
     trackId: round.question.track.id, options: round.question.options, eventId: round.question.eventId,
     answers: {...round.answers}, drafts: {...round.drafts}, phase: round.phase, col: round.col,
@@ -55,14 +56,30 @@ export function createTrain(root, ctx) {
     enqueue(() => persist(data)).catch(error => { if (!saveError || retryAction === saveDraft) { saveError = error; retryAction = saveDraft; } saveUI(); });
   }
   async function start(scope, type = M.prefs.questionType) {
-    await tail;
     const pool = filterTracks(M.catalog.tracks, scope);
     if (!pool.length) throw Error(tr('请至少选择一讲。'));
+    return startWithPool(scope, type, pool);
+  }
+  async function startReview(report) {
+    const trackIds = M.reviewTrackIds(report);
+    if (!trackIds.length) return false;
+    const pool = trackIds.map(id => M.byId.get(id));
+    const scope = Array.isArray(report.scope) && report.scope.length ? report.scope : [...new Set(pool.map(t => t.deck))];
+    return startWithPool(scope, report.questionType || 'choice', pool, {sourceId: report.id, trackIds});
+  }
+  async function startWithPool(scope, type, pool, review = null) {
+    await tail;
     queue.reset();
+    if (review) {
+      queue.remaining = [...pool].reverse();
+      queue.cycle = 1;
+    }
     round = {id: M.uid('round'), revision: 0, startedAt: new Date().toISOString(), questionType: type === 'written' ? 'written' : 'choice',
-      scope: [...scope], pool, size: M.sizeFor(pool.length), done: [], question: null, answers: {}, drafts: {}, phase: 'answer', col: 0, cuts: new Map()};
+      scope: [...scope], pool, size: review ? pool.length : M.sizeFor(pool.length), review,
+      done: [], question: null, answers: {}, drafts: {}, phase: 'answer', col: 0, cuts: new Map()};
     saveError = null; savedAt = ''; setQuestion(); render();
     await enqueue(() => persist(snapshot())).catch(error => { saveError = error; retryAction = saveDraft; saveUI(); });
+    return true;
   }
   // 预取：答题时在后台先取下一首的波形和歌曲开头（还有这一首的封面），点「下一首」时不用再从头等网络。
   // 下一首就是题目队列的末尾（RandomQueue 不带 select 时从末尾取），只看不取，不改队列。
@@ -104,7 +121,7 @@ export function createTrain(root, ctx) {
     warmNext();
   }
   async function next() {
-    if (!round || operating) return;
+    if (!round || operating || round.phase !== 'feedback') return;
     if (round.done.length >= round.size) return finish();
     setQuestion(); render(); saveDraft();
   }
@@ -117,12 +134,13 @@ export function createTrain(root, ctx) {
     const entry = {sessionId: round.id, sessionKind: 'v8-proto', eventId: q.eventId, id: q.track.id,
       time: new Date().toISOString(), questionType: round.questionType, fields: result.fields};
     const cut = M.previewAnswer(entry), previous = round.cuts.get(q.track.id);
-    const data = snapshot(); data.phase = 'feedback'; data.entries.push({...entry, cut});
+    const fix = fixFor(result);
+    const data = snapshot(); data.phase = 'feedback'; data.entries.push({...entry, cut, ...(fix ? {fix} : {})});
     const allCuts = new Map(round.cuts); allCuts.set(q.track.id, {id: q.track.id, before: previous ? previous.before : cut.before, after: cut.after});
     data.cuts = [...allCuts.values()];
     try {
       await enqueue(() => persist(data, entry));
-      round.cuts = allCuts; round.done.push({track: q.track, result, cut, entry, fix: fixFor(result)}); round.phase = 'feedback';
+      round.cuts = allCuts; round.done.push({track: q.track, result, cut, entry, fix}); round.phase = 'feedback';
       render();
     } catch (error) { saveError = error; retryAction = submit; }
     finally { operating = false; saveUI(); }
@@ -156,11 +174,18 @@ export function createTrain(root, ctx) {
   function restore(saved) {
     const t = M.byId.get(saved.trackId);
     if (!t || !Array.isArray(saved.queueIds) || !Array.isArray(saved.scope)) return false;
+    let pool = filterTracks(M.catalog.tracks, saved.scope);
+    if (saved.review) {
+      if (!Array.isArray(saved.review.trackIds)) return false;
+      pool = saved.review.trackIds.map(id => M.byId.get(id)).filter(Boolean);
+      if (!pool.some(track => track.id === t.id)) return false;
+    }
     queue.remaining = saved.queueIds.map(id => M.byId.get(id)).filter(Boolean);
     queue.lastId = saved.queueLastId; queue.cycle = saved.queueCycle || 1;
     const done = saved.entries.map(e => ({entry: e, track: M.byId.get(e.id), cut: e.cut || {before: [0,0,0,0], after: M.lanesOf(e.id)}, fix: e.fix || null,
       result: {fields: e.fields, score: e.fields.filter(f => f.isCorrect).length}})).filter(d => d.track);
-    round = {...saved, pool: filterTracks(M.catalog.tracks, saved.scope), done,
+    if (saved.phase === 'feedback' && done.length && !done.at(-1).fix) done.at(-1).fix = fixFor(done.at(-1).result);
+    round = {...saved, pool, done,
       question: {track: t, options: saved.options || {}, eventId: saved.eventId || M.uid('answer')},
       answers: saved.answers || {}, drafts: saved.drafts || {}, cuts: new Map((saved.cuts || []).map(c => [c.id,c]))};
     playback.load(t, saved.audioTime || 0); warmNext(); savedAt = new Date(saved.updatedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
@@ -191,7 +216,7 @@ export function createTrain(root, ctx) {
     const n = round.done.length + (round.phase === 'answer' ? 1 : 0);
     return `<header class="tr-top">
         <button class="tr-back" data-act="back">← ${tr('盘面')}</button>
-        <div class="tr-count"><span class="tr-type">${tr(round.questionType === 'written' ? '填空' : '选择')}</span>${tr('第 <b>{n}</b> / {m} 首', {n, m: round.size})}${round.size > 20 ? `<span class="tr-bar" aria-hidden="true"><i style="--v:${round.done.length / round.size}"></i></span>` : ''}<span class="tr-dots" aria-hidden="true" ${round.size > 20 ? 'hidden' : ''}>${Array.from({length: round.size > 20 ? 0 : round.size}, (_, i) => `<i data-s="${i < round.done.length ? (round.done[i].result.score === 4 ? 'ok' : 'miss') : i === n - 1 ? 'now' : ''}"></i>`).join('')}</span></div>
+        <div class="tr-count"><span class="tr-type">${round.review ? `<em class="tr-review">${tr('错题重练')}</em>` : ''}<span class="tr-qt">${tr(round.questionType === 'written' ? '填空' : '选择')}</span></span>${tr('第 <b>{n}</b> / {m} 首', {n, m: round.size})}${round.size > 20 ? `<span class="tr-bar" aria-hidden="true"><i style="--v:${round.done.length / round.size}"></i></span>` : ''}<span class="tr-dots" aria-hidden="true" ${round.size > 20 ? 'hidden' : ''}>${Array.from({length: round.size > 20 ? 0 : round.size}, (_, i) => `<i data-s="${i < round.done.length ? (round.done[i].result.score === 4 ? 'ok' : 'miss') : i === n - 1 ? 'now' : ''}"></i>`).join('')}</span></div>
         <div class="tr-right"><button class="tr-cards" data-act="cards" aria-expanded="${ys.open}" aria-controls="yearSheet" aria-keyshortcuts="Y Alt+Y">${tr('年份卡片')}<kbd>Y</kbd></button><button class="tr-end" data-act="end">${tr('结束本轮')}</button></div>
       </header>
       <div class="groove">
@@ -309,7 +334,7 @@ export function createTrain(root, ctx) {
           <ul class="fb-rows">${d.result.fields.map(f => f.isCorrect
             ? `<li data-ok="1"><span class="k">${M.FIELD_NAMES[f.key]}</span><span class="is">${esc(optionLabel(f.key, f.correct))}</span><span class="tick" aria-label="${tr('对')}">✓</span></li>`
             : fixRowHTML(d, f)).join('')}</ul>
-          ${wrong.length ? `<p class="fix-rule">${tr('看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，按 Enter 核对。写错要重写；也可以不订正，直接下一首。')}</p>` : ''}
+          ${fixRuleHTML(d, last)}
           ${courseNoteHTML(t, 'course-note fb-note')}
           ${trackStoryHTML(t, 'fb-story')}
         </div>
@@ -322,7 +347,7 @@ export function createTrain(root, ctx) {
           </div>
           <dl class="fb-lanes" aria-label="${tr('这一圈的四道刻纹')}">${M.KEYS.map((k, i) => `<div><dt>${M.FIELD_NAMES[k]}</dt><dd><span class="lane-bar" style="--v:${d.cut.before[i]}" data-to="${d.cut.after[i]}"></span></dd></div>`).join('')}</dl>
         </aside>
-        <footer class="tr-foot"><span class="keys">${tr(wrong.length ? '订正框里 Enter 核对 · 框外 Enter 继续' : '空格 再听 · Enter 继续')}</span><button class="next" data-act="next" data-pending="${pendingFix(d) ? 1 : 0}">${nextLabel(d, last)}<kbd>Enter</kbd></button></footer>
+        <footer class="tr-foot"><span class="keys">${keysText(d)}</span><button class="next" data-act="next" data-pending="${pendingFix(d) ? 1 : 0}">${nextLabel(d, last)}${nextKbd(d)}</button></footer>
       </div>`;
   }
 
@@ -331,7 +356,14 @@ export function createTrain(root, ctx) {
   const PEN = '<svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path d="M8 22 C6 8 40 3 62 4 C88 6 97 14 94 23 C90 35 52 38 30 36 C12 34 4 28 10 17" pathLength="1"/></svg>';
   const fixFor = result => { const w = result.fields.filter(f => !f.isCorrect); return w.length ? Object.fromEntries(w.map(f => [f.key, {state: 'todo', tries: 0}])) : null; };
   const pendingFix = d => d.fix ? Object.values(d.fix).filter(x => x.state !== 'done').length : 0;
-  const nextLabel = (d, last) => (pendingFix(d) ? tr('不订正，') : '') + tr(last ? '看这一轮' : '下一首');
+  // 英文里「next song」单独出现时要大写开头
+  const nextLabel = (d, last) => { const s = (pendingFix(d) ? tr('不订正，') : '') + tr(last ? '看这一轮' : '下一首'); return s.charAt(0).toUpperCase() + s.slice(1); };
+  // 还有没订正的项时，Enter 在订正框里是「核对」，跳过要按 Shift+Enter；按钮上就标这个组合键
+  // 订正说明、页脚提示跟着状态走：还有没订正的项时才提订正；末题时「下一首」换成「看这一轮」；触屏说按钮、键盘说按键
+  const touch = () => matchMedia('(pointer:coarse)').matches;
+  const fixRuleHTML = (d, last) => !pendingFix(d) ? '' : `<p class="fix-rule">${tr(touch() ? (last ? '看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，点「核对」。写错要重写；也可以不订正，点「不订正，看这一轮」。' : '看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，点「核对」。写错要重写；也可以不订正，点「不订正，下一首」。') : (last ? '看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，按 Enter 核对。写错要重写；也可以不订正，按 Shift+Enter 直接看这一轮。' : '看一眼红笔圈出的答案，开始写时它会被盖住；点遮挡处可单词查看 1.2 秒，同一时间只显示一个词。凭记忆写一遍，按 Enter 核对。写错要重写；也可以不订正，按 Shift+Enter 直接下一首。'))}</p>`;
+  const keysText = d => pendingFix(d) ? tr('订正框里 <kbd>Enter</kbd> 核对 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 跳过订正') : tr('空格 再听 · Enter 继续');
+  const nextKbd = d => pendingFix(d) ? '<kbd class="kbd-combo">Shift+Enter</kbd>' : '<kbd>Enter</kbd>';
   const verdictText = d => { const n = pendingFix(d), all = Object.keys(d.fix || {}).length;
     return n ? tr('订正 {f}', {f: join(d.result.fields.filter(f => !f.isCorrect).map(f => M.FIELD_NAMES[f.key]))}) + (n < all ? tr(' · 还差 {n} 项', {n}) : '') : tr('订正完成 · {n} 项都凭记忆写对了', {n: all}); };
   function fixRowHTML(d, f) {
@@ -342,7 +374,7 @@ export function createTrain(root, ctx) {
       <div class="fix">${done
         ? `<span class="fix-ok"><b>✓</b> ${tr('已订正：')}${esc(fx.text || '')}${fx.tries > 1 ? `<small>${tr('写了 {n} 次', {n: fx.tries})}</small>` : ''}</span>`
         : `<input data-fix="${f.key}" type="text" maxlength="200" enterkeyhint="done" autocomplete="off" autocapitalize="off" spellcheck="false" ${f.key === 'year' ? 'inputmode="numeric"' : ''}
-            placeholder="${ph}" aria-label="${tr('订正{f}：凭记忆写一遍，按 Enter 核对', {f: M.FIELD_NAMES[f.key]})}">
+            placeholder="${ph}" aria-label="${tr(touch() ? '订正{f}：凭记忆写一遍，再点「核对」' : '订正{f}：凭记忆写一遍，按 Enter 核对', {f: M.FIELD_NAMES[f.key]})}">
            <button class="fix-check" data-act="fix" data-key="${f.key}">${tr('核对')}</button>
            <span class="fix-msg" role="status">${fx.tries ? tr('不对，再看一眼，重写一遍（已写 {n} 次）', {n: fx.tries}) : ''}</span>`}</div></li>`;
   }
@@ -367,7 +399,9 @@ export function createTrain(root, ctx) {
       input.focus();
     }
     const v = root.querySelector('.fb-verdict'); if (v) v.textContent = verdictText(d);
-    const nb = root.querySelector('.next'); if (nb) { nb.dataset.pending = pendingFix(d) ? '1' : '0'; nb.firstChild.textContent = nextLabel(d, round.done.length >= round.size); }
+    { const rule = root.querySelector('.fix-rule'), keys = root.querySelector('.tr-foot .keys');
+      if (rule && !pendingFix(d)) rule.remove(); if (keys) keys.innerHTML = keysText(d); }
+    const nb = root.querySelector('.next'); if (nb) { nb.dataset.pending = pendingFix(d) ? '1' : '0'; nb.firstChild.textContent = nextLabel(d, round.done.length >= round.size); nb.querySelector('kbd')?.replaceWith(Object.assign(document.createElement('template'), {innerHTML: nextKbd(d)}).content); }
     peeks.sync(); saveDraft();
   }
   function afterFeedback() {
@@ -504,7 +538,7 @@ export function createTrain(root, ctx) {
   });
   root.addEventListener('keydown', e => {
     const fix = e.target.closest?.('input[data-fix]'); if (!fix || e.isComposing || e.keyCode === 229) return;
-    if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); checkFix(fix.dataset.fix); }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); checkFix(fix.dataset.fix); }
     else if (e.key === 'Escape') { e.preventDefault(); fix.blur(); root.querySelector('.next')?.focus(); }
   });
   root.addEventListener('input', e => {
@@ -522,7 +556,15 @@ export function createTrain(root, ctx) {
     else if (e.key === 'Enter') { e.preventDefault(); if (complete(round.answers)) submit(); else focusCol((ci + 1) % 4); }
   });
   document.addEventListener('keydown', e => {
-    if (!round || operating || root.hidden || ys.open || e.defaultPrevented || e.repeat || e.altKey || e.ctrlKey || e.metaKey || e.isComposing || e.keyCode === 229) return;
+    if (!round || root.hidden || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.isComposing || e.keyCode === 229) return;
+    if (e.key === 'Enter' && e.shiftKey) {
+      if (!ys.open && (root.contains(e.target) || e.target === document.body || e.target === document.documentElement)) {
+        e.preventDefault();
+        if (!operating && !e.repeat) next();
+      }
+      return;
+    }
+    if (operating || ys.open || e.repeat) return;
     if (e.target.closest?.('input,textarea,select')) return;
     const digit = /^(?:Digit|Numpad)([0-4])$/.exec(e.code || '')?.[1];
     const k = digit ?? e.key;
@@ -553,7 +595,7 @@ export function createTrain(root, ctx) {
   addEventListener('pagehide', () => { if (round && !operating) saveDraft(); });
   addEventListener('beforeunload', e => { if (round && (saveError || saving || operating)) { e.preventDefault(); e.returnValue = ''; } });
   return {
-    start, restore, active: () => !!round, id: () => round?.id,
+    start, startReview, restore, active: () => !!round, id: () => round?.id,
     info: () => round ? {n: round.done.length + 1, size: round.size} : null,
     resume() { render(); },
     pause() { peeks.hide(); hideSheet(false); playback.pause(); if (round && !operating) saveDraft(); },
@@ -578,6 +620,21 @@ export function createTrain(root, ctx) {
 }
 
 /* ---------- 结果 ---------- */
+// 错题重练：有错的才出现，放在成绩下面、刻盘之前（做完一轮最该做的下一件事）。
+// 按曲目计数；同一首只练一次，题型照原轮。重练轮次本身做完若还有错，可以接着再练。
+function reviewCardHTML(last, ctx) {
+  const n = ctx.reviewCount || 0; if (!n) return '';
+  const ids = M.reviewTrackIds(last), shown = ids.slice(0, 5).map(id => M.byId.get(id)).filter(Boolean);
+  const type = tr(last.questionType === 'written' ? '填空题' : '选择题');
+  return `<section class="rs-review" aria-labelledby="rsReviewTitle">
+    <div class="rr-text">
+      <h2 id="rsReviewTitle">${last.review ? tr('还有 {n} 首没答全对', {n}) : tr('这一轮有 {n} 首答错', {n})}</h2>
+      <p>${tr('只把这几首再听一遍，按原来的顺序，仍是{t}；答错一项也算。', {t: type})}</p>
+      <ul class="rr-songs">${shown.map(t => `<li><i>${t.year}</i>${esc(M.titleOf(t))}</li>`).join('')}${ids.length > shown.length ? `<li class="rr-more">${tr('等 {n} 首', {n: ids.length})}</li>` : ''}</ul>
+    </div>
+    <button type="button" class="rr-btn" data-act="review">${tr('重练本轮错题')}<b>${tr('{n} 首', {n})}</b></button>
+  </section>`;
+}
 export function renderResult(root, last, ctx) {
   if (!last?.entries?.length) {
     root.innerHTML = `<div class="rs rs-empty"><h1>${tr('还没有完成的一轮')}</h1><p>${tr('回到盘面，落针听十首。')}</p><button class="primary" data-act="disc">${tr('回到盘面')}</button></div>`;
@@ -587,10 +644,11 @@ export function renderResult(root, last, ctx) {
     const label = (key, value) => value === NOT_HEARD ? tr('没听出') : key === 'style' ? (M.catalog.styles.find(s => s.id === value)?.label || value) : value;
     root.innerHTML = `<div class="rs">
       <header class="rs-head">
-        <p class="rs-kicker">${tr('这一轮')} · ${tr('{n} 首', {n})} · ${!Array.isArray(last.scope) ? tr('旧记录 · 范围未保存') : last.scope.length === M.lectures.length ? tr('全部 {k} 讲', {k: M.lectures.length}) : tr('第 {l} 讲', {l: join(last.scope)})} · ${tr(last.questionType === 'written' ? '填空题' : '选择题')}${last.reason === 'early' ? ' · ' + tr('提前结束') : ''}</p>
+        <p class="rs-kicker">${last.review ? `<em class="rs-from">${tr('错题重练')}</em> · ` : ''}${tr('这一轮')} · ${tr('{n} 首', {n})} · ${!Array.isArray(last.scope) ? tr('旧记录 · 范围未保存') : last.scope.length === M.lectures.length ? tr('全部 {k} 讲', {k: M.lectures.length}) : tr('第 {l} 讲', {l: join(last.scope)})} · ${tr(last.questionType === 'written' ? '填空题' : '选择题')}${last.reason === 'early' ? ' · ' + tr('提前结束') : ''}</p>
         <h1><b>${perfect}</b><span>${tr('/ {n} 首四项全对', {n})}</span></h1>
         <p class="rs-sub">${grew ? tr('{n} 圈往前刻了一段。', {n: grew}) : tr('这一轮没有新的刻纹。')}${tr('单项正确率 {p}%。', {p: sum.accuracy})}${(() => { const fx = last.entries.flatMap(e => Object.values(e.fix || {})); return fx.length ? tr('当场订正 {a} / {b} 项。', {a: fx.filter(x => x.state === 'done').length, b: fx.length}) : ''; })()}</p>
       </header>
+      ${reviewCardHTML(last, ctx)}
       <div class="rs-grid">
         <figure class="rs-disc"><div id="rsDisc"></div><figcaption>${tr('琥珀色的点是这一轮听过的圈')}</figcaption></figure>
         <dl class="rs-fields">${FIELDS.map(f => `<div><dt>${M.FIELD_NAMES[f.key]}</dt><dd><span class="lane-bar" style="--v:${sum.byField[f.key] / n}"></span><em>${sum.byField[f.key]} / ${n}</em></dd></div>`).join('')}</dl>
@@ -602,7 +660,7 @@ export function renderResult(root, last, ctx) {
     const d = flatDisc({detail: false, digits: true, marks: new Set(last.entries.map(e => e.id)), title: tr('这一轮在盘上的位置')});
     root.querySelector('#rsDisc').replaceChildren(d.svg);
   }
-  root.onclick = e => { const a = e.target.closest('[data-act]')?.dataset.act; if (a === 'disc') ctx.toDisc(); else if (a === 'again') ctx.again(); else if (a === 'history') ctx.history(); };
+  root.onclick = e => { const a = e.target.closest('[data-act]')?.dataset.act; if (a === 'disc') ctx.toDisc(); else if (a === 'again') ctx.again(); else if (a === 'review' && ctx.reviewCount) ctx.review(); else if (a === 'history') ctx.history(); };
   root._toDisc = ctx.toDisc;
   // 挂在 document 上：点过页面空白处后焦点落在 body，监听挂在 root 上就收不到 Enter
   if (!root._enterBound) {

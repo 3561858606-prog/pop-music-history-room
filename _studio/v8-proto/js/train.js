@@ -433,7 +433,12 @@ export function createTrain(root, ctx) {
     const fb = root.querySelector('.fb'); if (!fb) return;
     fb.querySelector('.fb-verdict').textContent = verdictText(d);
     const rule = fb.querySelector('.fix-rule'); if (rule) rule.textContent = ruleText(d);
-    fb.querySelector('.tr-foot').innerHTML = footHTML(d);
+    const foot = fb.querySelector('.tr-foot'), mode = fb.dataset.mode;
+    if (foot.dataset.mode !== mode) {
+      foot.innerHTML = footHTML(d);
+      foot.dataset.mode = mode;
+      for (const el of fb.querySelectorAll('.fb-ctx')) el.inert = !!recall;
+    }
     for (const li of fb.querySelectorAll('.fb-rows li[data-key]')) {
       const key = li.dataset.key, fx = d.fix[key], active = recall?.key === key;
       li.dataset.fix = fx.state; li.toggleAttribute('data-active', active);
@@ -441,7 +446,6 @@ export function createTrain(root, ctx) {
       const go = li.querySelector('.row-go');
       if (fx.state === 'done' && go?.tagName === 'BUTTON') go.outerHTML = `<span class="row-go" data-done="1">✓ ${tr('写回了')}</span>`;
     }
-    for (const el of fb.querySelectorAll('.fb-ctx')) el.inert = !!recall;
     saveUI();
   }
   function setSlot(key, state) {
@@ -451,7 +455,11 @@ export function createTrain(root, ctx) {
         slot.style.minHeight = slot.offsetHeight + 'px';     // 锁住原来的高度，换成输入框时下面的内容不跳
         slot.insertAdjacentHTML('beforeend', ioHTML(d, key));
       }
-    } else { slot.querySelector('.slot-io')?.remove(); slot.style.minHeight = ''; }
+    } else {
+      slot.querySelector('.slot-io')?.remove();
+      slot.style.minHeight = '';
+      slot.classList.remove('shake');
+    }
     if (state) slot.dataset.state = state; else delete slot.dataset.state;
     slot.querySelector('.ink').setAttribute('aria-hidden', state === 'blank' || state === 'writing' ? 'true' : 'false');
     return slot;
@@ -459,7 +467,7 @@ export function createTrain(root, ctx) {
   function focusSlot(key) {
     const slot = root.querySelector(`.fb [data-slot="${key}"]`), input = slot?.querySelector('.slot-in'); if (!input) return;
     input.focus({preventScroll: true});
-    keepInView(slot);
+    scheduleKeepInView();
   }
   // 手机键盘弹起后可视区域变小：把正在写的那一项留在顶栏和键盘之间
   function keepInView(slot = root.querySelector('.slot[data-state=writing]')) {
@@ -468,7 +476,15 @@ export function createTrain(root, ctx) {
     const r = slot.getBoundingClientRect(), want = Math.max(top, Math.min(h * .3, h - r.height - 24));
     if (r.top < top || r.bottom > h - 16) scrollBy({top: r.top - want, behavior: ctx.reduced() ? 'auto' : 'smooth'});
   }
-  window.visualViewport?.addEventListener('resize', () => { if (recall && root.dataset.kb) keepInView(); });
+  let viewFrame = 0;
+  function scheduleKeepInView() {
+    if (!recall || !root.dataset.kb || viewFrame) return;
+    viewFrame = requestAnimationFrame(() => {
+      viewFrame = 0;
+      if (recall && root.dataset.kb && !root.hidden) keepInView();
+    });
+  }
+  window.visualViewport?.addEventListener('resize', scheduleKeepInView);
 
   function startRecall(key) {
     const d = current(); if (!d?.fix || operating) return;
@@ -489,7 +505,7 @@ export function createTrain(root, ctx) {
     recall.key = key;
     setSlot(key, 'writing');
     focusSlot(key);                       // 先把焦点交给新格子，再拆掉旧的，手机键盘不会收起
-    if (prev && d.fix[prev].state !== 'done') setSlot(prev, 'blank');
+    if (prev) setSlot(prev, d.fix[prev].state === 'done' ? 'done' : 'blank');
     paintChrome(d); peeks.sync();
   }
   function leaveRecall(settled = false) {
@@ -513,16 +529,17 @@ export function createTrain(root, ctx) {
     if (checkField(d.track, key, input.value, M.catalog.styles, M.catalog.tracks)) {
       fx.state = 'done'; fx.text = input.value.trim();
       const next = pendingKeys(d)[0];
-      if (next) { activate(next); setSlot(key, 'done'); }
-      else { setSlot(key, 'done'); leaveRecall(true); }
+      if (next) activate(next);
+      else leaveRecall(true);
     } else {
       fx.state = 'retry';
       input.value = ''; input.placeholder = answerOf(d.track, key);
       slot.querySelector('.hint-msg').textContent = tr('不对。答案淡淡写在格子里了，落笔它就消失（第 {n} 次）', {n: fx.tries});
-      slot.classList.remove('shake'); void slot.offsetWidth; slot.classList.add('shake');
+      slot.classList.add('shake');
       input.focus();
+      paintChrome(d);
     }
-    paintChrome(d); peeks.sync(); saveDraft();
+    saveDraft();
   }
   function afterFeedback() {
     const d = round.done[round.done.length - 1];
@@ -668,6 +685,9 @@ export function createTrain(root, ctx) {
   // 手机上正在写时收起底栏：键盘上的“完成”就是核对，底栏只会挡住正在写的那一行
   root.addEventListener('focusin', e => { if (e.target.matches?.('.slot-in')) root.dataset.kb = '1'; });
   root.addEventListener('focusout', e => { if (e.target.matches?.('.slot-in') && !e.relatedTarget?.matches?.('.slot-in')) delete root.dataset.kb; });
+  root.addEventListener('animationend', e => {
+    if (e.animationName === 'shake' && e.target.matches?.('.slot-in')) e.target.closest('.slot')?.classList.remove('shake');
+  });
   root.addEventListener('keydown', e => {
     const fix = e.target.closest?.('input[data-fix]'); if (!fix || e.isComposing || e.keyCode === 229) return;
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); checkFix(fix.dataset.fix); }

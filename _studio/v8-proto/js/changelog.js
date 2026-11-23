@@ -7,6 +7,9 @@
 // 老用户打开网站时，左下角会出现一次这条更新的小纸条；新用户只看上手指南，不打扰。
 // 新的小设计加到 DESIGNS 里，since 写这次更新的 v，更新说明里会标「新」。
 export const RELEASES = [
+  {v: '2026-11-23b', title: {zh: '订正写回更顺畅', ko: '더 매끄러워진 다시 쓰기', en: 'Smoother corrections'}, items: [
+    {t: 'tweak', text: {zh: '开始写回或答对换项时，输入框立即显示，底栏也不再重复刷新。', ko: '다시 쓰기를 시작하거나 정답을 맞혀 다음 항목으로 넘어가면 입력 칸이 바로 나타나고, 하단 버튼도 중복해서 갱신되지 않습니다.', en: 'The input appears immediately when you start writing back or move to the next item, and the bottom controls stay in place between items.'}}
+  ]},
   {v: '2026-11-23', title: {zh: '当场订正 2.0：凭记忆写回', ko: '교정 2.0: 기억으로 다시 쓰기', en: 'Corrections 2.0: write it back from memory'}, items: [
     {t: 'new', text: {zh: '答错后先看清红笔圈出的答案，再点「凭记忆写回」：写错的项从标签上褪成按词划好的格线，你在原来的位置、用原来的字号写回去（年份就是那行大字）。故事、封面和辐位暂时变模糊，免得顺带说出答案。', ko: '틀리면 빨간 동그라미 친 정답을 먼저 보고 「기억으로 다시 쓰기」를 누르세요. 틀린 항목이 라벨에서 단어별 밑줄로 바뀌고, 같은 자리·같은 크기로 다시 씁니다(연도는 큰 글자 그대로). 이야기, 표지, 살 위치는 정답을 알려 주지 않도록 잠시 흐려집니다.', en: 'After a miss, look at the answers circled in red, then tap “Write back from memory”: the wrong items fade to one line per word on the label, and you write them back in place at the same size (the year stays the big number). The story, cover and spoke blur for a moment so they don’t give the answer away.'}},
     {t: 'tweak', text: {zh: '写错时，答案以淡红色出现在格子里，一开始写就消失；写对了墨迹落回标签，自动换到下一项，手机键盘不会收起。卡住了可以点一格偷看一个词 1.2 秒。写回期间年份卡片里不出现这首歌。不想订正，照旧按 Shift+Enter 或点「跳过，下一首」。', ko: '틀리면 정답이 칸에 흐린 빨간색으로 보이고 쓰기 시작하면 사라집니다. 맞으면 글씨가 라벨로 돌아가고 다음 항목으로 넘어가며, 휴대폰 키보드는 닫히지 않습니다. 막히면 한 칸을 눌러 단어 하나를 1.2초 볼 수 있습니다. 다시 쓰는 동안 연도 카드에는 이 곡이 나오지 않습니다. 고치지 않으려면 지금처럼 Shift+Enter 또는 「건너뛰고 다음 곡」.', en: 'If it’s wrong, the answer shows faintly in red inside the box and vanishes as you type; when it’s right the ink drops back onto the label and the next item opens without closing the phone keyboard. Stuck? Tap a box to peek at one word for 1.2 seconds. The year cards hide this song while you write. To skip, Shift+Enter or “Skip, next song” as before.'}},

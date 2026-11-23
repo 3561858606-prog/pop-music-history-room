@@ -1036,7 +1036,8 @@ body:not([data-room=disc]) .top{background:var(--bg);box-shadow:0 1px 0 var(--fa
 .slot[data-state=writing]{position:relative}
 .slot[data-state=writing]>.ink{position:absolute;inset:0 0 auto 0;pointer-events:none}
 .slot[data-state=writing] .w{color:transparent;background-size:0 var(--rw);transition-delay:0s}
-.slot-io{display:block}
+.slot-io{display:block;animation:slotIn .34s cubic-bezier(.2,.7,.2,1) .06s both}
+@keyframes slotIn{from{opacity:0;transform:translateY(.12em)}}
 .slot-in{display:block;width:min(100%,22em);font:inherit;font-stretch:inherit;letter-spacing:inherit;line-height:1.2;color:var(--ink);caret-color:var(--red);
   background:none;border:0;border-bottom:var(--rw) solid var(--ink);border-radius:0;padding:0 0 .06em;margin:0;outline:none;
   transition:border-color .2s}
@@ -1059,7 +1060,7 @@ body:not([data-room=disc]) .top{background:var(--bg);box-shadow:0 1px 0 var(--fa
 /* 写回时：只有正在写的那一行保留红笔，其余的圈退成淡墨，红色只指向“现在” */
 .fb[data-mode=recall] .fb-rows li:not([data-active]) .pen path{stroke:var(--rule)}
 /* 会顺带说出答案的内容（故事、封面、辐位）：写回时退进雾里，不改版面；写完再清晰回来 */
-.fb-ctx{transition:opacity .18s ease}
+.fb-ctx{transition:filter .5s ease,opacity .5s ease}
 .fb[data-mode=recall] .fb-ctx{filter:blur(9px) saturate(.5);opacity:.28;user-select:none;-webkit-user-select:none}
 
 /* 判语：写回时换成进度，写完后转成墨色 */

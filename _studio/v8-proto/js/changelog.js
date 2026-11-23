@@ -7,6 +7,9 @@
 // 老用户打开网站时，左下角会出现一次这条更新的小纸条；新用户只看上手指南，不打扰。
 // 新的小设计加到 DESIGNS 里，since 写这次更新的 v，更新说明里会标「新」。
 export const RELEASES = [
+  {v: '2026-11-23c', title: {zh: '恢复订正的原版动效', ko: '교정 화면의 원래 애니메이션 복원', en: 'Original correction animations restored'}, items: [
+    {t: 'fix', text: {zh: '恢复写回和换项时的入场动效，以及封面和故事的模糊过渡。', ko: '다시 쓰기를 시작하거나 다음 항목으로 넘어갈 때의 등장 효과와 표지와 이야기가 흐려지는 전환을 복원했습니다.', en: 'The original input animation and the gradual blur on covers and stories are back.'}}
+  ]},
   {v: '2026-11-23b', title: {zh: '订正写回更顺畅', ko: '더 매끄러워진 다시 쓰기', en: 'Smoother corrections'}, items: [
     {t: 'tweak', text: {zh: '开始写回或答对换项时，输入框立即显示，底栏也不再重复刷新。', ko: '다시 쓰기를 시작하거나 정답을 맞혀 다음 항목으로 넘어가면 입력 칸이 바로 나타나고, 하단 버튼도 중복해서 갱신되지 않습니다.', en: 'The input appears immediately when you start writing back or move to the next item, and the bottom controls stay in place between items.'}}
   ]},

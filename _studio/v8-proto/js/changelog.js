@@ -7,6 +7,9 @@
 // 老用户打开网站时，左下角会出现一次这条更新的小纸条；新用户只看上手指南，不打扰。
 // 新的小设计加到 DESIGNS 里，since 写这次更新的 v，更新说明里会标「新」。
 export const RELEASES = [
+  {v: '2026-11-24', title: {zh: '修复唱片试听连续跳歌', ko: '음반 듣기에서 곡이 연속으로 넘어가는 문제 수정', en: 'Fixed continuous skipping during record playback'}, items: [
+    {t: 'fix', text: {zh: '试听只启动一次，音频异常中断时先重试当前曲目，播放进度也会正确显示。', ko: '곡 재생을 한 번만 시작하고, 비정상적으로 끊기면 현재 곡을 다시 시도합니다. 재생 진행률도 올바르게 표시됩니다.', en: 'Playback starts once, retries the current track after an unexpected cutoff, and displays progress correctly.'}}
+  ]},
   {v: '2026-11-23c', title: {zh: '恢复订正的原版动效', ko: '교정 화면의 원래 애니메이션 복원', en: 'Original correction animations restored'}, items: [
     {t: 'fix', text: {zh: '恢复写回和换项时的入场动效，以及封面和故事的模糊过渡。', ko: '다시 쓰기를 시작하거나 다음 항목으로 넘어갈 때의 등장 효과와 표지와 이야기가 흐려지는 전환을 복원했습니다.', en: 'The original input animation and the gradual blur on covers and stories are back.'}}
   ]},

@@ -2,10 +2,12 @@
 import {audioSrc, audioFallbackSrc, srcKbps, srcTier, canDowngrade} from './model.js';
 import {watch, penalize} from './net.js';
 import {t} from './i18n.js';
+const mediaSeconds = value => Number.isFinite(value) && value > 0 ? value : 0;
+
 export function createAudio() {
   const element = new Audio(); element.preload = 'metadata';
   let track = null, state = 'idle', listener = null, token = 0, resumeAt = null;
-  let context = null, gain = null, noise = null, silent = false, taps = null;
+  let context = null, gain = null, noise = null, wantsPlayback = false, taps = null;
   const failedSources = new Set();
   const messages = Object.fromEntries(Object.entries({idle: '点击播放收听', loading: '音频加载中…', ready: '音频已就绪，点击播放', playing: '正在播放',
     paused: '已暂停', waiting: '正在缓冲…', ended: '播放完毕，可以重听', blocked: '浏览器需要你点击播放', error: '音频加载失败，点击播放重试'}).map(([k, v]) => [k, t(v)]));
@@ -15,10 +17,11 @@ export function createAudio() {
     if (!context) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
-      context = new AC(); gain = context.createGain();
-      context.createMediaElementSource(element).connect(gain).connect(context.destination);
+      const nextContext = new AC(), nextGain = nextContext.createGain();
+      nextContext.createMediaElementSource(element).connect(nextGain).connect(nextContext.destination);
+      context = nextContext; gain = nextGain;
     }
-    if (context.state === 'suspended') context.resume().catch(() => set('blocked'));
+    if (context.state !== 'running') context.resume().catch(() => {});
     return context;
   }
   function crackle() {
@@ -37,25 +40,68 @@ export function createAudio() {
   function acknowledgeSeek() {
     if (resumeAt !== null && !element.seeking && Math.abs(element.currentTime - resumeAt) < (element.paused ? .01 : .25)) resumeAt = null;
   }
+  function mediaDuration() {
+    const duration = element.readyState ? mediaSeconds(element.duration) : 0;
+    const expected = mediaSeconds(track?.duration);
+    return duration >= expected - Math.max(2, expected * .02) ? duration : 0;
+  }
   function applyPendingSeek() {
-    if (resumeAt === null || !Number.isFinite(element.duration)) return;
-    resumeAt = Math.min(resumeAt, Math.max(0, element.duration));
-    try { element.currentTime = resumeAt; acknowledgeSeek(); } catch {}
+    const duration = mediaDuration();
+    if (resumeAt === null || !duration) return;
+    resumeAt = Math.min(resumeAt, duration);
+    acknowledgeSeek();
+    if (resumeAt !== null) try { element.currentTime = resumeAt; acknowledgeSeek(); } catch {}
   }
   element.addEventListener('seeked', acknowledgeSeek);
   element.addEventListener('timeupdate', acknowledgeSeek);
   element.addEventListener('canplay', () => { if (!element.seeking) applyPendingSeek(); });
-  for (const ev of ['waiting','stalled']) element.addEventListener(ev, () => { if (track && !element.paused && !silent) set('waiting'); });
-  element.addEventListener('playing', () => { if (track && !silent) set('playing'); });
-  element.addEventListener('pause', () => { if (track && state !== 'ended' && state !== 'error' && !silent) set('paused'); });
-  element.addEventListener('ended', () => { stopNoise(); if (track) set('ended'); });
-  let lastPlay = null;   // 最近一次 play() 的参数，换源后照原样再放
-  // 换源：从同一位置接着放（原来在放 / 正要放就继续放）
+  for (const ev of ['waiting', 'stalled']) element.addEventListener(ev, () => {
+    if (wantsPlayback && !element.paused && !element.ended) set('waiting');
+  });
+  element.addEventListener('pause', () => {
+    if (!wantsPlayback || !element.paused || element.ended || element.readyState < 2) return;
+    api.pause();
+  });
+  element.addEventListener('ended', () => {
+    if (!track || !wantsPlayback || !element.ended) return;
+    const duration = mediaDuration();
+    // 浏览器也可能在音源异常时发出 ended。只有实际到达曲终才交给顺序播放。
+    if (!duration || mediaSeconds(element.currentTime) < duration - .25) {
+      recoverSource();
+      return;
+    }
+    wantsPlayback = false;
+    clearTimeout(stallTimer);
+    stopNoise();
+    set('ended');
+  });
+
+  // 换源后接着播放，同一档失败后不反复回退。
   function switchSrc(src) {
-    const wanted = lastPlay && ['loading', 'playing', 'waiting'].includes(state);
-    resumeAt = resumeAt ?? element.currentTime ?? 0; token++;
-    silent = true; element.src = src; silent = false;
-    if (wanted) api.play({warm: lastPlay.warm}); else set('loading');
+    clearTimeout(stallTimer);
+    stopNoise();
+    const position = api.position();
+    resumeAt = position > 0 ? position : null;
+    token++;
+    element.src = src;
+    if (wantsPlayback) api.play(); else set('loading');
+  }
+  function recoverSource() {
+    clearTimeout(stallTimer);
+    const src = element.src;
+    failedSources.add(src);
+    const fallback = audioFallbackSrc(track);
+    const lower = canDowngrade(track, src) ? audioSrc(track, 'sd') : null;
+    const next = [fallback, lower].find(candidate => candidate && !failedSources.has(candidate));
+    if (next) {
+      switchSrc(next);
+      return;
+    }
+    wantsPlayback = false;
+    token++;
+    stopNoise();
+    element.pause();
+    set('error');
   }
   // 边播边量网速；卡住超过 1.5 秒（或点了播放 5 秒还没出声）就降到流畅档，从同一秒接着放。
   watch(element, () => track ? srcKbps(track, element.currentSrc) : 128);
@@ -67,17 +113,15 @@ export function createAudio() {
     penalize(srcKbps(track, element.currentSrc)); switchSrc(audioSrc(track, 'sd'));
   };
   element.addEventListener('waiting', () => { if (track && !element.paused && performance.now() - seekAt > 1000) { clearTimeout(stallTimer); stallTimer = setTimeout(downgrade, 1500); } });
-  element.addEventListener('playing', () => clearTimeout(stallTimer));
-  element.addEventListener('error', () => {
+  element.addEventListener('playing', () => {
+    if (!wantsPlayback || element.paused || element.ended) return;
     clearTimeout(stallTimer);
-    failedSources.add(element.src);
-    // 轻量版 / 流畅版载不了（个别浏览器或文件缺失）：换回原 mp3，从同一位置接着放
-    if (track && track.src && /\/audio-(lite|sd)\//.test(element.src)) { switchSrc(audioFallbackSrc(track)); return; }
-    stopNoise(); if (track) set('error');
+    set('playing');
   });
+  element.addEventListener('error', () => { if (track && element.error && state !== 'error') recoverSource(); });
   element.addEventListener('loadedmetadata', () => {
     applyPendingSeek();
-    if (state === 'loading' && element.paused) set('ready');
+    if (state === 'loading' && !wantsPlayback) set('ready');
   });
   const api = {
     element,
@@ -87,40 +131,64 @@ export function createAudio() {
     // 网速慢时自动用的 64k 流畅档：在状态里标一下
     message: () => (messages[state] || '') + (track && ['playing', 'waiting', 'paused'].includes(state) && srcTier(element.currentSrc || element.src) === 'sd' ? ' · ' + t('流畅音质') : ''),
     tier: () => srcTier(element.currentSrc || element.src),
-    load(t, at = 0) { clearTimeout(stallTimer); failedSources.clear(); token++; stopNoise(); silent = true; element.pause(); track = t; resumeAt = at; element.src = audioSrc(t); silent = false; set('loading'); },
-    async play({fadeIn = false, warm = false} = {}) {
-      if (!track) return false;
-      lastPlay = {fadeIn, warm};
-      const attempt = ++token;
-      if (state === 'error') { resumeAt = api.position(); element.load(); }
-      silent = warm;
-      if (fadeIn || warm) {
-        try { graph(); } catch { set('error'); return false; }
-        if (gain) { gain.gain.cancelScheduledValues(context.currentTime); gain.gain.setValueAtTime(0, context.currentTime); }
-        // 预热时一定静音：手机上音频上下文还没跑起来时，音量节点管不住，歌会先响一下，等正式落针又从头放
-        element.muted = warm;
-      } else if (gain) { gain.gain.cancelScheduledValues(context.currentTime); gain.gain.setValueAtTime(1, context.currentTime); }
+    load(t, at = 0) {
+      clearTimeout(stallTimer);
+      failedSources.clear();
+      token++;
+      wantsPlayback = false;
+      stopNoise();
+      element.pause();
+      track = t;
+      resumeAt = mediaSeconds(at) || null;
+      element.src = audioSrc(t);
       set('loading');
-      if (!warm) { clearTimeout(stallTimer); stallTimer = setTimeout(downgrade, 5000); }
+    },
+    async play({fadeIn = false} = {}) {
+      if (!track) return false;
+      const attempt = ++token;
+      if (state === 'error') {
+        resumeAt = api.position() || null;
+        failedSources.clear();
+        element.load();
+      }
+      wantsPlayback = true;
+      if (fadeIn || context) {
+        try { graph(); } catch {}
+      }
+      if (gain) {
+        const now = context.currentTime;
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.setValueAtTime(fadeIn ? 0 : 1, now);
+      }
+      if (state !== 'loading') set('loading');
+      clearTimeout(stallTimer);
+      stallTimer = setTimeout(downgrade, 5000);
       try {
-        if (resumeAt !== null && element.readyState !== 0) applyPendingSeek();
+        if (resumeAt !== null && element.readyState !== 0 && !element.seeking) applyPendingSeek();
         await element.play();
-        if (attempt !== token) return false;
-        if (warm) return true;
-        element.muted = false;
-        if (fadeIn) {
+        if (attempt !== token || !wantsPlayback || element.ended) return false;
+        if (fadeIn && gain) {
           crackle();
-          if (gain) { const now = context.currentTime; gain.gain.setValueAtTime(0, now); gain.gain.setValueAtTime(0, now + .32); gain.gain.linearRampToValueAtTime(1, now + .82); }
+          const now = context.currentTime;
+          gain.gain.setValueAtTime(0, now + .32);
+          gain.gain.linearRampToValueAtTime(1, now + .82);
         }
-        set('playing'); return true;
+        return true;
       } catch (error) {
-        if (attempt === token && error.name !== 'AbortError') set(error.name === 'NotAllowedError' ? 'blocked' : 'error');
+        if (attempt !== token) return false;
+        if (error.name === 'NotSupportedError' && element.error) recoverSource();
+        else if (error.name !== 'AbortError') {
+          wantsPlayback = false;
+          clearTimeout(stallTimer);
+          set(error.name === 'NotAllowedError' ? 'blocked' : 'error');
+        }
         return false;
       }
     },
-    position: () => resumeAt !== null ? resumeAt : element.currentTime,
+    position: () => resumeAt ?? (element.readyState ? mediaSeconds(element.currentTime) : 0),
+    duration: () => mediaDuration() || mediaSeconds(track?.duration),
     seekTo(seconds, durationHint = 0) {
-      const duration = Number.isFinite(element.duration) && element.duration > 0 ? element.duration : durationHint || track?.duration || 0;
+      const duration = mediaDuration() || mediaSeconds(durationHint) || mediaSeconds(track?.duration);
       if (!track || !duration || !Number.isFinite(seconds)) return false;
       const target = Math.max(0, Math.min(duration, seconds));
       resumeAt = target;
@@ -140,23 +208,39 @@ export function createAudio() {
       }
       return taps;
     },
-    pause() { token++; stopNoise(); element.pause(); },
-    stop() { token++; stopNoise(); silent = true; element.pause(); track = null; silent = false; set('idle'); }
+    pause() {
+      if (!track) return;
+      token++;
+      wantsPlayback = false;
+      clearTimeout(stallTimer);
+      stopNoise();
+      element.pause();
+      set('paused');
+    },
+    stop() {
+      token++;
+      wantsPlayback = false;
+      clearTimeout(stallTimer);
+      stopNoise();
+      element.pause();
+      track = null;
+      resumeAt = null;
+      set('idle');
+    }
   };
   return api;
 }
 const needle = createAudio();
-let listener = null, started = false;
-needle.on((state, track) => { if (started || ['error','blocked','idle'].includes(state)) listener?.(state === 'idle' ? 'stopped' : state, track); });
+let listener = null;
+needle.on((state, track) => listener?.(state === 'idle' ? 'stopped' : state, track));
 export const player = {
   on(fn) { listener = fn; }, current: needle.current,
-  time: () => ({t: needle.element.currentTime, d: needle.element.duration || 0}),
-  prepare(track) { started = false; needle.load(track); needle.play({warm: true}); listener?.('loading', track); },
-  start() { started = true; try { needle.element.currentTime = 0; } catch {} needle.play({fadeIn: true}); },
-  stop() { started = false; const t = needle.current(); needle.stop(); if (t) listener?.('stopped', t); },
-  // 播放条用：暂停 / 继续 / 拖进度
-  pause() { if (started && needle.current()) needle.pause(); },
-  resume() { if (started && needle.current()) needle.play(); },
+  time: () => ({t: needle.position(), d: needle.duration()}),
+  // 在点击回调中只启动一次。唱针动画同时运行，不靠静音预播和二次定位。
+  start(track) { needle.load(track); return needle.play({fadeIn: true}); },
+  stop: needle.stop,
+  pause: needle.pause,
+  resume: needle.play,
   seek(seconds) { return needle.seekTo(seconds); },
   taps: () => needle.taps(),
   element: needle.element

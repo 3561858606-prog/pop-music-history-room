@@ -683,12 +683,16 @@ export async function initExplore(ctx) {
     const t = M.byId.get(id); if (!t) return;
     pauseVideo(); noteHistory(id);
     const g = M.ringOf.get(id), token = ++needleToken;
-    player.prepare(t); view.needle = 'dropping'; renderNeedle();
-    if (!disc) { player.start(); return; }
-    disc.arm(g.mid, true); disc.setPlay(g.i, false);
+    if (disc) { disc.arm(g.mid, true); disc.setPlay(g.i, false); }
+    seeking = false;
+    player.start(t);
+    if (!disc) return;
     const t0 = performance.now();
-    const wait = () => { if (token !== needleToken) return;
-      if (disc.armSettled() || performance.now() - t0 > 2600 || ctx.reduced()) { player.start(); disc.setPlay(g.i, true); needleRipple(); } else requestAnimationFrame(wait); };
+    const wait = () => {
+      if (token !== needleToken || view.needle === 'idle' || view.needle === 'paused') return;
+      if (disc.armSettled() || performance.now() - t0 > 2600 || ctx.reduced()) needleRipple();
+      else requestAnimationFrame(wait);
+    };
     requestAnimationFrame(wait);
   }
   function liftNeedle() { needleToken++; player.stop(); }
@@ -784,7 +788,7 @@ export async function initExplore(ctx) {
     bar.querySelector('.np-fx').hidden = !cosmos;
     mb.innerHTML = `${ICON[mode]}<span>${tr(MODE_LABEL[mode])}</span>`;
     mb.setAttribute('aria-label', tr('播放模式：{m}（点一下切换）', {m: tr(MODE_LABEL[mode])})); mb.title = mb.getAttribute('aria-label'); mb.dataset.mode = mode;
-    if (!t) { mediaSession(null); return; }
+    if (!t) { delete bar.dataset.track; mediaSession(null); return; }
     const playing = view.needle === 'playing' || view.needle === 'buffering' || view.needle === 'dropping';
     const pb = bar.querySelector('.np-play'); pb.innerHTML = playing ? ICON.pause : ICON.play;
     pb.setAttribute('aria-label', tr(playing ? '暂停' : '播放')); pb.title = pb.getAttribute('aria-label');
@@ -802,20 +806,24 @@ export async function initExplore(ctx) {
   }
   function progress() {
     if (seeking || bar.hidden) return;
-    const {t, d} = player.time(), dur = d || player.current()?.duration || 0;
-    range.value = dur ? Math.round(t / dur * 1000) : 0;
-    range.style.setProperty('--p', (dur ? t / dur * 100 : 0) + '%');
-    range.setAttribute('aria-valuetext', `${clockOf(t)} / ${clockOf(dur)}`);
-    bar.querySelector('.np-t').textContent = clockOf(t); bar.querySelector('.np-d').textContent = clockOf(dur);
+    const {t, d} = player.time();
+    const elapsed = Math.min(t, d);
+    const fraction = d ? elapsed / d : 0;
+    range.value = Math.round(fraction * 1000);
+    range.style.setProperty('--p', (fraction * 100) + '%');
+    range.setAttribute('aria-valuetext', `${clockOf(elapsed)} / ${clockOf(d)}`);
+    bar.querySelector('.np-t').textContent = clockOf(elapsed); bar.querySelector('.np-d').textContent = clockOf(d);
   }
   player.element.addEventListener('timeupdate', progress);
+  player.element.addEventListener('durationchange', progress);
   player.element.addEventListener('loadedmetadata', progress);
+  range.addEventListener('pointercancel', () => { seeking = false; progress(); });
   range.addEventListener('input', () => {
-    seeking = true; const dur = player.time().d || player.current()?.duration || 0;
+    seeking = true; const dur = player.time().d;
     range.style.setProperty('--p', range.value / 10 + '%');
     bar.querySelector('.np-t').textContent = clockOf(range.value / 1000 * dur);
   });
-  range.addEventListener('change', () => { const dur = player.time().d || player.current()?.duration || 0; player.seek(range.value / 1000 * dur); seeking = false; progress(); });
+  range.addEventListener('change', () => { const dur = player.time().d; player.seek(range.value / 1000 * dur); seeking = false; progress(); });
   bar.addEventListener('click', e => {
     const act = e.target.closest('[data-np]')?.dataset.np; if (!act) return;
     const cur = player.current()?.id;

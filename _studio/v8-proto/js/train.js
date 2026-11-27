@@ -93,32 +93,37 @@ export function createTrain(root, ctx) {
     const ids = new Set(round.pool.map(t => t.id));
     return queue.remaining.filter(t => ids.has(t.id)).at(-1) || null;
   }
-  // 等这一首在播放位置之后已经缓冲了 30 秒以上（或整首下完）才预取，不和正在听的这首抢网速。
+  // 当前曲目完整到达后再预取下一首，避免两条音频请求在弱网里争用带宽。
   const loadedFully = () => {
-    const d = audio.duration, b = audio.buffered, now = audio.currentTime;
-    for (let i = 0; i < b.length; i++) if (b.start(i) <= now + .5 && b.end(i) >= now) return b.end(i) - now >= 30 || (Number.isFinite(d) && b.end(i) >= d - .5);
-    return false;
+    const d = audio.duration, b = audio.buffered;
+    return Number.isFinite(d) && d > 0 && b.length === 1 && b.start(0) < .25 && b.end(0) >= d - .25;
   };
   function warmNext() {
     clearTimeout(warmTimer);
     const tick = () => {
       if (!round || navigator.connection?.saveData) return;
+      const t = upcoming(); if (!t || t.id === warmedId) return;
       if (!loadedFully()) { warmTimer = setTimeout(tick, 1500); return; }
       const cover = M.coverOf(round.question.track); if (cover?.url) new Image().src = cover.url;
-      const t = upcoming(); if (!t || t.id === warmedId) return;
       warmedId = t.id;
       fetch(new URL('../assets/waveforms/' + encodeURIComponent(t.id) + '.json', import.meta.url)).catch(() => {});
-      spare.src = M.audioSrc(t); markPrefetched(spare.src);
+      const src = new URL(M.audioSrc(t), location.href);
+      spare.crossOrigin = src.origin === location.origin ? null : 'anonymous';
+      spare.src = src.href; markPrefetched(src.href);
     };
     warmTimer = setTimeout(tick, 1500);
   }
   function coolNext() { clearTimeout(warmTimer); warmedId = null; if (spare.getAttribute('src')) { spare.removeAttribute('src'); spare.load(); } }
+  for (const event of ['seeking', 'waiting']) audio.addEventListener(event, () => {
+    if (!round || !warmedId || loadedFully()) return;
+    coolNext(); warmNext();
+  });
   function setQuestion() {
     const track = queue.next(round.pool);
     round.question = round.questionType === 'written' ? {track, options: {}} : buildQuestion(track, round.pool, M.catalog.tracks, M.catalog.styles);
     round.question.eventId = M.uid('answer');
     round.answers = {}; round.drafts = {}; round.phase = 'answer'; round.col = 0;
-    playback.load(track); playback.play();
+    coolNext(); playback.load(track); playback.play();
     warmNext();
   }
   async function next() {
@@ -742,8 +747,8 @@ export function createTrain(root, ctx) {
   return {
     start, startReview, restore, active: () => !!round, id: () => round?.id,
     info: () => round ? {n: round.done.length + 1, size: round.size} : null,
-    resume() { render(); },
-    pause() { peeks.hide(); hideSheet(false); playback.pause(); if (round && !operating) saveDraft(); },
+    resume() { render(); warmNext(); },
+    pause() { peeks.hide(); hideSheet(false); playback.pause({release: true}); coolNext(); if (round && !operating) saveDraft(); },
     async discard() {
       if (operating) throw Error(tr('正在保存，请稍后再切换轮次。'));
       peeks.hide(); operating = true; playback.pause();

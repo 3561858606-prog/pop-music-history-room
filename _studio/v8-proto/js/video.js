@@ -46,9 +46,7 @@ const lowerOf = (v, q) => { const list = tiersOf(v), i = list.findIndex(([x]) =>
 export function qualityOf(v) {
   const list = tiersOf(v); if (!list.length) return null;
   if (choice !== 'auto') return (list.find(([q]) => +q <= +choice) || list.at(-1))[0];
-  const estimate = net.bandwidth(), weak = net.slowConnectionBandwidth();
-  const bandwidth = weak === null ? estimate : Math.min(estimate ?? weak, weak);
-  return net.pick(list, 2, list.find(([q]) => q === '360')?.[0], bandwidth);
+  return net.pick(list, 2, list.find(([q]) => q === '360')?.[0]);
 }
 export function videoSrc(v, q = qualityOf(v)) {
   const path = (q === '1080' || q === '360' || q === '240' ? q + '/' : '') + v.file;

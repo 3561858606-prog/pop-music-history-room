@@ -8,7 +8,7 @@ try { const v = JSON.parse(localStorage.getItem(KEY)); if (v && Date.now() - v.t
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(est)); } catch {} };
 
 // 浏览器明确提示弱网时的保守估计（字节/秒）。
-export function slowConnectionBandwidth() {
+function slowConnectionBandwidth() {
   const c = navigator.connection;
   if (c?.saveData) return 20e3;
   if (c?.downlink && c.downlink < 1.5) return c.downlink * 1e6 / 8 / 2;
@@ -17,8 +17,9 @@ export function slowConnectionBandwidth() {
 
 // 当前估计（字节/秒）；完全不知道时返回 null。
 export function bandwidth() {
-  if (est && Date.now() - est.t < TTL) return est.bps;
-  return slowConnectionBandwidth();
+  const weak = slowConnectionBandwidth();
+  if (!est || Date.now() - est.t >= TTL) return weak;
+  return weak === null ? est.bps : Math.min(est.bps, weak);
 }
 export function report(bps) {
   if (!(bps > 0) || !Number.isFinite(bps)) return;
@@ -46,21 +47,28 @@ export function watch(el, kbps, alive = () => true) {
   let last = null, start = 0, whole = false;
   // 新文件开始加载：记下时间。网快时整首几秒内就下完，量不到「增长」，就按「下完用了多久」算一个下限。
   el.addEventListener('loadstart', () => { start = performance.now(); whole = false; last = null; });
-  const ahead = () => { const b = el.buffered; let end = 0; for (let i = 0; i < b.length; i++) end = Math.max(end, b.end(i)); return end; };
+  const bufferedSeconds = () => {
+    const ranges = el.buffered;
+    let total = 0;
+    for (let i = 0; i < ranges.length; i++) total += ranges.end(i) - ranges.start(i);
+    return total;
+  };
+  el.addEventListener('seeking', () => { last = null; });
   const timer = setInterval(() => {
     if (!alive()) return clearInterval(timer);
-    if (!el.currentSrc) { last = null; return; }
-    const now = performance.now(), end = ahead(), d = el.duration, done = Number.isFinite(d) && end >= d - .5;
-    if (done && !whole && start && !prefetched.has(el.currentSrc) && (!last || last.src === el.currentSrc)) {
-      whole = true; const b = el.buffered;
-      if (b.length === 1 && b.start(0) < .5) report(d * kbps() * 125 / Math.max(.5, (now - start) / 1000));
+    if (!el.currentSrc || el.seeking || prefetched.has(el.currentSrc)) { last = null; return; }
+    const now = performance.now(), buffered = bufferedSeconds(), d = el.duration;
+    const done = Number.isFinite(d) && buffered >= d - .5;
+    if (done && !whole && start && (!last || last.src === el.currentSrc)) {
+      whole = true;
+      report(d * kbps() * 125 / Math.max(.5, (now - start) / 1000));
     }
     if (el.networkState !== 2 /* NETWORK_LOADING */) { last = null; return; }
-    if (last && last.src === el.currentSrc && end > last.end && !done) {
+    if (last && last.src === el.currentSrc && buffered > last.buffered && !done) {
       const secs = (now - last.now) / 1000;
-      if (secs > 1) report((end - last.end) * kbps() * 125 / secs);
+      if (secs > 1) report((buffered - last.buffered) * kbps() * 125 / secs);
     }
-    last = {src: el.currentSrc, end, now};
+    last = {src: el.currentSrc, buffered, now};
   }, 2000);
   return () => clearInterval(timer);
 }

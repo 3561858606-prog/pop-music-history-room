@@ -7,6 +7,10 @@
 // 老用户打开网站时，左下角会出现一次这条更新的小纸条；新用户只看上手指南，不打扰。
 // 新的小设计加到 DESIGNS 里，since 写这次更新的 v，更新说明里会标「新」。
 export const RELEASES = [
+  {v: '2026-11-27d', title: {zh: '弱网下听歌更稳定', ko: '느린 연결에서 더 안정적인 곡 재생', en: 'More reliable audio on slow connections'}, items: [
+    {t: 'fix', text: {zh: '试听和听辨遇到音频断流时，会在当前位置以同音质重试一次。', ko: '곡을 듣거나 청음 문제를 풀 때 음원 전송이 끊기면, 같은 음질로 현재 위치에서 한 번 다시 시도합니다.', en: 'If audio stops arriving during preview or practice, the player retries once at the current position and quality.'}},
+    {t: 'tweak', text: {zh: '自动音质参考当前网速，后台预取让正在播放的歌曲优先下载。', ko: '자동 음질은 현재 연결 속도를 반영하고, 다음 곡을 미리 받기 전에 재생 중인 곡을 먼저 내려받습니다.', en: 'Automatic quality uses the current connection speed, and the playing track downloads before the next track is prefetched.'}}
+  ]},
   {v: '2026-11-27c', title: {zh: '第 9 讲视频拖动后更快恢复', ko: '9강 영상 탐색 후 더 빠르게 이어 재생', en: 'Faster recovery after seeking in Lecture 9'}, items: [
     {t: 'fix', text: {zh: '弱网下拖动进度后，如果视频请求持续停滞，会用当前画质在你选择的位置重试一次。', ko: '연결이 느려 영상의 재생 위치를 옮긴 뒤 요청이 계속 멈추면, 같은 화질로 선택한 위치에서 한 번 다시 시도합니다.', en: 'If a video request stalls after you seek on a slow connection, the player retries once at the selected position and quality.'}}
   ]},

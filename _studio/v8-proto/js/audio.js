@@ -3,12 +3,15 @@ import {audioSrc, audioFallbackSrc, srcKbps, srcTier, canDowngrade} from './mode
 import {watch, penalize} from './net.js';
 import {t} from './i18n.js';
 const mediaSeconds = value => Number.isFinite(value) && value > 0 ? value : 0;
+const NO_DATA_MS = 4500;
 
 export function createAudio() {
   const element = new Audio(); element.preload = 'metadata';
-  let track = null, state = 'idle', listener = null, token = 0, resumeAt = null;
+  let track = null, state = 'idle', listener = null, token = 0, resumeAt = null, suspendedSrc = null;
   let context = null, gain = null, noise = null, wantsPlayback = false, taps = null;
+  let introPending = false;
   const failedSources = new Set();
+  const retriedSources = new Set();
   const messages = Object.fromEntries(Object.entries({idle: '点击播放收听', loading: '音频加载中…', ready: '音频已就绪，点击播放', playing: '正在播放',
     paused: '已暂停', waiting: '正在缓冲…', ended: '播放完毕，可以重听', blocked: '浏览器需要你点击播放', error: '音频加载失败，点击播放重试'}).map(([k, v]) => [k, t(v)]));
   const set = value => { state = value; listener?.(state, track); };
@@ -17,6 +20,11 @@ export function createAudio() {
     // Web Audio needs a CORS response to produce samples from a cross-origin media source.
     element.crossOrigin = new URL(src, location.href).origin === location.origin ? null : 'anonymous';
     element.src = src;
+  }
+  function releaseSource() {
+    if (!element.src) return;
+    element.removeAttribute('src');
+    element.load();
   }
   function graph() {
     if (!context) {
@@ -61,7 +69,9 @@ export function createAudio() {
   element.addEventListener('timeupdate', acknowledgeSeek);
   element.addEventListener('canplay', () => { if (!element.seeking) applyPendingSeek(); });
   for (const ev of ['waiting', 'stalled']) element.addEventListener(ev, () => {
-    if (wantsPlayback && !element.paused && !element.ended) set('waiting');
+    if (!wantsPlayback || element.paused || element.ended) return;
+    if (state !== 'waiting') set('waiting');
+    beginWait(1500);
   });
   element.addEventListener('pause', () => {
     if (!wantsPlayback || !element.paused || element.ended || element.readyState < 2) return;
@@ -76,23 +86,23 @@ export function createAudio() {
       return;
     }
     wantsPlayback = false;
-    clearTimeout(stallTimer);
+    clearWait();
     stopNoise();
     set('ended');
   });
 
   // 换源后接着播放，同一档失败后不反复回退。
   function switchSrc(src) {
-    clearTimeout(stallTimer);
+    clearWait();
     stopNoise();
     const position = api.position();
     resumeAt = position > 0 ? position : null;
     token++;
     setSource(src);
-    if (wantsPlayback) api.play(); else set('loading');
+    if (wantsPlayback) api.play({fadeIn: introPending}); else set('loading');
   }
   function recoverSource() {
-    clearTimeout(stallTimer);
+    clearWait();
     const src = element.src;
     failedSources.add(src);
     const fallback = audioFallbackSrc(track);
@@ -108,19 +118,54 @@ export function createAudio() {
     element.pause();
     set('error');
   }
-  // 边播边量网速；卡住超过 1.5 秒（或点了播放 5 秒还没出声）就降到流畅档，从同一秒接着放。
+  // 持续有数据但供不上播放时才降档。请求不再传输时，先从当前位置用同音质重试一次。
   watch(element, () => track ? srcKbps(track, element.currentSrc) : 128);
-  let stallTimer = 0, seekAt = 0;
-  element.addEventListener('seeking', () => { seekAt = performance.now(); });
-  const downgrade = () => {
+  let stallTimer = 0, wait = null, lastData = 0, seekAt = -Infinity;
+  function clearWait() {
     clearTimeout(stallTimer);
-    if (!track || !canDowngrade(track, element.currentSrc || element.src) || failedSources.has(audioSrc(track, 'sd')) || !['loading', 'waiting'].includes(state)) return;
-    penalize(srcKbps(track, element.currentSrc)); switchSrc(audioSrc(track, 'sd'));
-  };
-  element.addEventListener('waiting', () => { if (track && !element.paused && performance.now() - seekAt > 1000) { clearTimeout(stallTimer); stallTimer = setTimeout(downgrade, 1500); } });
+    wait = null;
+  }
+  function beginWait(grace) {
+    if (wait || !track || !wantsPlayback || element.ended) return;
+    wait = {since: performance.now(), at: element.currentTime, grace};
+    stallTimer = setTimeout(checkWait, Math.min(grace, NO_DATA_MS));
+  }
+  function checkWait() {
+    if (!wait || !track || !wantsPlayback || element.paused || element.ended) { clearWait(); return; }
+    const now = performance.now();
+    const quiet = now - Math.max(wait.since, lastData);
+    const src = element.src;
+    const lower = canDowngrade(track, src) ? audioSrc(track, 'sd') : null;
+    const canLower = lower && !failedSources.has(lower);
+    if (quiet >= NO_DATA_MS && !retriedSources.has(src)) {
+      retriedSources.add(src);
+      resumeAt = api.position() || null;
+      element.load();
+      api.play({fadeIn: introPending});
+      return;
+    }
+    const dataTooSlow = lastData > wait.since && now - wait.since >= wait.grace && !element.seeking && now - seekAt > 1000;
+    if (canLower && (quiet >= NO_DATA_MS || dataTooSlow)) {
+      penalize(srcKbps(track, src));
+      switchSrc(lower);
+      return;
+    }
+    if (quiet >= NO_DATA_MS) { clearWait(); return; }
+    stallTimer = setTimeout(checkWait, NO_DATA_MS - quiet);
+  }
+  element.addEventListener('loadstart', () => { lastData = 0; });
+  element.addEventListener('progress', () => { lastData = performance.now(); });
+  element.addEventListener('seeking', () => {
+    seekAt = performance.now();
+    clearWait();
+    beginWait(1500);
+  });
+  element.addEventListener('seeked', () => { if (wait) wait.at = element.currentTime; });
+  element.addEventListener('timeupdate', () => {
+    if (wait && !element.seeking && element.currentTime >= wait.at + .04) clearWait();
+  });
   element.addEventListener('playing', () => {
     if (!wantsPlayback || element.paused || element.ended) return;
-    clearTimeout(stallTimer);
     set('playing');
   });
   element.addEventListener('error', () => { if (track && element.error && state !== 'error') recoverSource(); });
@@ -134,17 +179,21 @@ export function createAudio() {
     current: () => track,
     failed: () => state === 'error' || state === 'blocked',
     // 网速慢时自动用的 64k 流畅档：在状态里标一下
-    message: () => (messages[state] || '') + (track && ['playing', 'waiting', 'paused'].includes(state) && srcTier(element.currentSrc || element.src) === 'sd' ? ' · ' + t('流畅音质') : ''),
-    tier: () => srcTier(element.currentSrc || element.src),
+    message: () => (messages[state] || '') + (track && ['playing', 'waiting', 'paused'].includes(state) && api.tier() === 'sd' ? ' · ' + t('流畅音质') : ''),
+    tier: () => srcTier(suspendedSrc || element.currentSrc || element.src),
     load(t, at = 0) {
-      clearTimeout(stallTimer);
+      clearWait();
       failedSources.clear();
+      retriedSources.clear();
       token++;
       wantsPlayback = false;
+      introPending = false;
+      seekAt = -Infinity;
       stopNoise();
       element.pause();
       track = t;
       resumeAt = mediaSeconds(at) || null;
+      suspendedSrc = null;
       setSource(audioSrc(t));
       set('loading');
     },
@@ -154,9 +203,15 @@ export function createAudio() {
       if (state === 'error') {
         resumeAt = api.position() || null;
         failedSources.clear();
+        retriedSources.clear();
         element.load();
       }
+      if (suspendedSrc) {
+        setSource(suspendedSrc);
+        suspendedSrc = null;
+      }
       wantsPlayback = true;
+      introPending = fadeIn;
       if (fadeIn || context) {
         try { graph(); } catch {}
       }
@@ -166,12 +221,13 @@ export function createAudio() {
         gain.gain.setValueAtTime(fadeIn ? 0 : 1, now);
       }
       if (state !== 'loading') set('loading');
-      clearTimeout(stallTimer);
-      stallTimer = setTimeout(downgrade, 5000);
+      clearWait();
+      beginWait(5000);
       try {
         if (resumeAt !== null && element.readyState !== 0 && !element.seeking) applyPendingSeek();
         await element.play();
         if (attempt !== token || !wantsPlayback || element.ended) return false;
+        introPending = false;
         if (fadeIn && gain) {
           crackle();
           const now = context.currentTime;
@@ -184,7 +240,7 @@ export function createAudio() {
         if (error.name === 'NotSupportedError' && element.error) recoverSource();
         else if (error.name !== 'AbortError') {
           wantsPlayback = false;
-          clearTimeout(stallTimer);
+          clearWait();
           set(error.name === 'NotAllowedError' ? 'blocked' : 'error');
         }
         return false;
@@ -213,23 +269,30 @@ export function createAudio() {
       }
       return taps;
     },
-    pause() {
+    pause({release = false} = {}) {
       if (!track) return;
       token++;
       wantsPlayback = false;
-      clearTimeout(stallTimer);
+      clearWait();
       stopNoise();
       element.pause();
+      if (release && element.src) {
+        resumeAt = api.position();
+        suspendedSrc = element.src;
+        releaseSource();
+      }
       set('paused');
     },
     stop() {
       token++;
       wantsPlayback = false;
-      clearTimeout(stallTimer);
+      clearWait();
       stopNoise();
       element.pause();
       track = null;
       resumeAt = null;
+      suspendedSrc = null;
+      releaseSource();
       set('idle');
     }
   };

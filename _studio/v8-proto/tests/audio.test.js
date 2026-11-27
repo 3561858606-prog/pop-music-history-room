@@ -9,6 +9,7 @@ class FakeAudio extends EventTarget {
  resetMedia(){this.paused=true;this.ended=false;this.currentTime=0;this.duration=NaN;this.readyState=0;this.error=null;}
  get src(){return this._src;}
  set src(value){this._src=value;this.resetMedia();}
+ removeAttribute(name){if(name==='src')this._src='';}
  async play(){if(this.errorName)throw new DOMException('test',this.errorName);this.paused=false;this.dispatchEvent(new Event('playing'));}
  pause(){this.paused=true;this.dispatchEvent(new Event('pause'));}
  load(){this.loads++;this.resetMedia();}
@@ -63,6 +64,15 @@ try {
  await test('暂停中点击不启动播放，定位限制在音频范围内',()=>{
   const p=createAudio();p.load({src:'audio/t01.mp3',duration:100});p.element.metadata(100);
   p.seekTo(-10);assert(p.position()===0,'首端越界');p.seekTo(999);assert(p.position()===100&&p.element.paused,'末端越界或意外播放');
+ });
+ await test('离开练习时取消下载，回来在原音源和位置续播',async()=>{
+  const p=createAudio();p.load({src:'audio/t01.mp3',duration:100});p.element.metadata(100);
+  const src=p.element.src;await p.play();p.seekTo(42);
+  p.pause({release:true});
+  assert(!p.element.src&&p.element.paused&&p.position()===42,'离开时仍在下载或位置丢失');
+  await p.play();p.element.metadata(100);
+  assert(p.element.src===src&&!p.element.paused&&p.element.currentTime===42,'恢复时未接回原位置');p.stop();
+  assert(!p.element.src,'停止后仍保留下载地址');
  });
  await test('异常短音源在开头误报结束时不跳歌，真正曲终只通知一次',async()=>{
   const p=createAudio(), states=[];p.on(state=>states.push(state));

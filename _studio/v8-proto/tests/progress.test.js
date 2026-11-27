@@ -70,13 +70,14 @@ await test('实际填空提交后，年份勾对、条增长，恢复反馈仍�
 const OriginalAudio = globalThis.Audio, originalTimeout = globalThis.setTimeout, originalClear = globalThis.clearTimeout;
 let timers = new Map(), serial = 0;
 class FakeAudio extends EventTarget {
-  constructor() { super(); this._src = ''; this.muted = false; this.buffered = {length: 0}; this.resetMedia(); }
+  constructor() { super(); this._src = ''; this.muted = false; this.buffered = {length: 0}; this.loads = 0; this.resetMedia(); }
   resetMedia() { this.paused = true; this.ended = false; this.currentTime = 0; this.duration = NaN; this.readyState = 0; this.error = null; }
   set src(value) { this._src = value; this.resetMedia(); this.dispatchEvent(new Event('loadstart')); }
   get src() { return this._src; } get currentSrc() { return this._src; }
+  removeAttribute(name) { if (name === 'src') this._src = ''; }
   async play() { this.paused = false; this.dispatchEvent(new Event('playing')); }
   pause() { this.paused = true; this.dispatchEvent(new Event('pause')); }
-  load() { this.resetMedia(); }
+  load() { this.loads++; this.resetMedia(); }
   fail() { this.error = {code: 4}; this.dispatchEvent(new Event('error')); }
 }
 globalThis.Audio = FakeAudio;
@@ -104,6 +105,27 @@ try {
     const failedSrc = p.element.src; p.element.fail();
     assert(p.element.src !== failedSrc, '模拟错误后未换源');
     assert(p.position() === 60, '换源退回旧播放位置：' + p.position()); p.stop();
+  });
+  await test('流畅档断流时同音质原地重试一次', async () => {
+    const p = createAudio(), track = M.byId.get('t75');
+    let now = performance.now();
+    Object.defineProperty(performance, 'now', {configurable: true, value: () => now});
+    try {
+      timers.clear(); p.load(track); await p.play();
+      const src = p.element.src;
+      assert(src.includes('/audio-sd/'), '未选中流畅档');
+      p.element.readyState = 2; p.element.currentTime = 32;
+      p.element.dispatchEvent(new Event('timeupdate'));
+      p.element.dispatchEvent(new Event('waiting'));
+      for (const delay of [4501, 4501]) {
+        now += delay;
+        const pending = [...timers.values()]; timers.clear();
+        pending.forEach(({fn}) => fn());
+        await Promise.resolve();
+      }
+      assert(p.element.loads === 1 && p.element.src === src && p.position() === 32, '重试多次、换档或丢失位置');
+      p.stop();
+    } finally { delete performance.now; }
   });
 } finally { globalThis.Audio = OriginalAudio; globalThis.setTimeout = originalTimeout; globalThis.clearTimeout = originalClear; }
 const name = M.store.name; M.store.close(); indexedDB.deleteDatabase(name);

@@ -70,12 +70,14 @@ await test('实际填空提交后，年份勾对、条增长，恢复反馈仍�
 const OriginalAudio = globalThis.Audio, originalTimeout = globalThis.setTimeout, originalClear = globalThis.clearTimeout;
 let timers = new Map(), serial = 0;
 class FakeAudio extends EventTarget {
-  constructor() { super(); this.paused = true; this.currentTime = 0; this.duration = 100; this.readyState = 1; this._src = ''; this.muted = false; }
-  set src(value) { this._src = value; this.dispatchEvent(new Event('loadstart')); }
+  constructor() { super(); this._src = ''; this.muted = false; this.buffered = {length: 0}; this.resetMedia(); }
+  resetMedia() { this.paused = true; this.ended = false; this.currentTime = 0; this.duration = NaN; this.readyState = 0; this.error = null; }
+  set src(value) { this._src = value; this.resetMedia(); this.dispatchEvent(new Event('loadstart')); }
   get src() { return this._src; } get currentSrc() { return this._src; }
   async play() { this.paused = false; this.dispatchEvent(new Event('playing')); }
   pause() { this.paused = true; this.dispatchEvent(new Event('pause')); }
-  load() { this.dispatchEvent(new Event('loadedmetadata')); }
+  load() { this.resetMedia(); }
+  fail() { this.error = {code: 4}; this.dispatchEvent(new Event('error')); }
 }
 globalThis.Audio = FakeAudio;
 globalThis.setTimeout = (fn, ms) => { const id = ++serial; timers.set(id, {fn, ms}); return id; };
@@ -89,7 +91,7 @@ try {
     else localStorage.setItem(key, saved);
     const p = createAudio(), track = M.byId.get('t75'); timers.clear(); p.load(track); await p.play();
     assert(p.element.src.includes('/audio-sd/'), '冷启动未使用流畅档');
-    p.element.dispatchEvent(new Event('error')); await Promise.resolve();
+    p.element.fail(); await Promise.resolve();
     assert(p.element.src === M.audioFallbackSrc(track), '没有退回原档');
     await new Promise(resolve => originalTimeout(resolve, 1100));
     p.element.dispatchEvent(new Event('waiting'));
@@ -99,7 +101,8 @@ try {
   await test('换源时保留尚未完成的最新定位目标', async () => {
     const p = createAudio(); timers.clear(); p.load(M.byId.get('t75')); await p.play();
     p.element.currentTime = 10; p.element.readyState = 0; p.seekTo(60, 100);
-    p.element.dispatchEvent(new Event('error'));
+    const failedSrc = p.element.src; p.element.fail();
+    assert(p.element.src !== failedSrc, '模拟错误后未换源');
     assert(p.position() === 60, '换源退回旧播放位置：' + p.position()); p.stop();
   });
 } finally { globalThis.Audio = OriginalAudio; globalThis.setTimeout = originalTimeout; globalThis.clearTimeout = originalClear; }

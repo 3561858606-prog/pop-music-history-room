@@ -3,7 +3,7 @@ import {LITE} from './audio-lite.js';
 import {AUDIO} from './media-tiers.js';
 import * as net from './net.js';
 // 只读取 v3 的课程数据和记忆模块，不改动它们。原型的作答记录写在自己的存储键里。
-import {catalog} from '../../../v3/catalog.js';
+import {catalog, courseMediaUrl} from '../../../v3/catalog.js';
 import {COVERS} from '../../../v3/covers.js';
 import {PROTO_COVERS} from './cover-overrides.js';
 import {status, KEYS, emptyMemory, record, migrate} from '../../../v3/memory.js';
@@ -107,12 +107,13 @@ export const storiesLoaded = () => !!STORIES;
 export const storyOf = t => STORIES?.[t.id] || null;
 // 音频两档：hd = 原档（码率高于 128k 的几首用压到 128k 的 audio-lite）；sd = 64k 流畅档（audio-sd）。
 // 按 net.js 测得的网速自动挑：网速要有码率的 3 倍才放 hd，否则放 sd，保证边下边播不卡。原 mp3 永远是最后的退路。
-const hdSrc = t => LITE.has(t.id) ? site('audio-lite/' + t.id + '.mp3') : site(t.src);
+const audioFile = (t, path) => courseMediaUrl(t.deck, path) || site(path);
+const hdSrc = t => LITE.has(t.id) ? site('audio-lite/' + t.id + '.mp3') : audioFile(t, t.src);
 const hdKbps = t => LITE.has(t.id) ? 128 : AUDIO[t.id]?.hd || 128;
 const hasSd = t => !!AUDIO[t.id] && AUDIO[t.id].sd < hdKbps(t) * .8;
 export const audioTier = t => hasSd(t) ? net.pick([['hd', hdKbps(t)], ['sd', AUDIO[t.id].sd]], 3) : 'hd';
-export const audioSrc = (t, tier = audioTier(t)) => tier === 'sd' && hasSd(t) ? site('audio-sd/' + t.id + '.mp3') : hdSrc(t);
-export const audioFallbackSrc = t => site(t.src);
+export const audioSrc = (t, tier = audioTier(t)) => tier === 'sd' && hasSd(t) ? audioFile(t, 'audio-sd/' + t.id + '.mp3') : hdSrc(t);
+export const audioFallbackSrc = t => audioFile(t, t.src);
 export const srcTier = src => String(src).includes('/audio-sd/') ? 'sd' : 'hd';
 export const srcKbps = (t, src) => srcTier(src) === 'sd' && AUDIO[t.id] ? AUDIO[t.id].sd : hdKbps(t);
 export const canDowngrade = (t, src) => srcTier(src) === 'hd' && hasSd(t);

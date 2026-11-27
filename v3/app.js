@@ -4,7 +4,7 @@ import { createArchive } from './archive-ui.js';
 import { coverFor, MISSING, KIND, RELATION } from './covers.js';
 import { storyFor } from './stories.js';
 import { gradeWritten } from './written.js';
-import { catalog } from './catalog.js';
+import { catalog, courseMediaUrl } from './catalog.js';
 import { createViewportNavigator } from './viewport.js';
 import { appearancesFor, canonicalLegacy, canonicalPending, canonicalReport, backupBeforeCatalogMerge } from './track-model.js';
 import { FIELDS, NOT_HEARD, hasAnswer, RandomQueue, buildQuestion, filterTracks, gradeQuestion, summarize, practiceWeight, weightedTrack, summarizeSongs, restoreDeckSelection } from './core.js';
@@ -583,7 +583,7 @@ function loadAudio(track, context) {
   audio.pause();
   audioTrack = track;
   audioContext = context;
-  audio.src = track.src;
+  audio.src = courseMediaUrl(track.deck, track.src) || track.src;
   audio.preload = 'metadata';
   audio.load();
   if (context === 'practice') {

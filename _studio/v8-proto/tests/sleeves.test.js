@@ -8,7 +8,7 @@ async function test(name,work){try{await work();results.push('PASS '+name);}catc
 await M.ready;
 
 const api=await initExplore({reduced:()=>true,startRound:()=>{},resumeRound:()=>{}});
-// 同年曲目按数据取：1967 年在加入第 8 讲后是 8 首（含 t81、t86），1970 年只有 t80
+// 同年曲目按数据取：1967 年在加入第 8 讲后是 8 首（含 t81、t86）
 const Y67=M.yearTracks(1967).map(t=>t.id), N67=Y67.length;
 const overlap=(a,b)=>a.x<b.x+b.width-1&&a.x+a.width>b.x+1&&a.y<b.y+b.height-1&&a.y+a.height>b.y+1;
 await test(`1967 年 ${N67} 首在桌面和窄屏布局均不重叠`,()=>{
@@ -52,14 +52,18 @@ await test(`${M.tracks.length} 首中除 t89 外图像均在本地可加载，�
  const special=M.coverOf(M.byId.get('t52'));assert(special.match==='context'&&M.coverLabel(special).includes('资料'),'未知录音被标成专辑');
  const leaflet=M.coverOf(M.byId.get('t21'));assert(leaflet.kind==='leaflet'&&M.coverLabel(leaflet).includes('非本曲封套'),'同盘A面附页被标成本曲封面');
 });
-await test('1970 年代带只有一首 t80，单张封套可选',async()=>{
+await test('1970 年代带容纳第 9 讲，同年两张封套可切换',async()=>{
  const t80=M.ringOf.get('t80'),band=M.bands[t80.band];
- assert(band.decade===1970&&band.ids.length===1&&band.ids[0]==='t80','1970 带应只有 t80');
+ const y1970=M.yearTracks(1970).map(t=>t.id);
+ assert(band.decade===1970&&band.ids.length===12,'1970 带应有 12 首');
+ assert(y1970.length===2&&y1970.includes('t80')&&y1970.includes('t98'),'1970 年分组不正确');
  assert(M.bands.at(-1)===band,'1970 带应是最内一圈');
- api.focusSong('t80');await until(()=>document.querySelectorAll('[data-cover]').length===1);
+ api.focusSong('t80');await until(()=>document.querySelectorAll('[data-cover]').length===y1970.length);
  assert(document.querySelector('[data-cover=t80]').getAttribute('aria-pressed')==='true','t80 未选中');
  assert(document.querySelector('.p-band b').textContent.trim()==='1970s','面板年代标题不对');
  assert(document.querySelector('.song-spoke').textContent.includes('0'),'t80 应在 0 号辐');
+ document.querySelector('[data-cover=t98]').click();
+ assert(document.querySelector('[data-cover=t98]').getAttribute('aria-pressed')==='true','第 9 讲 t98 未选中');
 });
 await test('t89 缺图时用占位，仍可选中',async()=>{
  api.focusSong('t89');await until(()=>document.querySelector('[data-cover=t89]'));

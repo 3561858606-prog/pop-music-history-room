@@ -1,4 +1,10 @@
 import {lecture8, lecture8Styles, lecture8Tracks} from './lecture8.js';
+import {lecture9, lecture9Styles, lecture9Tracks} from './lecture9.js';
+
+export function courseMediaUrl(deck, path) {
+  const base = catalog.lectures.find(lecture => lecture.id === deck)?.mediaBase;
+  return base ? new URL(path, new URL(base, import.meta.url)).href : null;
+}
 
 export const catalog = {
   "lectures": [
@@ -51,7 +57,8 @@ export const catalog = {
       "period": "1960–1968 · 英国入侵 · 迷幻 · Soul",
       "count": 20
     },
-    lecture8
+    lecture8,
+    lecture9
   ],
   "styles": [
     {
@@ -234,7 +241,8 @@ export const catalog = {
       "sub": "锡盘巷歌曲",
       "ko": "틴 팬 앨리"
     },
-    ...lecture8Styles
+    ...lecture8Styles,
+    ...lecture9Styles
   ],
   "tracks": [
     {
@@ -2023,16 +2031,17 @@ export const catalog = {
       "originalTitle": "보라색 안개 Purple Haze",
       "albumIds": []
     },
-    ...lecture8Tracks
+    ...lecture8Tracks,
+    ...lecture9Tracks
   ],
   "audit": {
-    "date": "2026-11-20",
-    "decks": 8,
-    "slides": 115,
-    "audio_objects": 82,
-    "video_objects": 8,
-    "exported_audio_files": 90,
-    "training_versions": 89,
+    "date": "2026-11-27",
+    "decks": 9,
+    "slides": 125,
+    "audio_objects": 91,
+    "video_objects": 10,
+    "exported_audio_files": 101,
+    "training_versions": 100,
     "unresolved_audio_labels": 19,
     "lecture8_year_conflicts": 2,
     "external_links": 0,

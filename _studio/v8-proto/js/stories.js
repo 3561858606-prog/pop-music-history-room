@@ -2592,5 +2592,342 @@ export const STORIES = {
         "url": "https://music.bugs.co.kr/track/1007598"
       }
     ]
+  },
+  "t91": {
+    "lead": "在洛杉矶录《Tapestry》时，Carole King 把以前交给别人唱的本事用回自己身上。她用钢琴托住一句很简单的承诺：朋友有难，可以来找她。",
+    "sections": [
+      {
+        "title": "从写歌的人变成唱歌的人",
+        "text": "在 1960 年代，King 和 Gerry Goffin 写的作品早已进入美国排行榜。走到台前时，她可以把一句话唱得像和朋友聊天，把难得的停顿和犹豫也留在唱片里。1971 年初录制的《Tapestry》既收进她用自己声音重新诠释的旧作，也有她新写的歌。"
+      },
+      {
+        "title": "两个朋友，两张唱片",
+        "text": "James Taylor 参与了《Tapestry》的录音，同一年又在自己的《Mud Slide Slim and the Blue Horizon》收录这首歌。他的单曲拿到美国榜首。课件选用 King 的录音，可以听她怎样先用钢琴摆出和声，再让声音在句末稍稍放松。Taylor 以吉他为中心的那一版适合拿来对听。"
+      },
+      {
+        "title": "主流流行乐可以说得很轻",
+        "text": "少量伴奏让每一个转折都落在词和声线上。这种偏向亲密叙述的声音和本讲的 AOR、迪斯科处在同一个大众市场。对比它们，能听见 1970 年代主流唱片如何同时容纳私人倾诉、整体专辑和舞池节拍。"
+      }
+    ],
+    "sources": [
+      {
+        "label": "Carole King 官网 · Tapestry 曲目与录音人员",
+        "url": "https://www.caroleking.com/discography/album/tapestry-1"
+      },
+      {
+        "label": "Carole King 官网 · James Taylor 的版本",
+        "url": "https://www.caroleking.com/news/youve-got-friend-inducted-naras-hall-fame"
+      },
+      {
+        "label": "发行方试听与专辑信息",
+        "url": "https://music.apple.com/us/album/youve-got-a-friend/747087657?i=747087669&uo=4"
+      }
+    ]
+  },
+  "t92": {
+    "lead": "这首歌写到西弗吉尼亚的山河，却源于三个人在一间屋子里合写。John Denver 把别人尚未写完的旋律，变成很多听众一张口就能跟唱的返乡歌。",
+    "sections": [
+      {
+        "title": "一首差点给 Johnny Cash 的歌",
+        "text": "Bill Danoff 和 Taffy Nivert 起初设想让 Johnny Cash 唱这首歌。Denver 听到尚未写完的部分，随后一起完成词曲。1971 年 RCA 发行单曲，并把它收入《Poems, Prayers & Promises》。唱片的地名很具体，副歌留给听众的是人人都能代入的归家愿望。"
+      },
+      {
+        "title": "为什么能进流行榜",
+        "text": "吉他的规律节拍和相叠的人声沿用乡村民谣的亲切音色。主歌慢慢铺陈，副歌用更大的音程把故乡唱成召唤。RCA 持续推广后，单曲登上美国流行榜第二。课程用它听乡村音乐走进主流流行市场的过程。"
+      },
+      {
+        "title": "一个地方共享的声音",
+        "text": "后来这首歌成了西弗吉尼亚的公共记忆，经常由观众齐唱。美国国会图书馆在 2023 年把 Denver 的录音纳入国家录音登记。重听时可以留心尾段和声怎样让一个人的想家，逐渐听起来像许多人一起开口。"
+      }
+    ],
+    "sources": [
+      {
+        "label": "John Denver 官网 · 合写经过及 RCA 专辑",
+        "url": "https://johndenver.com/news/album-of-the-day-poems-prayers-and-promises/"
+      },
+      {
+        "label": "美国国会图书馆 · 国家录音登记文章",
+        "url": "https://www.loc.gov/static/programs/national-recording-preservation-board/documents/take-me-home.pdf"
+      },
+      {
+        "label": "发行方试听与专辑信息",
+        "url": "https://music.apple.com/us/album/take-me-home-country-roads-original-version/511074105?i=511074294&uo=4"
+      }
+    ]
+  },
+  "t93": {
+    "lead": "鼓一落下，Stevie Wonder 的 Clavinet 就在拍子之间咬出一组短音。他用一件键盘乐器制造出近似吉他切弦的质感，把《Superstition》做成了 1972 年的放克单曲。",
+    "sections": [
+      {
+        "title": "Motown 歌手的创作空间",
+        "text": "Wonder 儿时已为 Motown 录音。到《Talking Book》时期，他更能决定歌曲怎样写、怎样录，也更自由地使用电键盘。美国国会图书馆保存的登记乐谱标明了 1972 年的版权材料，专辑和单曲同年进入听众视野。"
+      },
+      {
+        "title": "在节拍的空隙里组织乐队",
+        "text": "从开头的鼓组听起，留意 Clavinet 的音长很短，有些音提早落在拍边，另一些等鼓响过才出现。贝斯和铜管再逐步加入。密度增加时，鼓和反复出现的键盘句把层次接在一起。"
+      },
+      {
+        "title": "同一段律动跨过两张榜",
+        "text": "《Superstition》在美国流行和灵魂乐单曲榜都登上首位。它把放克的切分和一听便能记住的旋律放进同一段录音。跟课上下一代舞曲并听，先抓稳鼓的基本拍，再去数哪些键盘音刚好落在拍子之间。"
+      }
+    ],
+    "sources": [
+      {
+        "label": "美国国会图书馆 · 1972 年版权登记乐谱",
+        "url": "https://www.loc.gov/item/n50013801/steve-wonder/"
+      },
+      {
+        "label": "摇滚名人堂馆店 · Talking Book 与 Clavinet",
+        "url": "https://shop.rockhall.com/products/stevie-wonder-talking-book-vinyl-lp"
+      },
+      {
+        "label": "发行方试听与专辑信息",
+        "url": "https://music.apple.com/us/album/superstition/1440808973?i=1440808985&uo=4"
+      }
+    ]
+  },
+  "t94": {
+    "lead": "黄色砖路借自《绿野仙踪》，在这首歌里通向一场离开。Elton John 唱着 Bernie Taupin 写下的告别，让小小的私人愿望登上了一张 1973 年的双专辑。",
+    "sections": [
+      {
+        "title": "写词的人想回到哪里",
+        "text": "歌里的叙述者回望自己为什么走上那条路，也想象离开阔绰的生活以后能去哪儿。Taupin 的文字借电影意象说成名的距离感，Elton John 则把这段叙述放在很能展开的旋律里。歌曲可以联系二人的创作分工来听。"
+      },
+      {
+        "title": "从钢琴走到大合声",
+        "text": "开头由钢琴和较贴近的人声牵引，副歌把声线抬到高音，和声也随之变厚。这个变化让一句退意也有了宽阔的声场。课件把它放在 AOR 语境里，同名双专辑里不同速度、不同质地的歌曲，是这种语境的另一部分。"
+      },
+      {
+        "title": "专辑与单曲同时运作",
+        "text": "同名专辑在 1973 年发行并登上英美专辑榜首。标题曲也单独发行，在美国流行单曲榜到达第二。课件所用音源标作 2014 重制版，沿用 1973 年录音的首发口径。"
+      }
+    ],
+    "sources": [
+      {
+        "label": "Elton John 官网 · 专辑与单曲发行",
+        "url": "https://www.eltonjohn.com/stories/goodbyeyellowbrickroad-release"
+      },
+      {
+        "label": "美国国会图书馆 · 国家录音登记名录",
+        "url": "https://www.loc.gov/programs/national-recording-preservation-board/recording-registry/complete-national-recording-registry-listing/"
+      },
+      {
+        "label": "发行方试听与专辑信息",
+        "url": "https://music.apple.com/us/album/goodbye-yellow-brick-road-2014-remaster/1440863013?i=1440863122&uo=4"
+      }
+    ]
+  },
+  "t95": {
+    "lead": "《Love’s Theme》把一片弦乐铺在舞步上。Barry White 即使不亲自开口，听众也能从悠长的旋律和稳定的律动认出他的制作。",
+    "sections": [
+      {
+        "title": "从伴奏班底到唱片主角",
+        "text": "Barry White 组织乐团，配合自己制作的人声组合 Love Unlimited。乐团获得自己的署名后，零星在歌曲背后闪出的器乐声能够撑起整首单曲。《Love’s Theme》在 1973 年发行，后来收入《Rhapsody in White》。"
+      },
+      {
+        "title": "弦乐和节奏组各自做什么",
+        "text": "弦乐大幅度上扬，鼓、贝斯和节奏吉他贴着稳定的拍子走。尝试先听低处的小动作，再去跟旋律，可以辨认旋律如何越过若干小节延展，同时脚下的拍点还在原处。White 与 Gene Page 都有编曲署名。"
+      },
+      {
+        "title": "情歌进了舞池",
+        "text": "这首器乐曲登上美国流行单曲榜首。它可以放在灵魂乐与后来迪斯科之间听，观察柔顺的弦乐、清晰的节拍和不断重复的低音如何互相支撑。课件保留的版本与发行方试听在旋律和段落上对齐。"
+      }
+    ],
+    "sources": [
+      {
+        "label": "环球音乐 · 管弦乐团专辑重发说明",
+        "url": "https://www.universalmusic.ca/2019/02/01/barry-whites-love-unlimited-orchestra-celebrated-with-7cd-box-set-love-unlimited-orchestra-the-20th-century-records-albums-1973-1979-to-be-released-march-29/"
+      },
+      {
+        "label": "巴黎爱乐厅馆藏 · 1973–1979 单曲集",
+        "url": "https://mediatheque.philharmoniedeparis.fr/mediatheque/doc/ALOES/1132285/the-love-unlimited-orchestra-the-20th-century-records-singles-1973-1979-barry-white-composition"
+      },
+      {
+        "label": "发行方试听与专辑信息",
+        "url": "https://music.apple.com/us/album/loves-theme/1431061119?i=1431061547&uo=4"
+      }
+    ]
+  },
+  "t96": {
+    "lead": "唱片的开头给听者一段路程。吉他的分解和弦慢慢引出声音里的旅馆，几个段落过去，最后把叙事交给双吉他。",
+    "sections": [
+      {
+        "title": "专辑时代的大制作",
+        "text": "到 1976 年，Eagles 已经有一批成功的单曲。同名专辑把乐队的加州乡村摇滚和更重的录音室声音放到同一张唱片，标题曲由 Don Felder、Don Henley 和 Glenn Frey 合写。它先作为同名专辑的一部分发行，随后在 1977 年进入单曲市场。"
+      },
+      {
+        "title": "吉他推动故事",
+        "text": "开头的分解音符反复转动，很快就会熟悉。人声进入时，重音和吉他还在就地打圈，叙述却一步步加深。结尾可以听 Don Felder 和 Joe Walsh 的吉他如何轮流应答，再并到彼此贴合的旋律上。"
+      },
+      {
+        "title": "为什么课件用它听 AOR",
+        "text": "这首歌超过六分钟，给了开场、故事和尾奏各自的时间。专辑导向的广播和长篇制作，让这样的结构有了很大的传播空间。课程记 1976 年，按专辑第一次把录音交给听众的年份。"
+      }
+    ],
+    "sources": [
+      {
+        "label": "Eagles 官网 · 发行目录",
+        "url": "https://eagles.com/pages/releases"
+      },
+      {
+        "label": "美国国会图书馆 · Eagles 唱片资料",
+        "url": "https://www.loc.gov/programs/national-recording-preservation-board/recording-registry/descriptions-and-essays/"
+      },
+      {
+        "label": "发行方试听与专辑信息",
+        "url": "https://music.apple.com/us/album/hotel-california/635770200?i=635770202&uo=4"
+      }
+    ]
+  },
+  "t97": {
+    "lead": "唱针落下后，先来的是心跳和拼贴的声音。接着，声音从《Speak to Me》滑进《Breathe》，两个轨号像一段没有断开的开场。",
+    "sections": [
+      {
+        "title": "先拿到舞台上试",
+        "text": "Pink Floyd 在录完《The Dark Side of the Moon》前，已经把这套音乐带到观众面前反复演出。乐队可以在舞台上调整段落的过门，进录音室后再把那些缝隙做得更精细。整张唱片到 1973 年发行。"
+      },
+      {
+        "title": "一听就知道为什么连播",
+        "text": "《Speak to Me》从很低的心跳式脉冲开始，引进将在专辑其他地方出现的声音片段。随后《Breathe》慢慢打开，带延音的吉他和人声让听感从声响的逐步挤压转为松弛。试着辨认第一段在哪个声音之后真正过桥。"
+      },
+      {
+        "title": "用一整面唱片讲事情",
+        "text": "这一组和本讲的 FM、AOR 放在一起时，关键是听曲间关系。开头预告的声音允许听众在后面再认出它们，像回到同一组主题。课件把前两轨放在一个文件里，因此听辨也沿用完整开场。"
+      }
+    ],
+    "sources": [
+      {
+        "label": "Pink Floyd 官网 · 专辑曲目与制作",
+        "url": "https://www.pinkfloyd.com/albums/the-dark-side-of-the-moon/"
+      },
+      {
+        "label": "Pink Floyd 官方档案 · 1973 年时间线",
+        "url": "https://archive.pinkfloyd.com/history/timeline_1973"
+      },
+      {
+        "label": "发行方试听与专辑信息",
+        "url": "https://music.apple.com/us/album/breathe-in-the-air/1065973699?i=1065973704&uo=4"
+      }
+    ]
+  },
+  "t98": {
+    "lead": "Santana 把 Tito Puente 的曲子带进 1970 年的《Abraxas》。在摇滚电吉他和电风琴加入以后，几件手打击乐仍然左右着曲子的方向。",
+    "sections": [
+      {
+        "title": "从 Puente 的乐队来",
+        "text": "《Oye Como Va》出自 Tito Puente 的拉丁舞曲曲库，有很明确的恰恰舞曲感觉。Santana 录音保存了容易跟唱的短句和拉丁节奏。课件把焦点放在 1970 年 Santana 版，Puente 是词曲作者。"
+      },
+      {
+        "title": "听电声和打击乐轮流组织场面",
+        "text": "风琴先拎出一组容易认的节奏型。电吉他进入时，可以继续盯住康加鼓、棍击等散在拍子两侧的声音。即便旋律交到独奏去，底层的节拍仍然有自己一套逻辑。"
+      },
+      {
+        "title": "一种乐队声音穿过广播分类",
+        "text": "《Abraxas》让这一版的拉丁节奏和蓝调取向的电吉他一起进入摇滚听众的唱片架。课件以这支乐队讨论 1970 年代拉丁摇滚。对照本讲的专辑摇滚，也可以问问自己，哪些配器在两边都有，哪一种节拍最先认出。"
+      }
+    ],
+    "sources": [
+      {
+        "label": "Santana 官网 · Abraxas 曲目",
+        "url": "https://santana.com/discography/abraxas/"
+      },
+      {
+        "label": "Santana 官网 · Ultimate Santana 曲目注释",
+        "url": "https://santana.com/news/ultimate-santana/"
+      },
+      {
+        "label": "发行方试听与专辑信息",
+        "url": "https://music.apple.com/us/album/oye-como-va/871146591?i=871146601&uo=4"
+      }
+    ]
+  },
+  "t99": {
+    "lead": "《What’s Going On》开头像在走进一间已有谈话的屋子。萨克斯从人群声中出来，Marvin Gaye 随后以温和的语气，问了一个很难轻轻放下的问题。",
+    "sections": [
+      {
+        "title": "把时事写进 Motown 唱片",
+        "text": "Gaye 在 1960 年代已唱过大量 Motown 热门歌曲。1971 年，同名专辑把战争、归乡、城市生活等题目接在一起，延伸到此前的流行单曲很少展开的篇幅。标题曲由 Marvin Gaye、Renaldo “Obie” Benson 和 Al Cleveland 共同创作。"
+      },
+      {
+        "title": "几层声音像不同的人一起说话",
+        "text": "开场的闲谈声、人声的叠录和穿行其中的萨克斯，使歌曲很难只听成一个人的正式宣言。留意主唱在句末的气声，以及另一个声部如何仿佛从旁接话。底下的节奏则维持灵魂乐的连贯弹性。"
+      },
+      {
+        "title": "把社会议题留在一整张专辑里",
+        "text": "旋律的柔和使听者能够先进入歌曲，再花时间听懂它在问什么。专辑把这种交谈延长到了其他曲目。美国国会图书馆于 2003 年将该专辑选入国家录音登记。这里只考同名歌曲和它的 1971 年口径。"
+      }
+    ],
+    "sources": [
+      {
+        "label": "美国国会图书馆 · Marvin Gaye 与国家录音登记",
+        "url": "https://www.loc.gov/programs/national-recording-preservation-board/recording-registry/descriptions-and-essays/african-americans-on-the-recording-registry/"
+      },
+      {
+        "label": "发行方试听与专辑信息",
+        "url": "https://music.apple.com/us/album/whats-going-on/1547896506?i=1547896521&uo=4"
+      }
+    ]
+  },
+  "t100": {
+    "lead": "《Saturday Night Fever》把纽约舞池放进电影。Bee Gees 的《Night Fever》让观众在离开影院以后，还能在唱片和电台里重遇那段节拍。",
+    "sections": [
+      {
+        "title": "从电影人物走进舞池",
+        "text": "电影围绕布鲁克林青年 Tony Manero 展开。夜间的舞池给他一个可以凭舞步取得注意的地方。Bee Gees 为原声带写了数首歌，《Night Fever》与《Stayin’ Alive》各有自己的旋律和节奏。课件采用题为《Night Fever》的电影画面剪辑。"
+      },
+      {
+        "title": "高声部和反复的拍子",
+        "text": "开始时先辨认低音与鼓建立的拍点，再听高音和声怎样穿过弦乐。反复的小节让舞者能预判下一拍，压缩和拉长的人声又让重复结构不断出现变化。"
+      },
+      {
+        "title": "先有 1977 年原声带",
+        "text": "这首歌 1977 年已收入原声带，次年作为单曲登上美国榜首。原声带把 Bee Gees 的声音与别的舞曲艺人收进同一套唱片，并于 2012 年入选美国国家录音登记。复习时用原声带首次发行年。"
+      }
+    ],
+    "sources": [
+      {
+        "label": "Bee Gees 官网 · 电影原声带与曲目",
+        "url": "https://www.beegees.com/releases-archive/saturday-night-fever/"
+      },
+      {
+        "label": "美国国会图书馆 · Saturday Night Fever 原声带",
+        "url": "https://www.loc.gov/programs/national-recording-preservation-board/recording-registry/descriptions-and-essays/"
+      },
+      {
+        "label": "发行方试听与专辑信息",
+        "url": "https://music.apple.com/us/album/night-fever-from-saturday-night-fever-soundtrack/1445668458?i=1445668465&uo=4"
+      }
+    ]
+  },
+  "t101": {
+    "lead": "Donna Summer 回忆，身边一位同事受到警方的盘问，引发了她写《Bad Girls》的念头。歌进了舞池，也把谁有权给街上的人贴标签这个问题带了进去。",
+    "sections": [
+      {
+        "title": "写好之后等了一阵",
+        "text": "Summer 在访谈中说，最早和 Brooklyn Dreams 录成的版本，一度因为唱片公司觉得摇滚成分太重而被搁起。录音室的人翻到旧带子，Giorgio Moroder 随后听到它，参与把这首歌带回制作日程。"
+      },
+      {
+        "title": "汽笛般的声音变成可以跟唱的动作",
+        "text": "短促的拟声和哨响与鼓的拍子应答。听唱段时，可以把那些点在句尾的声音和持续推进的低音分开。它们给舞池里的听众一个容易加入的地方，也让街头故事的不同声音有了位置。"
+      },
+      {
+        "title": "1979 年仍在变化的迪斯科",
+        "text": "这首单曲和同名专辑在 1979 年走红。把它和 Bee Gees 并排，听同一时代的舞曲怎样把摇滚手势、灵魂乐嗓音和可反复的舞步拍子合在一起。站内同时保留课件视频和从视频提取的听辨音轨。"
+      }
+    ],
+    "sources": [
+      {
+        "label": "Donna Summer 访谈 · Bad Girls 的创作及制作经过",
+        "url": "https://www.wcmu.org/music/music/2023-05-19/donna-summer-the-fresh-air-interview"
+      },
+      {
+        "label": "Donna Summer 音乐剧官网 · 生涯时间线",
+        "url": "https://thedonnasummermusical.com/timeline/"
+      },
+      {
+        "label": "发行方试听与专辑信息",
+        "url": "https://music.apple.com/us/album/bad-girls/6793735689?i=6793735691&uo=4"
+      }
+    ]
   }
 };

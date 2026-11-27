@@ -4,8 +4,8 @@
 
 - 入口 `index.html` 会跳转到 `_studio/v8-proto/`（当前版本）。
 - `.nojekyll` 必须保留，否则 GitHub 会忽略以下划线开头的 `_studio` 文件夹。
-- `audio/`：75 段课程音频；`course-videos/`：8 段课件视频（网页版）；`course-videos/1080/`：其中 4 段的 1080p 原画（默认播放，卡顿时自动换回 720p）。
-- 所有路径都是相对路径，放在 `用户名.github.io` 或 `用户名.github.io/仓库名/` 下都能用。
+- 现有的 `audio/`、`audio-sd/` 和 `course-videos/` 继续提供前八讲素材。第 9 讲的同名目录从同域的 `/pop-music-history-media/` 项目读取，曲目和评分依据见 `docs/lecture9-evidence.json`。
+- 本地预览可在同一个服务器根目录下并列放置 `pop-music-history-room/` 和 `pop-music-history-media/`，与 GitHub Pages 的路径一致。
 
 学习记录保存在各自浏览器里，并且按网址区分。从旧网址搬过来时，请先在旧网站「历史」页点「导出学习备份」，再在新网站「历史」页点「导入学习备份」（只补上缺少的记录，不会覆盖已有的）。
 

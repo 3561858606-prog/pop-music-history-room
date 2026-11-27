@@ -20,6 +20,8 @@ const styleAliases = {
   'manyo': ['漫谣', '趣味歌'],
   'urban-folk': ['城市民歌', '都市民谣'],
   'country-western': ['Country and Western', 'Country', '乡村音乐', '컨트리'],
+  'aor': ['AOR', 'Album-Oriented Rock'],
+  'funk': ['펑크', '放克乐'],
   'changga': ['Changga', 'Adapted Song', '唱歌', '改编歌谣', '번안가요', '번안곡'],
   'early-korean-song': ['창작가요', '초기 대중가요', '早期韩国歌谣', '韩国创作歌谣'],
 };

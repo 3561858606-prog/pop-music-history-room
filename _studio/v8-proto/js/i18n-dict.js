@@ -168,6 +168,7 @@ export const KO = {
   '网速跟不上 1080p，已换成 720p，从同一秒接着放。想看原画可点 1080p。': '인터넷 속도가 1080p를 따라가지 못해 720p로 바꿔 같은 지점부터 이어 재생합니다. 원본을 보려면 1080p를 누르세요.',
   '视频暂时无法载入。': '영상을 불러올 수 없습니다.', '重试': '다시 시도',
   '自动钢琴演奏': '자동 피아노 연주', '爱迪生圆筒留声机 · 班卓琴': '에디슨 원통 축음기 · 밴조', '唱片留声机': '원반 축음기', '动画短片': '애니메이션 단편', '歌词视频': '가사 영상', 'Ed Sullivan 现场 · 1956-10-28': 'Ed Sullivan 쇼 라이브 · 1956-10-28', '电视现场演出': 'TV 라이브 공연',
+  '电影画面剪辑': '영화 장면 편집 영상', '歌曲视频': '곡 영상',
   // guide
   '向内更晚': '안쪽=최근', '刻满': '가득',
   '自动钢琴示例': '자동 피아노', '班卓琴／圆筒留声机示例': '밴조·원통 축음기', '唱片留声机片段': '원반 축음기', 'Ed Sullivan 现场': 'Ed Sullivan 쇼', '刻了一部分': '일부 새김', '看': '보기', '听': '듣기', '答': '답하기', '刻': '새기기',
@@ -357,6 +358,7 @@ export const EN = {
   '网速跟不上 1080p，已换成 720p，从同一秒接着放。想看原画可点 1080p。': 'Your connection couldn’t keep up with 1080p, so it switched to 720p from the same second. Tap 1080p for the original.',
   '视频暂时无法载入。': 'The video can’t load right now.', '重试': 'Retry',
   '自动钢琴演奏': 'Player piano', '爱迪生圆筒留声机 · 班卓琴': 'Edison cylinder phonograph · banjo', '唱片留声机': 'Disc gramophone', '动画短片': 'Animated short', '歌词视频': 'Lyric video', 'Ed Sullivan 现场 · 1956-10-28': 'Live on Ed Sullivan · 1956-10-28', '电视现场演出': 'Live TV performance',
+  '电影画面剪辑': 'Film montage', '歌曲视频': 'Song video',
   '向内更晚': 'later', '刻满': 'full',
   '自动钢琴示例': 'player piano', '班卓琴／圆筒留声机示例': 'banjo, cylinder', '唱片留声机片段': 'gramophone', 'Ed Sullivan 现场': 'Ed Sullivan Show', '刻了一部分': 'partly cut', '看': 'Look', '听': 'Listen', '答': 'Answer', '刻': 'Cut',
   '一圈，一首歌': 'One ring, one song', '外圈 1854，内圈 1968。拖动转盘，点一条年代带就能贴近看。': '1854 outside, 1968 inside. Drag to spin; click a decade band to zoom in.',

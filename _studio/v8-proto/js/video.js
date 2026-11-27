@@ -1,9 +1,10 @@
-// 课件视频：8 段从课件 PPTX 中原样提取的视频，与已有的 8 个视频音轨曲目一一对应。
+// 课件视频与题库中的视频音轨一一对应。
 // 对应关系按讲次、页码以及 scripts/video-edits.json 记录的源媒体 SHA-256 核对（t73 按第 7 讲第 12 页）。
 // 视频目录由 index.html 的 <meta name="course-video-base"> 指定（默认站内 course-videos/）。
 // 画质档：原片（720p / 480p，在 course-videos/ 下），有的还有 1080p 原画（course-videos/1080/），
 // 另有 360p、240p 流畅档（course-videos/360/、/240/，scripts/make-media-tiers.mjs 生成）。各档码率见 media-tiers.js。
 import {esc} from './reading.js';
+import {courseMediaUrl} from '../../../v3/catalog.js';
 import {site} from './model.js';
 import {t as tr} from './i18n.js';
 import {VIDEO as TIERS} from './media-tiers.js';
@@ -24,7 +25,9 @@ export const VIDEOS = {
   t54: {file: 'L03_S014.mp4', deck: 3, slide: 14, duration: 276.6, kind: '歌词视频'},
   t55: {file: 'L03_S015.mp4', deck: 3, slide: 15, duration: 175.1, kind: '歌词视频'},
   t56: {file: 'L06_S006.mp4', deck: 6, slide: 6, duration: 217.34, kind: 'Ed Sullivan 现场 · 1956-10-28', songAt: 64.7, hd: true},
-  t73: {file: 'L07_S012.mp4', deck: 7, slide: 12, duration: 178.31, kind: '电视现场演出'}
+  t73: {file: 'L07_S012.mp4', deck: 7, slide: 12, duration: 178.31, kind: '电视现场演出'},
+  t100: {file: 'L09_S09.mp4', deck: 9, slide: 9, duration: 213.04, kind: '电影画面剪辑'},
+  t101: {file: 'L09_S10.mp4', deck: 9, slide: 10, duration: 234.08, kind: '歌曲视频'}
 };
 export const videoOf = id => VIDEOS[id] || null;
 export const hasVideo = id => id in VIDEOS;
@@ -44,7 +47,10 @@ export function qualityOf(v) {
   if (choice !== 'auto') return (list.find(([q]) => +q <= +choice) || list.at(-1))[0];
   return net.pick(list, 2, list.find(([q]) => q === '360')?.[0]);
 }
-export const videoSrc = (v, q = qualityOf(v)) => base + (q === '1080' || q === '360' || q === '240' ? q + '/' : '') + v.file;
+export function videoSrc(v, q = qualityOf(v)) {
+  const path = (q === '1080' || q === '360' || q === '240' ? q + '/' : '') + v.file;
+  return courseMediaUrl(v.deck, 'course-videos/' + path) || base + path;
+}
 const qualityHTML = (v, q) => { const list = tiersOf(v); if (list.length < 2) return '';
   return `<span class="vid-q" role="group" aria-label="${tr('画质')}"><button data-vid-q="auto" aria-pressed="${choice === 'auto'}">${tr('自动')}</button>${list.map(([x]) => `<button data-vid-q="${x}" aria-pressed="${choice !== 'auto' && q === x}" data-now="${q === x ? 1 : 0}">${x}p</button>`).join('')}</span>`; };
 function note(fig, text) { const n = fig.querySelector('.vid-note'); if (n) n.textContent = text; }

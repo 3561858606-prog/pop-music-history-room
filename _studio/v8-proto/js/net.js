@@ -7,13 +7,18 @@ let est = null;
 try { const v = JSON.parse(localStorage.getItem(KEY)); if (v && Date.now() - v.t < TTL && v.bps > 0) est = v; } catch {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(est)); } catch {} };
 
-// 当前估计（字节/秒）；完全不知道时返回 null。
-export function bandwidth() {
-  if (est && Date.now() - est.t < TTL) return est.bps;
+// 浏览器明确提示弱网时的保守估计（字节/秒）。
+export function slowConnectionBandwidth() {
   const c = navigator.connection;
   if (c?.saveData) return 20e3;
   if (c?.downlink && c.downlink < 1.5) return c.downlink * 1e6 / 8 / 2;
   return null;
+}
+
+// 当前估计（字节/秒）；完全不知道时返回 null。
+export function bandwidth() {
+  if (est && Date.now() - est.t < TTL) return est.bps;
+  return slowConnectionBandwidth();
 }
 export function report(bps) {
   if (!(bps > 0) || !Number.isFinite(bps)) return;
@@ -27,8 +32,7 @@ export function penalize(kbpsInUse = 0) {
 }
 
 // 挑档：tiers = [[名字, kbps], …] 从高到低；网速要有码率的 margin 倍才选它。都不够就选最低档。
-export function pick(tiers, margin = 2.5, unknown = null) {
-  const bw = bandwidth();
+export function pick(tiers, margin = 2.5, unknown = null, bw = bandwidth()) {
   if (bw == null) return unknown ?? tiers.at(-1)[0];
   for (const [name, kbps] of tiers) if (kbps * 125 * margin <= bw) return name;
   return tiers.at(-1)[0];

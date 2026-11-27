@@ -2,7 +2,8 @@ import {lecture8, lecture8Styles, lecture8Tracks} from './lecture8.js';
 import {lecture9, lecture9Styles, lecture9Tracks} from './lecture9.js';
 
 export function courseMediaUrl(deck, path) {
-  const base = catalog.lectures.find(lecture => lecture.id === deck)?.mediaBase;
+  const lecture = catalog.lectures.find(lecture => lecture.id === deck);
+  const base = (path.startsWith('course-videos/') ? lecture?.videoBase : null) ?? lecture?.mediaBase;
   return base ? new URL(path, new URL(base, import.meta.url)).href : null;
 }
 

@@ -7,6 +7,9 @@
 // 老用户打开网站时，左下角会出现一次这条更新的小纸条；新用户只看上手指南，不打扰。
 // 新的小设计加到 DESIGNS 里，since 写这次更新的 v，更新说明里会标「新」。
 export const RELEASES = [
+  {v: '2026-11-27b', title: {zh: '第 9 讲视频更快开播', ko: '9강 영상 시작 속도 개선', en: 'Faster starts for Lecture 9 videos'}, items: [
+    {t: 'tweak', text: {zh: '缩小两段课件视频开播前要读取的文件索引，保留三个画质档和原有音画。', ko: '강의 영상 두 편의 재생에 필요한 파일 색인을 줄였습니다. 기존 세 가지 화질과 영상·음성은 그대로입니다.', en: 'The two lecture clips read a smaller file index before playback. All three quality levels retain the original picture and sound.'}}
+  ]},
   {v: '2026-11-27', title: {zh: '第 9 讲：1970 年代的主流流行、摇滚与迪斯科', ko: '9강: 1970년대 주류 팝, 록과 디스코', en: 'Lecture 9: 1970s mainstream pop, rock and disco'}, items: [
     {t: 'new', text: {zh: '第 9 讲加入 11 道听辨题，包括《Superstition》《Hotel California》《Night Fever》和《Bad Girls》。全站共有 9 讲、100 道听辨题，年份延伸至 1979。', ko: '9강에 「Superstition」, 「Hotel California」, 「Night Fever」, 「Bad Girls」 등 청음 문제 11개를 추가했습니다. 이제 총 9강, 100문제이며 범위는 1979년까지입니다.', en: 'Lecture 9 adds 11 listening questions, including “Superstition,” “Hotel California,” “Night Fever,” and “Bad Girls.” There are 100 questions across nine lectures, reaching 1979.'}},
     {t: 'new', text: {zh: '两段迪斯科课件视频可在对应曲目的详情里观看。第 9 讲每道题均配有录音背景、听辨线索和来源。', ko: '두 디스코 강의 영상은 해당 곡의 상세 화면에서 볼 수 있습니다. 9강의 각 문제에는 녹음 배경, 청음 단서, 출처가 표시됩니다.', en: 'The two disco clips are available in the corresponding track details. Every Lecture 9 question includes recording history, listening cues, and sources.'}},

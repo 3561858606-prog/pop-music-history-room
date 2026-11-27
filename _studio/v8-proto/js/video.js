@@ -26,8 +26,9 @@ export const VIDEOS = {
   t55: {file: 'L03_S015.mp4', deck: 3, slide: 15, duration: 175.1, kind: '歌词视频'},
   t56: {file: 'L06_S006.mp4', deck: 6, slide: 6, duration: 217.34, kind: 'Ed Sullivan 现场 · 1956-10-28', songAt: 64.7, hd: true},
   t73: {file: 'L07_S012.mp4', deck: 7, slide: 12, duration: 178.31, kind: '电视现场演出'},
-  t100: {file: 'L09_S09.mp4', deck: 9, slide: 9, duration: 213.04, kind: '电影画面剪辑'},
-  t101: {file: 'L09_S10.mp4', deck: 9, slide: 10, duration: 234.08, kind: '歌曲视频'}
+  // 第 9 讲已重封装，各档 MP4 文件头均小于 160 KB。
+  t100: {file: 'L09_S09.mp4', deck: 9, slide: 9, duration: 213.04, kind: '电影画面剪辑', indexBytes: 160_000},
+  t101: {file: 'L09_S10.mp4', deck: 9, slide: 10, duration: 234.08, kind: '歌曲视频', indexBytes: 160_000}
 };
 export const videoOf = id => VIDEOS[id] || null;
 export const hasVideo = id => id in VIDEOS;
@@ -45,7 +46,9 @@ const lowerOf = (v, q) => { const list = tiersOf(v), i = list.findIndex(([x]) =>
 export function qualityOf(v) {
   const list = tiersOf(v); if (!list.length) return null;
   if (choice !== 'auto') return (list.find(([q]) => +q <= +choice) || list.at(-1))[0];
-  return net.pick(list, 2, list.find(([q]) => q === '360')?.[0]);
+  const estimate = net.bandwidth(), weak = net.slowConnectionBandwidth();
+  const bandwidth = weak === null ? estimate : Math.min(estimate ?? weak, weak);
+  return net.pick(list, 2, list.find(([q]) => q === '360')?.[0], bandwidth);
 }
 export function videoSrc(v, q = qualityOf(v)) {
   const path = (q === '1080' || q === '360' || q === '240' ? q + '/' : '') + v.file;
@@ -106,18 +109,25 @@ export function mountVideo(fig, {at = 0, onPlay} = {}) {
     el.controls = true; el.playsInline = true; el.preload = 'auto';
     el.setAttribute('playsinline', ''); el.setAttribute('controlslist', 'nodownload');
     el.poster = posterOf(id);
-    if (!fig.dataset.q) fig.dataset.q = qualityOf(v) || '';
+    const q = qualityOf(v) || '';
+    if (fig.dataset.q !== q) { fig.dataset.q = q; syncQuality(fig); }
     el.src = videoSrc(v, fig.dataset.q) + (at ? `#t=${at}` : '');
     el.setAttribute('aria-label', tr('课件视频') + ': ' + tr('第 {d} 讲 · 第 {s} 页', {d: v.deck, s: v.slide}));
     el.addEventListener('play', () => { fig.dataset.state = 'playing'; onPlay?.(); });
     el.addEventListener('pause', () => { if (fig.dataset.state === 'playing') fig.dataset.state = 'paused'; });
     // 边播边量网速。自动画质下：播放中累计卡顿超过 2 秒、一次卡住 2.5 秒，或点了播放 6 秒还没开始，就降一档，从同一秒接着放。
     net.watch(el, () => kbpsOf(v, fig.dataset.q), () => el.isConnected);
-    let started = false, since = 0, stalled = 0, timer = 0;
-    const downgrade = () => {
+    let started = false, startAt = 0, loadAt = 0, indexMs = 0, since = 0, stalled = 0, timer = 0;
+    const downgrade = (startup = false) => {
       clearTimeout(timer); since = 0; stalled = 0;
-      const lower = lowerOf(v, fig.dataset.q);
+      let lower = lowerOf(v, fig.dataset.q);
       if (choice !== 'auto' || !lower) return;
+      // 开播超时，且文件头传输速度明显撑不起下一档时，省掉再缓冲一次。
+      if (startup && v.indexBytes && indexMs > 0) {
+        const next = tiersOf(v).filter(([q]) => +q <= +lower);
+        const bytesPerSecond = v.indexBytes * 1000 / indexMs;
+        lower = net.pick(next, 1, null, bytesPerSecond * 1.25);
+      }
       net.penalize(kbpsOf(v, fig.dataset.q)); swap(fig, lower);
       note(fig, tr('网速跟不上，已换成 {q}p，从同一秒接着放。', {q: lower}));
     };
@@ -126,12 +136,25 @@ export function mountVideo(fig, {at = 0, onPlay} = {}) {
       if (started && !since && !el.seeking) { since = performance.now(); clearTimeout(timer); timer = setTimeout(downgrade, 2500); }
     });
     el.addEventListener('playing', () => {
-      delete fig.dataset.buffering; clearTimeout(timer);
+      delete fig.dataset.buffering;
+      if (!started) return;
+      clearTimeout(timer);
       if (since) { stalled += performance.now() - since; since = 0; if (stalled > 2000) downgrade(); }
-      started = true;
     });
-    el.addEventListener('play', () => { if (!started) { clearTimeout(timer); timer = setTimeout(() => { if (!started) { started = false; downgrade(); } }, 6000); } });
-    el.addEventListener('loadstart', () => { started = false; });
+    el.addEventListener('play', () => {
+      if (started) return;
+      startAt = el.currentTime;
+      clearTimeout(timer);
+      timer = setTimeout(() => { if (!started && !el.paused && el.isConnected) downgrade(true); }, 6000);
+    });
+    // WebKit 可能已发出 playing，但进度仍停在开播位置。等进度实际走动才结束开播计时。
+    el.addEventListener('timeupdate', () => {
+      if (started || el.paused || el.seeking || el.currentTime < startAt + .05) return;
+      started = true;
+      clearTimeout(timer);
+    });
+    el.addEventListener('loadstart', () => { started = false; loadAt = performance.now(); indexMs = 0; });
+    el.addEventListener('loadedmetadata', () => { if (loadAt) indexMs = performance.now() - loadAt; });
     el.addEventListener('error', () => {
       fig.dataset.state = 'error';
       fig.querySelector('.vid-error').innerHTML = `${tr('视频暂时无法载入。')}<button data-vid-retry>${tr('重试')}</button>`;

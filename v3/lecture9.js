@@ -6,6 +6,7 @@ export const lecture9 = {
   "en": "The 1970s (1): Mainstream Pop, Rock and Disco",
   "period": "1970–1979 · 主流流行 · 摇滚 · 迪斯科",
   "mediaBase": "https://raw.githubusercontent.com/3561858606-prog/pop-music-history-media/475eeb3204339dc95326c1985fa3918bc5c4b8cb/",
+  "videoBase": "https://raw.githubusercontent.com/3561858606-prog/pop-music-history-media/93cfe7caa141bf672c2645ab8db9b214921adb71/",
   "count": 11
 };
 

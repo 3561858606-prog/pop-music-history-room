@@ -4,8 +4,7 @@
 
 - 入口 `index.html` 会跳转到 `_studio/v8-proto/`（当前版本）。
 - `.nojekyll` 必须保留，否则 GitHub 会忽略以下划线开头的 `_studio` 文件夹。
-- 现有的 `audio/`、`audio-sd/` 和 `course-videos/` 继续提供前八讲素材。第 9 讲的同名目录从同域的 `/pop-music-history-media/` 项目读取，曲目和评分依据见 `docs/lecture9-evidence.json`。
-- 本地预览可在同一个服务器根目录下并列放置 `pop-music-history-room/` 和 `pop-music-history-media/`，与 GitHub Pages 的路径一致。
+- 现有的 `audio/`、`audio-sd/` 和 `course-videos/` 提供前八讲素材。第 9 讲从 [素材仓库](https://github.com/3561858606-prog/pop-music-history-media) 的固定提交读取媒体，地址配置在 `v3/lecture9.js`。曲目和评分依据见 `docs/lecture9-evidence.json`。
 
 学习记录保存在各自浏览器里，并且按网址区分。从旧网址搬过来时，请先在旧网站「历史」页点「导出学习备份」，再在新网站「历史」页点「导入学习备份」（只补上缺少的记录，不会覆盖已有的）。
 

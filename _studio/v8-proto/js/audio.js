@@ -13,6 +13,11 @@ export function createAudio() {
     paused: '已暂停', waiting: '正在缓冲…', ended: '播放完毕，可以重听', blocked: '浏览器需要你点击播放', error: '音频加载失败，点击播放重试'}).map(([k, v]) => [k, t(v)]));
   const set = value => { state = value; listener?.(state, track); };
   function stopNoise() { if (noise) { try { noise.stop(); } catch {} noise.disconnect(); noise = null; } }
+  function setSource(src) {
+    // Web Audio needs a CORS response to produce samples from a cross-origin media source.
+    element.crossOrigin = new URL(src, location.href).origin === location.origin ? null : 'anonymous';
+    element.src = src;
+  }
   function graph() {
     if (!context) {
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -83,7 +88,7 @@ export function createAudio() {
     const position = api.position();
     resumeAt = position > 0 ? position : null;
     token++;
-    element.src = src;
+    setSource(src);
     if (wantsPlayback) api.play(); else set('loading');
   }
   function recoverSource() {
@@ -140,7 +145,7 @@ export function createAudio() {
       element.pause();
       track = t;
       resumeAt = mediaSeconds(at) || null;
-      element.src = audioSrc(t);
+      setSource(audioSrc(t));
       set('loading');
     },
     async play({fadeIn = false} = {}) {

@@ -5,7 +5,7 @@ export const lecture9 = {
   "ko": "1970년대 대중음악 (1) · 주류 팝, 록과 디스코",
   "en": "The 1970s (1): Mainstream Pop, Rock and Disco",
   "period": "1970–1979 · 主流流行 · 摇滚 · 迪斯科",
-  "mediaBase": "/pop-music-history-media/",
+  "mediaBase": "https://raw.githubusercontent.com/3561858606-prog/pop-music-history-media/475eeb3204339dc95326c1985fa3918bc5c4b8cb/",
   "count": 11
 };
 

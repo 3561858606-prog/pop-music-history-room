@@ -58,6 +58,57 @@ const qualityHTML = (v, q) => { const list = tiersOf(v); if (list.length < 2) re
   return `<span class="vid-q" role="group" aria-label="${tr('画质')}"><button data-vid-q="auto" aria-pressed="${choice === 'auto'}">${tr('自动')}</button>${list.map(([x]) => `<button data-vid-q="${x}" aria-pressed="${choice !== 'auto' && q === x}" data-now="${q === x ? 1 : 0}">${x}p</button>`).join('')}</span>`; };
 function note(fig, text) { const n = fig.querySelector('.vid-note'); if (n) n.textContent = text; }
 function syncQuality(fig) { const q = fig.dataset.q; fig.querySelectorAll('[data-vid-q]').forEach(b => { const x = b.dataset.vidQ; b.setAttribute('aria-pressed', x === 'auto' ? choice === 'auto' : choice !== 'auto' && x === q); b.dataset.now = x === q ? 1 : 0; }); }
+
+function reloadVideoAt(el, at) {
+  const rate = el.playbackRate;
+  el.load();
+  if (at) try { el.currentTime = at; } catch {}
+  el.playbackRate = rate;
+  el.play().catch(() => {});
+}
+
+// 浏览器报告拖动请求停滞，且持续无数据时，用同一个视频和目标时间重试一次。
+const SEEK_RETRY_IDLE_MS = 5000;
+const SEEK_RESUMED_SECONDS = 1;
+function watchStalledSeek(el) {
+  let target = null, timer = 0;
+  const clear = () => { clearTimeout(timer); target = null; };
+  const matches = seek => el.src === seek.src && Math.abs(el.currentTime - seek.at) < (el.seeking ? .05 : SEEK_RESUMED_SECONDS);
+  const arm = () => {
+    clearTimeout(timer);
+    if (!target?.stalled || target.retried || el.paused || !matches(target)) return;
+    const seek = target;
+    timer = setTimeout(() => {
+      if (target !== seek || !seek.stalled || el.paused || !el.isConnected || !matches(seek)) return;
+      seek.retried = true;
+      seek.at = el.currentTime;
+      reloadVideoAt(el, seek.at);
+    }, Math.max(0, SEEK_RETRY_IDLE_MS - (performance.now() - seek.lastProgress)));
+  };
+  el.addEventListener('seeking', () => {
+    if (target?.retried && matches(target)) return;
+    clear();
+    target = {src: el.src, at: el.currentTime, lastProgress: performance.now(), stalled: false, retried: false};
+  });
+  el.addEventListener('progress', () => {
+    if (!target) return;
+    target.lastProgress = performance.now();
+    target.stalled = false;
+    clearTimeout(timer);
+  });
+  el.addEventListener('stalled', () => { if (target) { target.stalled = true; arm(); } });
+  el.addEventListener('pause', () => clearTimeout(timer));
+  el.addEventListener('play', arm);
+  // WebKit 有时先完成定位并播放几帧，然后才等剩余数据。
+  el.addEventListener('timeupdate', () => {
+    if (target && !el.seeking && el.currentTime >= target.at + SEEK_RESUMED_SECONDS) clear();
+  });
+  el.addEventListener('ended', clear);
+  el.addEventListener('loadstart', () => { if (target && target.src !== el.src) clear(); });
+  el.addEventListener('error', clear);
+  return () => target?.retried === true && target.src === el.src;
+}
+
 // 换源：从同一秒接着放，原来在放就继续放。
 function swap(fig, q) {
   const v = videoOf(fig.dataset.video); fig.dataset.q = q; syncQuality(fig);
@@ -117,11 +168,12 @@ export function mountVideo(fig, {at = 0, onPlay} = {}) {
     el.addEventListener('pause', () => { if (fig.dataset.state === 'playing') fig.dataset.state = 'paused'; });
     // 边播边量网速。自动画质下：播放中累计卡顿超过 2 秒、一次卡住 2.5 秒，或点了播放 6 秒还没开始，就降一档，从同一秒接着放。
     net.watch(el, () => kbpsOf(v, fig.dataset.q), () => el.isConnected);
+    const recoveringSeek = v.deck === 9 ? watchStalledSeek(el) : () => false;
     let started = false, startAt = 0, loadAt = 0, indexMs = 0, since = 0, stalled = 0, timer = 0;
     const downgrade = (startup = false) => {
       clearTimeout(timer); since = 0; stalled = 0;
       let lower = lowerOf(v, fig.dataset.q);
-      if (choice !== 'auto' || !lower) return;
+      if (choice !== 'auto' || !lower || recoveringSeek()) return;
       // 开播超时，且文件头传输速度明显撑不起下一档时，省掉再缓冲一次。
       if (startup && v.indexBytes && indexMs > 0) {
         const next = tiersOf(v).filter(([q]) => +q <= +lower);
@@ -142,7 +194,7 @@ export function mountVideo(fig, {at = 0, onPlay} = {}) {
       if (since) { stalled += performance.now() - since; since = 0; if (stalled > 2000) downgrade(); }
     });
     el.addEventListener('play', () => {
-      if (started) return;
+      if (started || recoveringSeek()) return;
       startAt = el.currentTime;
       clearTimeout(timer);
       timer = setTimeout(() => { if (!started && !el.paused && el.isConnected) downgrade(true); }, 6000);
@@ -172,6 +224,5 @@ export function mountVideo(fig, {at = 0, onPlay} = {}) {
 export function retryVideo(fig) {
   const el = fig.querySelector('video'); if (!el) return;
   fig.querySelector('.vid-error').textContent = ''; fig.dataset.state = 'loading';
-  const t = el.currentTime || 0; el.load(); if (t) try { el.currentTime = t; } catch {}
-  el.play().catch(() => {});
+  reloadVideoAt(el, el.currentTime || 0);
 }

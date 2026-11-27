@@ -7,6 +7,9 @@
 // 老用户打开网站时，左下角会出现一次这条更新的小纸条；新用户只看上手指南，不打扰。
 // 新的小设计加到 DESIGNS 里，since 写这次更新的 v，更新说明里会标「新」。
 export const RELEASES = [
+  {v: '2026-11-27c', title: {zh: '第 9 讲视频拖动后更快恢复', ko: '9강 영상 탐색 후 더 빠르게 이어 재생', en: 'Faster recovery after seeking in Lecture 9'}, items: [
+    {t: 'fix', text: {zh: '弱网下拖动进度后，如果视频请求持续停滞，会用当前画质在你选择的位置重试一次。', ko: '연결이 느려 영상의 재생 위치를 옮긴 뒤 요청이 계속 멈추면, 같은 화질로 선택한 위치에서 한 번 다시 시도합니다.', en: 'If a video request stalls after you seek on a slow connection, the player retries once at the selected position and quality.'}}
+  ]},
   {v: '2026-11-27b', title: {zh: '第 9 讲视频更快开播', ko: '9강 영상 시작 속도 개선', en: 'Faster starts for Lecture 9 videos'}, items: [
     {t: 'tweak', text: {zh: '缩小两段课件视频开播前要读取的文件索引，保留三个画质档和原有音画。', ko: '강의 영상 두 편의 재생에 필요한 파일 색인을 줄였습니다. 기존 세 가지 화질과 영상·음성은 그대로입니다.', en: 'The two lecture clips read a smaller file index before playback. All three quality levels retain the original picture and sound.'}}
   ]},

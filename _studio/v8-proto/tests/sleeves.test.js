@@ -44,11 +44,18 @@ await test('封套支持键盘首尾切换，年份切换重建正确组',()=>{
  document.querySelector('[data-year="1966"]').click();assert(document.querySelectorAll('[data-cover]').length===4,'1966 年分组错误');
  api.focusSong('t50');assert(document.querySelectorAll('[data-cover]').length===3,'同名三版本未分开');api.focusSong(Y67[0]);
 });
-// t89 暂缺配图，走占位；其余曲目都应有本地图像和出处（第 8 讲的资料图出处是课件里的原始图片 imageSource）
-const NO_COVER=new Set(['t89']);
-await test(`${M.tracks.length} 首中除 t89 外图像均在本地可加载，配图有出处与关系说明`,async()=>{
- const list=M.tracks.filter(t=>!NO_COVER.has(t.id));assert(!M.coverOf(M.byId.get('t89')),'t89 应走缺图占位');
- let i=0;await Promise.all(Array.from({length:5},async()=>{while(i<list.length){const t=list[i++],c=M.coverOf(t);assert(c?.url&&(c.source||c.imageSource),'缺少配图或出处 '+t.id);await new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>image.naturalWidth>0?resolve():reject(Error(t.id));image.onerror=()=>reject(Error('图片加载失败 '+t.id));image.src=c.url;});}}));
+await test(`${M.tracks.length} 首都有配图和出处，轻量图与原图均可加载`,async()=>{
+ let i=0;
+ await Promise.all(Array.from({length:5},async()=>{
+  while(i<M.tracks.length){
+   const t=M.tracks[i++],c=M.coverOf(t);
+   assert(c?.url&&c.full&&(c.source||c.imageSource),'缺少配图或出处 '+t.id);
+   for(const url of [c.url,c.full]){
+    const image=new Image();image.src=url;
+    await image.decode().catch(()=>{throw Error('图片加载失败 '+t.id+' '+url);});
+   }
+  }
+ }));
  const special=M.coverOf(M.byId.get('t52'));assert(special.match==='context'&&M.coverLabel(special).includes('资料'),'未知录音被标成专辑');
  const leaflet=M.coverOf(M.byId.get('t21'));assert(leaflet.kind==='leaflet'&&M.coverLabel(leaflet).includes('非本曲封套'),'同盘A面附页被标成本曲封面');
 });
@@ -65,11 +72,17 @@ await test('1970 年代带容纳第 9 讲，同年两张封套可切换',async()
  document.querySelector('[data-cover=t98]').click();
  assert(document.querySelector('[data-cover=t98]').getAttribute('aria-pressed')==='true','第 9 讲 t98 未选中');
 });
-await test('t89 缺图时用占位，仍可选中',async()=>{
+await test('t89 显示韩明淑的唱片封套，仍可选中',async()=>{
  api.focusSong('t89');await until(()=>document.querySelector('[data-cover=t89]'));
  const b=document.querySelector('[data-cover=t89]');
- assert(!b.querySelector('img')&&b.querySelector('.st-art').textContent.trim().length>0,'t89 没有占位');
+ const image=b.querySelector('img');
+ assert(image&&M.coverOf(M.byId.get('t89')).catalog==='VL-11','t89 应加载 Venus VL-11 封套');
+ await image.decode();
  assert(b.getAttribute('aria-pressed')==='true','t89 未选中');api.focusSong(Y67[0]);
+});
+await test('同曲异版使用与课程相符的发行封套',()=>{
+ assert(M.coverOf(M.byId.get('t11')).album==='A Symposium of Swing','t11 应使用 1937 年 Victor 录音封套');
+ assert(M.coverOf(M.byId.get('t79')).album==='Wednesday Morning, 3 A.M.','t79 应使用原声版专辑');
 });
 await test('原型按钮已移除，历史和学习备份入口保留',()=>{
  assert(!document.querySelector('#protoBtn,#protoBox'),'原型菜单仍存在');assert(document.querySelector('a[href="#history"]'),'历史入口丢失');

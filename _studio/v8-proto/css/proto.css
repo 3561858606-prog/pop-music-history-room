@@ -692,6 +692,11 @@ li[data-fix=done] .k::after{content:" ✓";color:var(--ink)}
 .vid-error button{color:var(--amber);text-decoration:underline;text-underline-offset:3px;margin-left:6px}
 @media (prefers-reduced-motion:reduce){.vid-start img,.vid-glyph{transition:none}.vid-start:hover img,.vid-start:hover .vid-glyph{transform:none}}
 @media(max-width:860px){.vid-tag{font-size:10px;padding:2px 5px 2px 4px;margin-left:.45em}.vid figcaption{align-items:flex-start}}
+/* 答案解析页的课件视频：独立一块，在订正回想时和其它背景信息一起模糊（不提前泄露答案） */
+.fb-video{margin:20px 0 6px;max-width:640px}
+.fb-video .vid{margin:0}
+html[data-side=paper] .fb-video .vid-jump span,html[data-side=paper] .fb-video .vid-error button{color:#8a5a12}
+html[data-side=paper] .fb-video .vid-frame{border-color:rgba(22,19,15,.25)}
 
 /* ---------- 上手指南：顶栏「?」、说明卡、落针提示、老用户小纸片 ---------- */
 .help-btn{width:24px;height:24px;flex:none;border-radius:50%;border:1px solid var(--faint);color:var(--dim);font:700 12px/1 var(--num);display:grid;place-items:center;text-align:center;position:relative;margin-left:-4px}
@@ -1116,3 +1121,18 @@ body:not([data-room=disc]) .top{background:var(--bg);box-shadow:0 1px 0 var(--fa
 /* 窄屏：一轮超过 20 首时的进度条按剩余宽度伸缩，不把「年份卡片 / 结束本轮」挤出屏幕（英文、100 首时最明显） */
 @media (max-width:860px){.tr-top{gap:10px}.tr-count:has(.tr-bar){flex:1 1 auto;min-width:0;justify-content:center}.tr-count .tr-bar{flex:1 1 0;width:auto;min-width:16px;max-width:180px}}
 @media (max-width:420px){.tr-count .tr-bar{display:none}}
+/* 封面拖出音频文件（drag-audio.js）：包住封面的外框；拖动中原处变淡；不支持拖文件的浏览器给的下载卡 */
+.cover-drag{display:block;flex:none;line-height:0}
+.cover-drag img{display:block}
+[data-drag-audio].drag-out{opacity:.5}
+.drag-get{position:fixed;z-index:60;width:min(290px,calc(100vw - 24px));padding:14px 34px 14px 14px;background:var(--paper);color:var(--ink);border-radius:3px;box-shadow:0 18px 50px rgba(0,0,0,.5);font-size:12px;line-height:1.55;animation:dragGet .22s cubic-bezier(.2,.75,.2,1) both}
+@keyframes dragGet{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.drag-get .dg-why{margin:0 0 10px;color:rgba(22,19,15,.72)}
+.drag-get .dg-why b{display:block;color:var(--ink);font-size:13px;margin-bottom:3px}
+.drag-get .dg-dl{display:block;padding:8px 10px;border-radius:2px;background:var(--ink);color:var(--paper);text-decoration:none}
+.drag-get .dg-dl:hover,.drag-get .dg-dl:focus-visible{background:#3a2c18;outline:none}
+.drag-get .dg-dl span{display:block;font-weight:700;color:var(--amber)}
+.drag-get .dg-dl small{display:block;margin-top:2px;font-size:11px;opacity:.75;overflow-wrap:anywhere}
+.drag-get .dg-x{position:absolute;top:6px;right:6px;width:26px;height:26px;font-size:16px;line-height:1;color:rgba(22,19,15,.6)}
+.drag-get .dg-x:hover{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.drag-get{animation:none}}

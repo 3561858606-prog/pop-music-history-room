@@ -196,7 +196,8 @@ export const KO = {
   '写回了': '다시 씀', '正在写…': '쓰는 중…', '再写一次': '한 번 더', '待写': '쓸 차례', '写回': '다시 쓰기', '先不写了': '나중에 쓰기', '凭记忆写回 {n} 项': '기억으로 {n}개 다시 쓰기',
   'Enter 核对 · Esc 先不写 · Shift+Enter 跳过 · 空格 再听': 'Enter 확인 · Esc 나중에 · Shift+Enter 건너뛰기 · 스페이스 다시 듣기', 'Enter 开始写回 · Shift+Enter 跳过 · 空格 再听': 'Enter 다시 쓰기 시작 · Shift+Enter 건너뛰기 · 스페이스 다시 듣기',
   '正在凭记忆写回：这一首先不放进卡片，写完就回来。': '기억으로 다시 쓰는 중이라 이 곡은 잠시 카드에서 뺐습니다. 다 쓰면 돌아옵니다.',
-  '写完按回车核对；卡住了就点一格，偷看一个词 1.2 秒': '다 쓰면 Enter로 확인하세요. 막히면 한 칸을 눌러 단어 하나를 1.2초 엿보세요', '写完点「核对」；卡住了就点一格，偷看一个词 1.2 秒': '다 쓰면 「확인」을 누르세요. 막히면 한 칸을 눌러 단어 하나를 1.2초 엿보세요'
+  '写完按回车核对；卡住了就点一格，偷看一个词 1.2 秒': '다 쓰면 Enter로 확인하세요. 막히면 한 칸을 눌러 단어 하나를 1.2초 엿보세요', '写完点「核对」；卡住了就点一格，偷看一个词 1.2 秒': '다 쓰면 「확인」을 누르세요. 막히면 한 칸을 눌러 단어 하나를 1.2초 엿보세요',
+  '拖出封套，存下音频文件': '재킷을 끌어내면 음원 파일로 저장', '这个浏览器不让网页把文件拖出去': '이 브라우저는 웹페이지에서 파일을 끌어낼 수 없습니다', '可以直接下载这首歌的原文件；在 Chrome 或 Edge 里，封套能直接拖到桌面或文件夹。': '이 곡의 원본 파일을 바로 내려받을 수 있습니다. Chrome이나 Edge에서는 재킷을 바탕화면이나 폴더로 바로 끌어 놓을 수 있습니다.', '下载原文件': '원본 파일 내려받기', '正在下载…': '내려받는 중…', '下载没成功，再点一次': '내려받지 못했습니다. 다시 눌러 주세요',
 };
 
 export const EN = {
@@ -385,5 +386,6 @@ export const EN = {
   '写回了': 'Written back', '正在写…': 'Writing…', '再写一次': 'Try again', '待写': 'To write', '写回': 'Write back', '先不写了': 'Not now', '凭记忆写回 {n} 项': v => s(v.n, 'Write 1 back from memory', 'Write {n} back from memory'),
   'Enter 核对 · Esc 先不写 · Shift+Enter 跳过 · 空格 再听': 'Enter check · Esc not now · Shift+Enter skip · Space listen again', 'Enter 开始写回 · Shift+Enter 跳过 · 空格 再听': 'Enter write back · Shift+Enter skip · Space listen again',
   '正在凭记忆写回：这一首先不放进卡片，写完就回来。': 'You’re writing this song back from memory, so it’s hidden from the cards until you finish.',
-  '写完按回车核对；卡住了就点一格，偷看一个词 1.2 秒': 'Press Enter to check; stuck? tap a box to peek at one word for 1.2 seconds', '写完点「核对」；卡住了就点一格，偷看一个词 1.2 秒': 'Tap Check when done; stuck? tap a box to peek at one word for 1.2 seconds'
+  '写完按回车核对；卡住了就点一格，偷看一个词 1.2 秒': 'Press Enter to check; stuck? tap a box to peek at one word for 1.2 seconds', '写完点「核对」；卡住了就点一格，偷看一个词 1.2 秒': 'Tap Check when done; stuck? tap a box to peek at one word for 1.2 seconds',
+  '拖出封套，存下音频文件': 'drag a sleeve out to save the audio file', '这个浏览器不让网页把文件拖出去': 'This browser doesn’t let web pages drag files out', '可以直接下载这首歌的原文件；在 Chrome 或 Edge 里，封套能直接拖到桌面或文件夹。': 'You can download the song’s original file instead. In Chrome or Edge, you can drag the sleeve straight onto your desktop or into a folder.', '下载原文件': 'Download original file', '正在下载…': 'Downloading…', '下载没成功，再点一次': 'Download failed — click to try again',
 };

@@ -8,6 +8,7 @@ import {nameHTML, optionAliasesHTML, trackStoryHTML, courseNoteHTML} from './rea
 import {createAudio} from './audio.js';
 import {flatDisc} from './flat.js';
 import {createWaveform} from './waveform.js';
+import {hasVideo, videoFigureHTML, mountVideo, retryVideo, setVideoQuality, videoOf} from './video.js';
 import {wordAnswerHTML, segmentWords, createWordPeek} from './word-peek.js';
 import {t as tr, join} from './i18n.js';
 
@@ -158,7 +159,7 @@ export function createTrain(root, ctx) {
     data.reason = round.done.length >= round.size ? 'completed' : 'early';
     try {
       const saved = await enqueue(() => persist(data));
-      hideSheet(false); playback.stop(); coolNext(); cancelAnimationFrame(raf); round = null;
+      hideSheet(false); playback.stop(); stopVideo(); liveVideo = null; coolNext(); cancelAnimationFrame(raf); round = null;
       if (!saved.entries.length) return ctx.exit();
       ctx.finish(saved);
     } catch (error) { saveError = error; retryAction = finish; }
@@ -173,7 +174,7 @@ export function createTrain(root, ctx) {
       if (!saved) throw Error(tr('未找到这轮记录，请导出备份后重试。'));
       saveError = null;
       if (saved.state === 'active') restore(saved);
-      else { playback.stop(); coolNext(); round = null; ctx.finish(saved); }
+      else { playback.stop(); stopVideo(); liveVideo = null; coolNext(); round = null; ctx.finish(saved); }
     } catch (error) { saveError = error; retryAction = recoverConflict; }
     finally { operating = false; saveUI(); }
   }
@@ -214,7 +215,17 @@ export function createTrain(root, ctx) {
   };
   playback.on(kick);
   for (const ev of ['seeked', 'loadedmetadata', 'durationchange', 'ended']) audio.addEventListener(ev, kick);
-  const toggle = () => audio.paused || playback.failed() ? playback.play() : playback.pause();
+  const toggle = () => { if (audio.paused || playback.failed()) { stopVideo(); playback.play(); } else playback.pause(); };   // 放题目的音频时，视频停下
+  /* ---------- 答案解析页的课件视频：这首歌有视频才出现，和唱片页用同一个播放器（自动画质、弱网降档） ---------- */
+  // 同一道题的解析页重画时（订正、按键）保留正在放的视频；换题、结束、离开时停下
+  let liveVideo = null;
+  function keepVideo() {
+    const fresh = root.querySelector('.fb-video .vid');
+    if (liveVideo && fresh && liveVideo.dataset.video === fresh.dataset.video) fresh.replaceWith(liveVideo);
+    else if (liveVideo) stopVideo();
+  }
+  function stopVideo() { liveVideo?.querySelector('video')?.pause(); if (!liveVideo?.isConnected) liveVideo = null; }
+  function playVideo(fig, at = 0) { liveVideo = fig; mountVideo(fig, {at, onPlay: () => { if (!audio.paused) playback.pause(); }}); }   // 放视频时，题目的音频停下
   const seek = t => { playback.seekTo(t, waveView?.duration()); drawWave(); };
 
   /* ---------- 画面 ---------- */
@@ -238,6 +249,7 @@ export function createTrain(root, ctx) {
     cancelAnimationFrame(raf); raf = 0;
     root.dataset.phase = round.phase; recall = null; delete root.dataset.kb;
     root.innerHTML = `<div class="tr">${head()}${round.phase === 'answer' ? answerHTML() : feedbackHTML()}</div>`;
+    keepVideo();
     peeks.sync();
     wave = root.querySelector('.g-wave');
     waveView?.destroy();
@@ -341,6 +353,7 @@ export function createTrain(root, ctx) {
             ? `<li data-ok="1"><span class="k">${M.FIELD_NAMES[f.key]}</span><span class="is">${esc(optionLabel(f.key, f.correct))}</span><span class="tick" aria-label="${tr('对')}">✓</span></li>`
             : fixRowHTML(d, f)).join('')}</ul>
           ${wrong.length ? `<p class="fix-rule">${ruleText(d)}</p>` : ''}
+          ${hasVideo(t.id) ? `<section class="fb-video fb-ctx" aria-label="${tr('课件视频')}">${videoFigureHTML(t)}</section>` : ''}
           <div class="fb-ctx">${courseNoteHTML(t, 'course-note fb-note')}${trackStoryHTML(t, 'fb-story')}</div>
         </div>
         <aside class="fb-side fb-ctx">
@@ -443,6 +456,7 @@ export function createTrain(root, ctx) {
       foot.innerHTML = footHTML(d);
       foot.dataset.mode = mode;
       for (const el of fb.querySelectorAll('.fb-ctx')) el.inert = !!recall;
+      if (recall) stopVideo();   // 写回时视频区被模糊、点不到，正在放的视频先停下
     }
     for (const li of fb.querySelectorAll('.fb-rows li[data-key]')) {
       const key = li.dataset.key, fx = d.fix[key], active = recall?.key === key;
@@ -648,6 +662,13 @@ export function createTrain(root, ctx) {
     }
     const opt = e.target.closest('.col [role=radio]');
     if (opt && round.phase === 'answer') return choose(+opt.closest('.col').dataset.col, opt.dataset.v);
+    const fig = e.target.closest('.fb-video .vid'), vb = e.target.closest('button');
+    if (fig && vb) {
+      if (vb.hasAttribute('data-vid-play')) return playVideo(fig);
+      if (vb.hasAttribute('data-vid-jump')) return playVideo(fig, videoOf(fig.dataset.video)?.songAt || 0);
+      if (vb.hasAttribute('data-vid-retry')) return retryVideo(fig);
+      if (vb.dataset.vidQ) return setVideoQuality(fig, vb.dataset.vidQ);
+    }
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (act === 'retry-save') { if (saveError?.name === 'ConflictError') recoverConflict(); else { const action = retryAction; saveError = null; action?.(); } }
     else if (act === 'retry-wave') waveView?.retry();
@@ -708,6 +729,7 @@ export function createTrain(root, ctx) {
     }
     if (operating || ys.open || e.repeat) return;
     if (e.target.closest?.('input,textarea,select')) return;
+    if (e.target.closest?.('.fb-video')) return;   // 焦点在课件视频上：空格、回车、方向键都交给视频
     const digit = /^(?:Digit|Numpad)([0-4])$/.exec(e.code || '')?.[1];
     const k = digit ?? e.key;
     if (k === ' ') { if (!e.target.closest('.tr-back,.tr-end,.tr-cards,.submit,.next,.g-play')) { toggle(); e.preventDefault(); } return; }
@@ -748,7 +770,7 @@ export function createTrain(root, ctx) {
     start, startReview, restore, active: () => !!round, id: () => round?.id,
     info: () => round ? {n: round.done.length + 1, size: round.size} : null,
     resume() { render(); warmNext(); },
-    pause() { peeks.hide(); hideSheet(false); playback.pause({release: true}); coolNext(); if (round && !operating) saveDraft(); },
+    pause() { peeks.hide(); hideSheet(false); playback.pause({release: true}); stopVideo(); coolNext(); if (round && !operating) saveDraft(); },
     async discard() {
       if (operating) throw Error(tr('正在保存，请稍后再切换轮次。'));
       peeks.hide(); operating = true; playback.pause();
@@ -761,7 +783,7 @@ export function createTrain(root, ctx) {
           const data = snapshot(); data.state = 'finished'; data.reason = 'empty'; data.time = new Date().toISOString();
           try { latest = await persist(data); } catch {}
         }
-        hideSheet(false); round = null; waveView?.destroy(); waveView = null; playback.stop(); coolNext();
+        hideSheet(false); round = null; waveView?.destroy(); waveView = null; playback.stop(); stopVideo(); liveVideo = null; coolNext();
         return latest;
       } finally { operating = false; saveUI(); }
     },

@@ -10,6 +10,7 @@ import {sleeveLayout} from './sleeve-layout.js';
 import {nameHTML, trackStoryHTML, courseNoteHTML} from './reading.js';
 import {t as tr, join} from './i18n.js';
 import {hasVideo, videoFigureHTML, mountVideo, retryVideo, videoOf, setVideoQuality} from './video.js';
+import {bindAudioDrag, dragAttrs, canDrag} from './drag-audio.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -64,12 +65,13 @@ export async function initExplore(ctx) {
     if (key !== spreadKey) {
       spreadKey = key; spreadPosition = '';
       const years = [...new Set(bands[view.band].ids.map(id => M.byId.get(id).year))];
-      spread.innerHTML = `<header class="spread-head"><h2><b>${current.year}</b><span>${tr('{n} 首', {n: items.length})} · ${tr('同年封套已展开')}</span></h2><p>${tr('点击封套选歌，再落针试听')}</p><nav class="spread-years" aria-label="${tr('切换年份')}">${years.map(y => `<button data-year="${y}" aria-current="${y === current.year ? 'true' : 'false'}">${y}</button>`).join('')}</nav></header>
-        <div class="spread-covers">${items.map(t => { const c = M.coverOf(t); return `<button class="sleeve-target" data-cover="${t.id}" aria-label="${esc(M.titleOf(t))}, ${esc(t.artist)}, ${t.year}" aria-pressed="${t.id === current.id}"><span class="st-art">${c ? `<img src="${c.url}" alt="" data-shape="${c.shape}" draggable="false">` : `<span>${tr('封面待补')}</span>`}</span><span class="st-title" aria-hidden="true">${esc(M.titleOf(t))}</span><span class="st-artist" aria-hidden="true">${esc(t.artist)}</span></button>`; }).join('')}</div>`;
+      spread.innerHTML = `<header class="spread-head"><h2><b>${current.year}</b><span>${tr('{n} 首', {n: items.length})} · ${tr('同年封套已展开')}</span></h2><p>${tr('点击封套选歌，再落针试听')}${canDrag() ? ' · ' + tr('拖出封套，存下音频文件') : ''}</p><nav class="spread-years" aria-label="${tr('切换年份')}">${years.map(y => `<button data-year="${y}" aria-current="${y === current.year ? 'true' : 'false'}">${y}</button>`).join('')}</nav></header>
+        <div class="spread-covers">${items.map(t => { const c = M.coverOf(t); return `<button class="sleeve-target" data-cover="${t.id}" ${dragAttrs(t)} aria-label="${esc(M.titleOf(t))}, ${esc(t.artist)}, ${t.year}" aria-pressed="${t.id === current.id}"><span class="st-art">${c ? `<img src="${c.url}" alt="" data-shape="${c.shape}" draggable="false">` : `<span>${tr('封面待补')}</span>`}</span><span class="st-title" aria-hidden="true">${esc(M.titleOf(t))}</span><span class="st-artist" aria-hidden="true">${esc(t.artist)}</span></button>`; }).join('')}</div>`;
     }
     for (const b of spread.querySelectorAll('[data-cover]')) b.setAttribute('aria-pressed', String(b.dataset.cover === view.song));
     positionSpread();
   }
+  bindAudioDrag();   // 封套、正在播放条、歌曲面板、星卡上的封面都能拖出音频文件（drag-audio.js）
   spread.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.cover) select(M.ringOf.get(b.dataset.cover));
@@ -263,7 +265,7 @@ export async function initExplore(ctx) {
     const days = last ? Math.max(0, Math.floor((Date.now() - Date.parse(last)) / 864e5)) : null;
     const note = info ? (due ? tr('该复习了') + (days != null ? ' · ' + tr('上次是 {n} 天前', {n: days}) : '') : info.full ? tr('天上这颗星是你记住的歌：四项都刻满了') : tr('天上这颗星是你记住的歌')) : '';
     card.innerHTML = `<button class="sc-x" type="button" aria-label="${tr('关闭')}">×</button>
-      ${c ? `<img class="sc-art" src="${c.url}" alt="" data-shape="${c.shape}">` : '<span class="sc-art"></span>'}
+      ${c ? `<span class="cover-drag" ${dragAttrs(t)}><img class="sc-art" src="${c.url}" alt="" data-shape="${c.shape}" draggable="false"></span>` : '<span class="sc-art"></span>'}
       <div class="sc-body"><div class="sc-year">${t.year}</div><h3 id="skyCardTitle">${esc(M.titleOf(t))}</h3>
         <p class="sc-meta">${esc(t.artist)} · ${esc(M.styleOf(t).label)}</p>
         <p class="sc-lec">${M.lectureIds(t).map(id => tr('第 {l} 讲', {l: id}) + ' ' + esc(M.lectureLabel(id))).join(' · ')}</p>
@@ -795,7 +797,9 @@ export async function initExplore(ctx) {
     if (bar.dataset.track !== t.id) {
       bar.dataset.track = t.id;
       const c = M.coverOf(t);
-      bar.querySelector('.np-cover').innerHTML = c ? `<img src="${c.url}" alt="" width="44" height="44">` : `<i>${t.year}</i>`;
+      bar.querySelector('.np-cover').innerHTML = c ? `<img src="${c.url}" alt="" width="44" height="44" draggable="false">` : `<i>${t.year}</i>`;
+      const songBtn = bar.querySelector('.np-song');
+      if (canDrag() && t.src) { songBtn.draggable = true; songBtn.dataset.dragAudio = t.id; } else { songBtn.removeAttribute('draggable'); delete songBtn.dataset.dragAudio; }
       bar.querySelector('.np-meta b').textContent = M.titleOf(t);
       bar.querySelector('.np-meta small').textContent = `${t.artist} · ${t.year}`;
       mediaSession(t);
@@ -942,7 +946,7 @@ export async function initExplore(ctx) {
           <span class="p-bandnav"><button data-band="1" aria-label="${tr('更晚的年代（向内）')}" ${view.band === bands.length - 1 ? 'disabled' : ''}>↑</button><button data-band="-1" aria-label="${tr('更早的年代（向外）')}" ${view.band === 0 ? 'disabled' : ''}>↓</button></span></div>
         <article class="song" data-track="${t.id}" aria-live="off">
           <div class="song-top">
-            ${cover ? `<img class="song-cover" data-shape="${cover.shape}" src="${cover.url}" alt="" width="${cover.w}" height="${cover.h}">` : ''}
+            ${cover ? `<span class="cover-drag" ${dragAttrs(t)}><img class="song-cover" data-shape="${cover.shape}" src="${cover.url}" alt="" width="${cover.w}" height="${cover.h}" draggable="false"></span>` : ''}
             <div><div class="song-year">${t.year}</div><div class="song-spoke">${tr('{b} 带 · {n} 号辐', {b: band.label, n: t.year % 10})}</div></div>
           </div>
           <h2>${nameHTML(t, 'song', M.titleOf(t))}</h2>

@@ -7,7 +7,7 @@
 // 老用户打开网站时，左下角会出现一次这条更新的小纸条；新用户只看上手指南，不打扰。
 // 新的小设计加到 DESIGNS 里，since 写这次更新的 v，更新说明里会标「新」。
 export const RELEASES = [
-  {v: '2026-11-28', title: {zh: '补全曲目封面', ko: '곡 표지 보완', en: 'Track artwork updated'}, items: [
+  {v: '2026-11-28b', title: {zh: '补全曲目封面', ko: '곡 표지 보완', en: 'Track artwork updated'}, items: [
     {t: 'fix', text: {zh: '为韩明淑的《穿黄衬衫的男人》补上唱片封套，并为多首曲目换上对应的发行封套或馆藏盘标。', ko: '한명숙의 《노오란 샤쓰의 사나이》 표지를 추가하고, 여러 곡에 해당 음반의 표지나 소장본 레이블을 넣었습니다.', en: 'Added the sleeve for Han Myeong-suk’s “The Man in the Yellow Shirt” and updated several tracks with their release artwork or archival record labels.'}}
   ]},
   {v: '2026-11-28', title: {zh: '答案页能看课件视频，封套能拖出音频文件', ko: '해설 화면에서 강의 영상 보기, 재킷을 끌어 음원 파일로', en: 'Course videos on the answer page; drag a sleeve out as an audio file'}, items: [

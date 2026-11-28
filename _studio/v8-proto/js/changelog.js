@@ -7,6 +7,9 @@
 // 老用户打开网站时，左下角会出现一次这条更新的小纸条；新用户只看上手指南，不打扰。
 // 新的小设计加到 DESIGNS 里，since 写这次更新的 v，更新说明里会标「新」。
 export const RELEASES = [
+  {v: '2026-11-28c', title: {zh: '现场版和课件演示配图', ko: '공연 영상과 강의 시연 표지', en: 'Artwork for live performances and demonstrations'}, items: [
+    {t: 'tweak', text: {zh: '为 Elvis Presley 和 James Brown 的课件现场换上对应的影像发行封套，三个《Maple Leaf Rag》演示各用自己的课件画面。', ko: '엘비스 프레슬리와 제임스 브라운의 공연에 해당 영상 발매 표지를 넣고, 세 가지 《Maple Leaf Rag》 시연에는 각각 강의 영상 속 장면을 사용했습니다.', en: 'The Elvis Presley and James Brown performances now use the covers of their video releases. Each of the three “Maple Leaf Rag” demonstrations has an image from its own lesson video.'}}
+  ]},
   {v: '2026-11-28b', title: {zh: '补全曲目封面', ko: '곡 표지 보완', en: 'Track artwork updated'}, items: [
     {t: 'fix', text: {zh: '为韩明淑的《穿黄衬衫的男人》补上唱片封套，并为多首曲目换上对应的发行封套或馆藏盘标。', ko: '한명숙의 《노오란 샤쓰의 사나이》 표지를 추가하고, 여러 곡에 해당 음반의 표지나 소장본 레이블을 넣었습니다.', en: 'Added the sleeve for Han Myeong-suk’s “The Man in the Yellow Shirt” and updated several tracks with their release artwork or archival record labels.'}}
   ]},

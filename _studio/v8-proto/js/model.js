@@ -97,6 +97,7 @@ export const coverOf = t => { const c = PROTO_COVERS[t.id] || COVERS[t.id]; retu
 export function coverLabel(cover) {
   if (!cover) return t('封面待补');
   if (cover.kind === 'leaflet') return t('唱片附页 · 同盘 A 面资料，非本曲封套');
+  if (cover.relation === 'video-release') return t('影像发行封套');
   const kind = t({album:'专辑封面',compilation:'再版合辑',sleeve:'单曲封套',label:'唱片标签',sheet:'乐谱封面',photo:'历史资料图',device:'播放设备',ad:'发行广告'}[cover.kind] || '历史图像');
   return kind + (cover.match === 'context' ? ' · ' + t('作品或历史资料') : cover.match === 'version' ? ' · ' + t('同曲其他录音') : cover.match === 'unverified' ? ' · ' + t('录音版本未确认') : '');
 }

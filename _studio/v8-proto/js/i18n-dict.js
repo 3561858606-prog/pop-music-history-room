@@ -89,7 +89,7 @@ export const KO = {
   '正在载入本地学习记录…': '이 기기의 학습 기록을 불러오는 중…', '学习存储暂不可用：{m}。原有记录未改动，请刷新重试。': '학습 저장소를 쓸 수 없습니다: {m}. 기존 기록은 그대로입니다. 새로고침해 주세요.', '重新载入': '다시 불러오기',
   // model / store / audio / waveform
   '{d} 年代': '{d}년대', '封面待补': '표지 준비 중', '唱片附页 · 同盘 A 面资料，非本曲封套': '음반 부록 · 같은 음반 A면 자료이며 이 곡의 재킷은 아님',
-  '专辑封面': '앨범 표지', '再版合辑': '재발매 컴필레이션', '单曲封套': '싱글 재킷', '唱片标签': '레코드 라벨', '乐谱封面': '악보 표지', '历史资料图': '역사 자료 사진', '播放设备': '재생 기기', '发行广告': '발매 광고', '历史图像': '역사 이미지',
+  '专辑封面': '앨범 표지', '影像发行封套': '영상 발매 표지', '再版合辑': '재발매 컴필레이션', '单曲封套': '싱글 재킷', '唱片标签': '레코드 라벨', '乐谱封面': '악보 표지', '历史资料图': '역사 자료 사진', '播放设备': '재생 기기', '发行广告': '발매 광고', '历史图像': '역사 이미지',
   '作品或历史资料': '작품 또는 역사 자료', '同曲其他录音': '같은 곡의 다른 녹음', '录音版本未确认': '녹음 버전 미확인',
   '歌名': '곡명', '年份': '연도', '音乐家': '음악가', '风格': '장르',
   '读不出这个文件，它不是完整的备份文件。': '파일을 읽을 수 없습니다. 완전한 백업 파일이 아닙니다.',
@@ -285,7 +285,7 @@ export const EN = {
   '偏好暂未保存；作答记录不受影响。': 'Settings weren’t saved; your answers are safe.', '记录同步暂时失败，请保留页面后重试。': 'Couldn’t sync records. Keep this page open and try again.',
   '正在载入本地学习记录…': 'Loading your learning records…', '学习存储暂不可用：{m}。原有记录未改动，请刷新重试。': 'Learning storage is unavailable: {m}. Your records are untouched; please refresh.', '重新载入': 'Reload',
   '{d} 年代': 'the {d}s', '封面待补': 'Cover coming', '唱片附页 · 同盘 A 面资料，非本曲封套': 'Record insert · from the same disc’s A-side, not this song’s sleeve',
-  '专辑封面': 'Album cover', '再版合辑': 'Reissue compilation', '单曲封套': 'Single sleeve', '唱片标签': 'Record label', '乐谱封面': 'Sheet-music cover', '历史资料图': 'Historical image', '播放设备': 'Playback device', '发行广告': 'Release advert', '历史图像': 'Historical image',
+  '专辑封面': 'Album cover', '影像发行封套': 'Video release cover', '再版合辑': 'Reissue compilation', '单曲封套': 'Single sleeve', '唱片标签': 'Record label', '乐谱封面': 'Sheet-music cover', '历史资料图': 'Historical image', '播放设备': 'Playback device', '发行广告': 'Release advert', '历史图像': 'Historical image',
   '作品或历史资料': 'work or historical material', '同曲其他录音': 'another recording of the song', '录音版本未确认': 'recording not confirmed',
   '歌名': 'Song', '年份': 'Year', '音乐家': 'Artist', '风格': 'Style',
   '读不出这个文件，它不是完整的备份文件。': 'Can’t read this file — it isn’t a complete backup.',

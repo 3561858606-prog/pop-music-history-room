@@ -56,7 +56,14 @@ await test(`${M.tracks.length} 首都有配图和出处，轻量图与原图均�
    }
   }
  }));
- const special=M.coverOf(M.byId.get('t52'));assert(special.match==='context'&&M.coverLabel(special).includes('资料'),'未知录音被标成专辑');
+ const demonstrations=['t50','t51','t52'].map(id=>M.coverOf(M.byId.get(id)));
+ assert(new Set(demonstrations.map(c=>c.url)).size===3,'课件演示应各有独立配图');
+ for(const cover of demonstrations){
+  assert(cover.relation==='course-video-frame'&&M.coverLabel(cover).includes('资料'),'课件演示应标为资料');
+ }
+ for(const id of ['t56','t73']){
+  assert(M.coverLabel(M.coverOf(M.byId.get(id)))==='影像发行封套','现场应标注影像发行 '+id);
+ }
  const leaflet=M.coverOf(M.byId.get('t21'));assert(leaflet.kind==='leaflet'&&M.coverLabel(leaflet).includes('非本曲封套'),'同盘A面附页被标成本曲封面');
 });
 await test('1970 年代带容纳第 9 讲，同年两张封套可切换',async()=>{
